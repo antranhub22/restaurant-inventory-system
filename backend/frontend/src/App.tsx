@@ -11,6 +11,8 @@ import InventoryCurrent from './pages/InventoryCurrent';
 import TransactionHistory from './pages/TransactionHistory';
 import DailyReconciliation from './pages/DailyReconciliation';
 import DocumentManagement from './pages/DocumentManagement';
+import CameraCapture from './pages/CameraCapture';
+import OcrReceiptFlow from './pages/OcrReceiptFlow';
 
 function App() {
   const [count, setCount] = useState(0)
@@ -25,6 +27,8 @@ function App() {
         <Route path="/transactions" element={<TransactionHistory />} />
         <Route path="/reconciliation" element={<DailyReconciliation />} />
         <Route path="/documents" element={<DocumentManagement />} />
+        <Route path="/camera" element={<CameraCapture />} />
+        <Route path="/ocr" element={<OcrReceiptFlow />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <div>

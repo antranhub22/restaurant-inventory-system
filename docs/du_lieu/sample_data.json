@@ -1,0 +1,1377 @@
+      "actual_remaining": 4.5,
+      "discrepancy_value": 0,
+      "status": "resolved",
+      "alert_level": "none",
+      "reviewed_by": 3,
+      "reviewed_at": "2025-07-02T11:00:00Z",
+      "resolution_notes": "Sử dụng chính xác, không có chênh lệch"
+    },
+    {
+      "id": 3,
+      "department": "bar",
+      "item_id": 8,
+      "shift_date": "2025-07-02",
+      "shift_type": "evening",
+      "opening_stock": 200.0,
+      "withdrawn": 20.0,
+      "sold": 18.0,
+      "returned": 0.0,
+      "wasted": 0.0,
+      "staff_consumed": 0.0,
+      "sampled": 0.0,
+      "transferred_out": 0.0,
+      "transferred_in": 0.0,
+      "actual_remaining": 180.0,
+      "discrepancy_value": 16000,
+      "status": "investigation",
+      "alert_level": "medium",
+      "reviewed_by": null,
+      "reviewed_at": null,
+      "resolution_notes": null
+    }
+  ],
+
+  "sample_discrepancy_reports": [
+    {
+      "id": 1,
+      "reconciliation_id": 1,
+      "reason_code": "breakage",
+      "description": "Chai bia bị vỡ khi nhân viên vận chuyển từ kho ra quầy bar. Có tiếng động lớn và mọi người đều chứng kiến.",
+      "estimated_loss_value": 15000,
+      "photo_evidence": [
+        "/uploads/evidence/broken_bottle_001.jpg",
+        "/uploads/evidence/broken_bottle_002.jpg"
+      ],
+      "witness_statements": [
+        "Anh Em đang mang khay bia ra quầy thì bị trượt tay, chai bia rơi xuống sàn và vỡ"
+      ],
+      "corrective_actions": "Nhắc nhở nhân viên cẩn thận hơn khi vận chuyển. Sử dụng khay có thành cao hơn.",
+      "reported_by": 4,
+      "reported_at": "2025-07-02T14:35:00Z",
+      "verified_by": 2,
+      "verified_at": "2025-07-02T15:00:00Z",
+      "status": "approved",
+      "follow_up_required": true,
+      "follow_up_date": "2025-07-09",
+      "follow_up_notes": "Kiểm tra việc sử dụng khay mới trong tuần tới"
+    },
+    {
+      "id": 2,
+      "reconciliation_id": 3,
+      "reason_code": "unknown",
+      "description": "Thiếu 2 lon Coca Cola không rõ nguyên nhân. Đã kiểm tra lại nhiều lần nhưng không thấy.",
+      "estimated_loss_value": 16000,
+      "photo_evidence": [],
+      "witness_statements": [],
+      "corrective_actions": "Cần review camera an ninh và quy trình xuất kho",
+      "reported_by": 4,
+      "reported_at": "2025-07-02T20:15:00Z",
+      "verified_by": null,
+      "verified_at": null,
+      "status": "under_review",
+      "follow_up_required": true,
+      "follow_up_date": "2025-07-03",
+      "follow_up_notes": null
+    }
+  ],
+
+  "sample_inventory_current": [
+    {
+      "item_id": 1,
+      "current_stock": 4.5,
+      "reserved_stock": 0.0,
+      "average_cost": 250000,
+      "stock_status": "low_stock",
+      "last_updated": "2025-07-02T10:15:00Z",
+      "last_counted": "2025-07-01T18:00:00Z",
+      "next_expiry_date": "2025-07-05"
+    },
+    {
+      "item_id": 2,
+      "current_stock": 240.0,
+      "reserved_stock": 20.0,
+      "average_cost": 15000,
+      "stock_status": "in_stock",
+      "last_updated": "2025-07-02T14:30:00Z",
+      "last_counted": "2025-07-02T08:00:00Z",
+      "next_expiry_date": null
+    },
+    {
+      "item_id": 3,
+      "current_stock": 0.8,
+      "reserved_stock": 0.0,
+      "average_cost": 300000,
+      "stock_status": "low_stock",
+      "last_updated": "2025-07-02T08:30:00Z",
+      "last_counted": "2025-07-02T08:00:00Z",
+      "next_expiry_date": "2025-07-03"
+    },
+    {
+      "item_id": 4,
+      "current_stock": 48.0,
+      "reserved_stock": 5.0,
+      "average_cost": 15000,
+      "stock_status": "in_stock",
+      "last_updated": "2025-07-02T09:00:00Z",
+      "last_counted": "2025-07-02T08:00:00Z",
+      "next_expiry_date": "2025-07-04"
+    },
+    {
+      "item_id": 5,
+      "current_stock": 85.0,
+      "reserved_stock": 0.0,
+      "average_cost": 35000,
+      "stock_status": "in_stock",
+      "last_updated": "2025-07-01T16:00:00Z",
+      "last_counted": "2025-07-01T18:00:00Z",
+      "next_expiry_date": null
+    },
+    {
+      "item_id": 6,
+      "current_stock": 175.0,
+      "reserved_stock": 10.0,
+      "average_cost": 25000,
+      "stock_status": "in_stock",
+      "last_updated": "2025-07-01T14:00:00Z",
+      "last_counted": "2025-07-01T18:00:00Z",
+      "next_expiry_date": null
+    },
+    {
+      "item_id": 7,
+      "current_stock": 12.0,
+      "reserved_stock": 2.0,
+      "average_cost": 35000,
+      "stock_status": "in_stock",
+      "last_updated": "2025-07-02T09:30:00Z",
+      "last_counted": "2025-07-02T08:00:00Z",
+      "next_expiry_date": "2025-07-06"
+    },
+    {
+      "item_id": 8,
+      "current_stock": 180.0,
+      "reserved_stock": 0.0,
+      "average_cost": 8000,
+      "stock_status": "low_stock",
+      "last_updated": "2025-07-02T20:00:00Z",
+      "last_counted": "2025-07-02T08:00:00Z",
+      "next_expiry_date": null
+    },
+    {
+      "item_id": 9,
+      "current_stock": 8.5,
+      "reserved_stock": 1.0,
+      "average_cost": 180000,
+      "stock_status": "in_stock",
+      "last_updated": "2025-07-02T11:00:00Z",
+      "last_counted": "2025-07-01T18:00:00Z",
+      "next_expiry_date": "2025-07-05"
+    },
+    {
+      "item_id": 10,
+      "current_stock": 15.0,
+      "reserved_stock": 3.0,
+      "average_cost": 80000,
+      "stock_status": "in_stock",
+      "last_updated": "2025-07-02T13:00:00Z",
+      "last_counted": "2025-07-02T08:00:00Z",
+      "next_expiry_date": "2025-07-03"
+    }
+  ],
+
+  "templates": {
+    "withdrawal_slip_template": {
+      "title": "PHIẾU XUẤT KHO",
+      "fields": [
+        {
+          "label": "Ngày",
+          "field_name": "date",
+          "type": "date",
+          "required": true,
+          "example": "02/07/2025"
+        },
+        {
+          "label": "Ca làm việc",
+          "field_name": "shift",
+          "type": "select",
+          "required": true,
+          "options": ["Sáng (6:00-14:00)", "Chiều (14:00-22:00)", "Tối (22:00-6:00)"]
+        },
+        {
+          "label": "Bộ phận",
+          "field_name": "department",
+          "type": "select",
+          "required": true,
+          "options": ["Bếp chính", "Bếp lạnh", "Quầy bar", "Kho tổng"]
+        },
+        {
+          "label": "Người lấy",
+          "field_name": "requester_name",
+          "type": "text",
+          "required": true,
+          "example": "Nguyễn Văn A"
+        },
+        {
+          "label": "Items",
+          "field_name": "items",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {"name": "STT", "type": "number"},
+            {"name": "Tên hàng hóa", "type": "text"},
+            {"name": "Số lượng", "type": "number"},
+            {"name": "Đơn vị", "type": "text"},
+            {"name": "Ghi chú", "type": "text"}
+          ]
+        }
+      ],
+      "sample_data": {
+        "date": "02/07/2025",
+        "shift": "Chiều (14:00-22:00)",
+        "department": "Quầy bar",
+        "requester_name": "Phạm Thị Dung",
+        "items": [
+          {"stt": 1, "name": "Bia Saigon 330ml", "quantity": 10, "unit": "chai", "notes": "Cho ca chiều"},
+          {"stt": 2, "name": "Coca Cola 350ml", "quantity": 20, "unit": "chai", "notes": "Bổ sung quầy"},
+          {"stt": 3, "name": "Nước suối", "quantity": 5, "unit": "chai", "notes": ""}
+        ]
+      }
+    },
+
+    "return_slip_template": {
+      "title": "PHIẾU HOÀN TRẢ",
+      "fields": [
+        {
+          "label": "Ngày hoàn trả",
+          "field_name": "return_date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "label": "Phiếu xuất gốc",
+          "field_name": "original_withdrawal_ref",
+          "type": "text",
+          "required": true,
+          "example": "WS-20250702-001"
+        },
+        {
+          "label": "Bộ phận hoàn trả",
+          "field_name": "returning_department",
+          "type": "select",
+          "required": true,
+          "options": ["Bếp chính", "Bếp lạnh", "Quầy bar", "Kho tổng"]
+        },
+        {
+          "label": "Lý do hoàn trả",
+          "field_name": "return_reason",
+          "type": "select",
+          "required": true,
+          "options": ["Dư thừa sau ca", "Chất lượng không đạt", "Thay đổi menu", "Khác"]
+        },
+        {
+          "label": "Items hoàn trả",
+          "field_name": "return_items",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {"name": "Tên hàng hóa", "type": "text"},
+            {"name": "Số lượng hoàn", "type": "number"},
+            {"name": "Đơn vị", "type": "text"},
+            {"name": "Tình trạng", "type": "select", "options": ["Tốt", "Khá", "Kém"]},
+            {"name": "Ghi chú", "type": "text"}
+          ]
+        }
+      ]
+    },
+
+    "waste_report_template": {
+      "title": "BÁO CÁO HAO HỤT",
+      "fields": [
+        {
+          "label": "Ngày phát hiện",
+          "field_name": "discovery_date",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "label": "Bộ phận",
+          "field_name": "department",
+          "type": "select",
+          "required": true,
+          "options": ["Bếp chính", "Bếp lạnh", "Quầy bar", "Kho tổng", "Prep"]
+        },
+        {
+          "label": "Loại hao hụt",
+          "field_name": "waste_type",
+          "type": "select",
+          "required": true,
+          "options": ["Hỏng hóc", "Hết hạn", "Vỡ/đổ", "Thiếu tự nhiên", "Khác"]
+        },
+        {
+          "label": "Mô tả chi tiết",
+          "field_name": "description",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Mô tả chi tiết nguyên nhân và tình huống"
+        },
+        {
+          "label": "Items bị hao hụt",
+          "field_name": "waste_items",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {"name": "Tên hàng hóa", "type": "text"},
+            {"name": "Số lượng", "type": "number"},
+            {"name": "Đơn vị", "type": "text"},
+            {"name": "Giá trị ước tính", "type": "currency"},
+            {"name": "Nguyên nhân", "type": "text"}
+          ]
+        },
+        {
+          "label": "Nhân chứng",
+          "field_name": "witnesses",
+          "type": "text",
+          "required": false,
+          "placeholder": "Tên người chứng kiến (nếu có)"
+        },
+        {
+          "label": "Ảnh minh chứng",
+          "field_name": "evidence_photos",
+          "type": "file_upload",
+          "required": false,
+          "accept": "image/*",
+          "multiple": true
+        }
+      ]
+    },
+
+    "daily_reconciliation_template": {
+      "title": "BÁO CÁO ĐỐI CHIẾU CUỐI NGÀY",
+      "fields": [
+        {
+          "label": "Ngày đối chiếu",
+          "field_name": "reconciliation_date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "label": "Ca làm việc",
+          "field_name": "shift",
+          "type": "select",
+          "required": true,
+          "options": ["Sáng", "Chiều", "Tối", "Cả ngày"]
+        },
+        {
+          "label": "Bộ phận",
+          "field_name": "department",
+          "type": "select",
+          "required": true,
+          "options": ["Bếp chính", "Bếp lạnh", "Quầy bar", "Kho tổng"]
+        },
+        {
+          "label": "Chi tiết đối chiếu",
+          "field_name": "reconciliation_items",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {"name": "Tên hàng hóa", "type": "text"},
+            {"name": "Tồn đầu ca", "type": "number"},
+            {"name": "Nhập trong ca", "type": "number"},
+            {"name": "Xuất trong ca", "type": "number"},
+            {"name": "Tồn cuối ca (hệ thống)", "type": "number"},
+            {"name": "Tồn cuối ca (thực tế)", "type": "number"},
+            {"name": "Chênh lệch", "type": "number"},
+            {"name": "Ghi chú", "type": "text"}
+          ]
+        },
+        {
+          "label": "Tổng kết",
+          "field_name": "summary",
+          "type": "object",
+          "properties": {
+            "total_items_checked": {"type": "number", "label": "Tổng số items kiểm tra"},
+            "items_with_discrepancy": {"type": "number", "label": "Số items có chênh lệch"},
+            "total_discrepancy_value": {"type": "currency", "label": "Tổng giá trị chênh lệch"},
+            "explanation_provided": {"type": "boolean", "label": "Đã giải thích chênh lệch"},
+            "manager_approved": {"type": "boolean", "label": "Manager đã duyệt"}
+          }
+        }
+      ]
+    }
+  },
+
+  "mockup_data": {
+    "dashboard_stats": {
+      "total_items": 234,
+      "total_value": 45200000,
+      "low_stock_items": 8,
+      "critical_alerts": 3,
+      "today_in": 12500000,
+      "today_out": 8700000,
+      "today_transactions": 24,
+      "inventory_accuracy": 98.5
+    },
+
+    "alert_samples": [
+      {
+        "id": 1,
+        "type": "out_of_stock",
+        "severity": "critical",
+        "item_name": "Bia Saigon 330ml",
+        "department": "bar",
+        "message": "Hết hàng hoàn toàn",
+        "created_at": "2025-07-02T14:30:00Z",
+        "requires_action": true
+      },
+      {
+        "id": 2,
+        "type": "discrepancy",
+        "severity": "warning",
+        "item_name": "Coca Cola 350ml",
+        "department": "bar",
+        "message": "Chênh lệch 10% trong ca chiều",
+        "created_at": "2025-07-02T16:00:00Z",
+        "requires_action": true
+      },
+      {
+        "id": 3,
+        "type": "expiry",
+        "severity": "warning",
+        "item_name": "Tôm tươi",
+        "department": "kitchen_main",
+        "message": "Hết hạn ngày mai (03/07/2025)",
+        "created_at": "2025-07-02T18:00:00Z",
+        "requires_action": false
+      },
+      {
+        "id": 4,
+        "type": "low_stock",
+        "severity": "info",
+        "item_name": "Thịt bò úc",
+        "department": "kitchen_main",
+        "message": "Tồn kho dưới mức tối thiểu (4.5kg < 5kg)",
+        "created_at": "2025-07-02T10:15:00Z",
+        "requires_action": false
+      },
+      {
+        "id": 5,
+        "type": "overstock",
+        "severity": "info",
+        "item_name": "Gạo Jasmine",
+        "department": "storage",
+        "message": "Tồn kho vượt mức tối đa (175kg > 150kg)",
+        "created_at": "2025-07-01T14:00:00Z",
+        "requires_action": false
+      }
+    ],
+
+    "recent_activities": [
+      {
+        "id": 1,
+        "type": "IN",
+        "description": "Nhập 2.5kg thịt bò úc từ Chợ Bến Thành",
+        "value": 625000,
+        "department": "storage",
+        "user": "Trần Thị Bình",
+        "timestamp": "2025-07-02T08:30:00Z"
+      },
+      {
+        "id": 2,
+        "type": "OUT",
+        "description": "Xuất 10 chai bia Saigon cho quầy bar",
+        "value": 150000,
+        "department": "bar",
+        "user": "Phạm Thị Dung",
+        "timestamp": "2025-07-02T12:00:00Z"
+      },
+      {
+        "id": 3,
+        "type": "WASTE",
+        "description": "Báo cáo 1 chai bia vỡ tại quầy bar",
+        "value": 15000,
+        "department": "bar",
+        "user": "Phạm Thị Dung",
+        "timestamp": "2025-07-02T14:30:00Z"
+      },
+      {
+        "id": 4,
+        "type": "RETURN",
+        "description": "Hoàn trả 3 bó rau muống không sử dụng",
+        "value": 45000,
+        "department": "kitchen_main",
+        "user": "Lê Văn Cường",
+        "timestamp": "2025-07-02T16:45:00Z"
+      }
+    ],
+
+    "department_performance": [
+      {
+        "department": "bar",
+        "efficiency": 80,
+        "status": "warning",
+        "issues": 3,
+        "last_reconciliation": "2025-07-02T15:00:00Z"
+      },
+      {
+        "department": "kitchen_main",
+        "efficiency": 95,
+        "status": "good",
+        "issues": 0,
+        "last_reconciliation": "2025-07-02T11:00:00Z"
+      },
+      {
+        "department": "prep",
+        "efficiency": 85,
+        "status": "warning",
+        "issues": 1,
+        "last_reconciliation": "2025-07-02T13:00:00Z"
+      },
+      {
+        "department": "storage",
+        "efficiency": 98,
+        "status": "excellent",
+        "issues": 0,
+        "last_reconciliation": "2025-07-02T18:00:00Z"
+      }
+    ]
+  },
+
+  "api_mock_responses": {
+    "GET /api/dashboard": {
+      "success": true,
+      "data": {
+        "stats": {
+          "total_items": 234,
+          "total_value": 45200000,
+          "low_stock_items": 8,
+          "critical_alerts": 3,
+          "today_transactions": 24
+        },
+        "alerts": [
+          {
+            "type": "critical",
+            "message": "Bia Saigon hết hàng tại quầy bar",
+            "timestamp": "2025-07-02T14:30:00Z"
+          }
+        ],
+        "recent_activity": [
+          {
+            "description": "Nhập 2.5kg thịt bò úc",
+            "value": 625000,
+            "timestamp": "2025-07-02T08:30:00Z"
+          }
+        ]
+      },
+      "meta": {
+        "timestamp": "2025-07-02T20:00:00Z",
+        "cache_duration": 300
+      }
+    },
+
+    "POST /api/ocr/process-receipt": {
+      "success": true,
+      "data": {
+        "job_id": "ocr_job_123456",
+        "status": "processing",
+        "estimated_time": 30,
+        "queue_position": 1
+      }
+    },
+
+    "GET /api/ocr/jobs/123456/status": {
+      "success": true,
+      "data": {
+        "job_id": "ocr_job_123456",
+        "status": "completed",
+        "progress": 100,
+        "result": {
+          "confidence": 0.92,
+          "extracted_data": {
+            "supplier": "Chợ Bến Thành",
+            "date": "2025-07-02",
+            "items": [
+              {
+                "name": "Thịt bò úc",
+                "quantity": 2.5,
+                "unit": "kg",
+                "unit_price": 250000,
+                "total": 625000,
+                "confidence": 0.95
+              }
+            ],
+            "total": 625000
+          },
+          "requires_review": false,
+          "matched_items": [
+            {
+              "extracted_name": "Thịt bò úc",
+              "matched_item_id": 1,
+              "match_confidence": 0.98
+            }
+          ]
+        }
+      }
+    },
+
+    "GET /api/inventory/items": {
+      "success": true,
+      "data": [
+        {
+          "id": 1,
+          "name": "Thịt bò úc",
+          "current_stock": 4.5,
+          "unit": "kg",
+          "status": "low_stock",
+          "value": 1125000,
+          "last_updated": "2025-07-02T10:15:00Z"
+        }
+      ],
+      "meta": {
+        "pagination": {
+          "page": 1,
+          "limit": 20,
+          "total": 234,
+          "total_pages": 12
+        },
+        "timestamp": "2025-07-02T20:00:00Z"
+      }
+    },
+
+    "POST /api/stock/withdraw": {
+      "success": true,
+      "data": {
+        "transaction_id": "TR-20250702-025",
+        "items": [
+          {
+            "item_id": 1,
+            "quantity": 0.5,
+            "new_stock_level": 4.0,
+            "estimated_value": 125000
+          }
+        ],
+        "total_value": 125000,
+        "requires_approval": false,
+        "approval_workflow": null
+      }
+    },
+
+    "GET /api/reconciliation/dashboard": {
+      "success": true,
+      "data": {
+        "pending_reconciliations": 3,
+        "departments": [
+          {
+            "department": "bar",
+            "status": "needs_attention",
+            "discrepancies": 2,
+            "total_value_impact": 31000,
+            "last_reconciliation": "2025-07-02T15:00:00Z"
+          }
+        ],
+        "today_summary": {
+          "total_discrepancies": 5,
+          "resolved": 3,
+          "pending": 2,
+          "total_loss_value": 47000
+        }
+      }
+    }
+  },
+
+  "test_scenarios": [
+    {
+      "name": "OCR Receipt Processing",
+      "description": "Test OCR accuracy with various receipt types",
+      "test_data": [
+        {
+          "receipt_type": "machine_printed",
+          "expected_accuracy": 0.95,
+          "sample_image": "receipt_machine_001.jpg"
+        },
+        {
+          "receipt_type": "handwritten",
+          "expected_accuracy": 0.85,
+          "sample_image": "receipt_handwritten_001.jpg"
+        },
+        {
+          "receipt_type": "mixed_format",
+          "expected_accuracy": 0.88,
+          "sample_image": "receipt_mixed_001.jpg"
+        }
+      ]
+    },
+    {
+      "name": "Inventory Withdrawal Flow",
+      "description": "Test complete withdrawal process",
+      "steps": [
+        "Navigate to inventory page",
+        "Search for 'Thịt bò úc'",
+        "Click withdrawal button",
+        "Enter quantity: 0.5kg",
+        "Select department: kitchen_main",
+        "Add notes: 'Cho món bò nướng 10:30'",
+        "Submit withdrawal",
+        "Verify stock update"
+      ],
+      "expected_result": "Stock reduced from 5.0kg to 4.5kg"
+    },
+    {
+      "name": "Discrepancy Resolution",
+      "description": "Test discrepancy reporting and approval",
+      "preconditions": {
+        "withdrawn": 10,
+        "sold": 9,
+        "returned": 0
+      },
+      "steps": [
+        "System detects 1 unit discrepancy",
+        "Staff explains: bottle breakage",
+        "Upload photo evidence",
+        "Submit explanation",
+        "Manager reviews and approves",
+        "Discrepancy marked resolved"
+      ],
+      "expected_result": "Discrepancy status changed to 'resolved'"
+    }
+  ],
+
+  "development_setup": {
+    "environment_variables": {
+      "NODE_ENV": "development",
+      "DATABASE_URL": "postgresql://user:pass@localhost:5432/restaurant_inventory_dev",
+      "REDIS_URL": "redis://localhost:6379",
+      "JWT_SECRET": "your-development-jwt-secret-key",
+      "GOOGLE_VISION_API_KEY": "your-google-vision-api-key",
+      "OPENAI_API_KEY": "your-openai-api-key",
+      "CLOUDINARY_URL": "cloudinary://key:secret@cloud_name",
+      "UPLOAD_DIR": "./uploads",
+      "LOG_LEVEL": "debug"
+    },
+    "database_seed_command": "npm run db:seed",
+    "sample_images_location": "./sample_data/receipts/",
+    "api_base_url": "http://localhost:3000/api"
+  },
+
+  "cursor_prompts": {
+    "component_creation": "Tạo React component cho [feature] theo UI specs trong /docs/design/ui_specs.md. Sử dụng sample data từ file này. Apply styles từ design system và handle states theo business rules.",
+    
+    "api_implementation": "Implement API endpoint [endpoint] theo spec trong /docs/api/. Sử dụng sample data từ file này để test. Apply business logic từ /docs/requirements/business_rules.md",
+    
+    "database_operations": "Tạo database functions cho [operation] sử dụng schema trong /docs/data/database_schema.sql. Test với sample data từ file này.",
+    {
+  "metadata": {
+    "title": "Restaurant Inventory Management - Sample Data & Templates",
+    "version": "1.0",
+    "date": "2025-07-02",
+    "description": "Complete sample data for demo and development purposes"
+  },
+
+  "categories": [
+    {
+      "id": 1,
+      "name": "Thịt tươi",
+      "description": "Thịt bò, heo, gà, vịt và các loại thịt tươi sống",
+      "color_code": "#dc2626",
+      "sort_order": 1,
+      "parent_id": null,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "name": "Hải sản",
+      "description": "Cá, tôm, cua, mực và các loại hải sản tươi",
+      "color_code": "#0ea5e9",
+      "sort_order": 2,
+      "parent_id": null,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "name": "Rau xanh",
+      "description": "Rau lá xanh, củ quả và các loại rau tươi",
+      "color_code": "#16a34a",
+      "sort_order": 3,
+      "parent_id": null,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "name": "Gia vị",
+      "description": "Nước mắm, muối, đường, dầu ăn và các gia vị",
+      "color_code": "#ea580c",
+      "sort_order": 4,
+      "parent_id": null,
+      "is_active": true
+    },
+    {
+      "id": 5,
+      "name": "Đồ uống",
+      "description": "Bia, nước ngọt, nước suối và các đồ uống",
+      "color_code": "#8b5cf6",
+      "sort_order": 5,
+      "parent_id": null,
+      "is_active": true
+    },
+    {
+      "id": 6,
+      "name": "Thực phẩm khô",
+      "description": "Gạo, bún, mì, bánh mì và các thực phẩm khô",
+      "color_code": "#eab308",
+      "sort_order": 6,
+      "parent_id": null,
+      "is_active": true
+    }
+  ],
+
+  "units": [
+    { "id": 1, "name": "kilogram", "abbreviation": "kg", "type": "weight", "conversion_factor": 1.0 },
+    { "id": 2, "name": "gram", "abbreviation": "g", "type": "weight", "conversion_factor": 0.001 },
+    { "id": 3, "name": "lít", "abbreviation": "l", "type": "volume", "conversion_factor": 1.0 },
+    { "id": 4, "name": "mililít", "abbreviation": "ml", "type": "volume", "conversion_factor": 0.001 },
+    { "id": 5, "name": "chai", "abbreviation": "chai", "type": "count", "conversion_factor": 1.0 },
+    { "id": 6, "name": "thùng", "abbreviation": "thùng", "type": "count", "conversion_factor": 24.0 },
+    { "id": 7, "name": "bao", "abbreviation": "bao", "type": "count", "conversion_factor": 1.0 },
+    { "id": 8, "name": "cây", "abbreviation": "cây", "type": "count", "conversion_factor": 1.0 },
+    { "id": 9, "name": "con", "abbreviation": "con", "type": "count", "conversion_factor": 1.0 },
+    { "id": 10, "name": "bó", "abbreviation": "bó", "type": "count", "conversion_factor": 1.0 }
+  ],
+
+  "suppliers": [
+    {
+      "id": 1,
+      "name": "Chợ Bến Thành",
+      "contact_person": "Anh Minh",
+      "phone": "0901234567",
+      "email": "minh@benthanh.com",
+      "address": "Chợ Bến Thành, Quận 1, TP.HCM",
+      "tax_code": "0123456789",
+      "payment_terms": "Thanh toán tiền mặt ngay",
+      "delivery_days": [1, 2, 3, 4, 5, 6],
+      "average_delivery_time": 2,
+      "rating": 4.2,
+      "is_active": true,
+      "notes": "Nhà cung cấp thịt tươi và rau xanh chính"
+    },
+    {
+      "id": 2,
+      "name": "Công ty TNHH Sabeco",
+      "contact_person": "Chị Lan",
+      "phone": "0912345678",
+      "email": "lan@sabeco.com.vn",
+      "address": "Đường Nguyễn Biểu, Quận 5, TP.HCM",
+      "tax_code": "0987654321",
+      "payment_terms": "Thanh toán chuyển khoản 30 ngày",
+      "delivery_days": [2, 4, 6],
+      "average_delivery_time": 24,
+      "rating": 4.8,
+      "is_active": true,
+      "notes": "Nhà phân phối bia Saigon chính thức"
+    },
+    {
+      "id": 3,
+      "name": "Cảng cá Vũng Tàu",
+      "contact_person": "Anh Hải",
+      "phone": "0923456789",
+      "email": "hai@cangcavungtau.com",
+      "address": "Cảng cá Vũng Tàu, Bà Rịa - Vũng Tàu",
+      "tax_code": "0112233445",
+      "payment_terms": "Thanh toán tiền mặt khi giao hàng",
+      "delivery_days": [1, 3, 5],
+      "average_delivery_time": 4,
+      "rating": 4.5,
+      "is_active": true,
+      "notes": "Hải sản tươi sống từ Vũng Tàu"
+    },
+    {
+      "id": 4,
+      "name": "Siêu thị Metro",
+      "contact_person": "Mr. John",
+      "phone": "0934567890",
+      "email": "john@metro.com.vn",
+      "address": "Quận 7, TP.HCM",
+      "tax_code": "0223344556",
+      "payment_terms": "Thanh toán thẻ tín dụng",
+      "delivery_days": [1, 2, 3, 4, 5],
+      "average_delivery_time": 6,
+      "rating": 4.0,
+      "is_active": true,
+      "notes": "Thực phẩm khô và gia vị nhập khẩu"
+    }
+  ],
+
+  "sample_items": [
+    {
+      "id": 1,
+      "name": "Thịt bò úc",
+      "category_id": 1,
+      "unit_id": 1,
+      "unit_cost": 250000,
+      "selling_price": 350000,
+      "min_stock": 5.0,
+      "max_stock": 25.0,
+      "reorder_point": 8.0,
+      "sku": "BEEF-AUS-001",
+      "barcode": "8936000000001",
+      "description": "Thịt bò úc loại 1, thích hợp cho món bò nướng",
+      "aliases": ["thit bo uc", "beef", "thịt bò", "bo uc"],
+      "is_perishable": true,
+      "shelf_life_days": 3,
+      "storage_conditions": "Bảo quản lạnh 2-4°C",
+      "primary_supplier_id": 1,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "name": "Bia Saigon 330ml",
+      "category_id": 5,
+      "unit_id": 5,
+      "unit_cost": 15000,
+      "selling_price": 25000,
+      "min_stock": 100.0,
+      "max_stock": 500.0,
+      "reorder_point": 150.0,
+      "sku": "BEER-SAI-330",
+      "barcode": "8935049500330",
+      "description": "Bia Saigon chai 330ml, độ cồn 4.3%",
+      "aliases": ["bia saigon", "saigon beer", "bia sg", "beer"],
+      "is_perishable": false,
+      "shelf_life_days": 365,
+      "storage_conditions": "Bảo quản nơi khô ráo, thoáng mát",
+      "primary_supplier_id": 2,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "name": "Tôm tươi",
+      "category_id": 2,
+      "unit_id": 1,
+      "unit_cost": 300000,
+      "selling_price": 450000,
+      "min_stock": 2.0,
+      "max_stock": 10.0,
+      "reorder_point": 3.0,
+      "sku": "SHRIMP-001",
+      "barcode": "8936000000003",
+      "description": "Tôm tươi size 20-30 con/kg",
+      "aliases": ["tom tuoi", "shrimp", "tôm", "tom"],
+      "is_perishable": true,
+      "shelf_life_days": 1,
+      "storage_conditions": "Bảo quản đá lạnh 0-2°C",
+      "primary_supplier_id": 3,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "name": "Rau muống",
+      "category_id": 3,
+      "unit_id": 10,
+      "unit_cost": 15000,
+      "selling_price": 30000,
+      "min_stock": 10.0,
+      "max_stock": 50.0,
+      "reorder_point": 15.0,
+      "sku": "VEG-MUO-001",
+      "barcode": "8936000000004",
+      "description": "Rau muống tươi, lá xanh non",
+      "aliases": ["rau muong", "morning glory", "rau muống tươi"],
+      "is_perishable": true,
+      "shelf_life_days": 2,
+      "storage_conditions": "Bảo quản mát 5-8°C",
+      "primary_supplier_id": 1,
+      "is_active": true
+    },
+    {
+      "id": 5,
+      "name": "Nước mắm",
+      "category_id": 4,
+      "unit_id": 5,
+      "unit_cost": 35000,
+      "selling_price": null,
+      "min_stock": 20.0,
+      "max_stock": 100.0,
+      "reorder_point": 30.0,
+      "sku": "SAUCE-NM-001",
+      "barcode": "8936000000005",
+      "description": "Nước mắm cá cơm Phú Quốc 40 độ đạm",
+      "aliases": ["nuoc mam", "fish sauce", "nước mắm"],
+      "is_perishable": false,
+      "shelf_life_days": 730,
+      "storage_conditions": "Bảo quản nơi khô ráo, thoáng mát",
+      "primary_supplier_id": 4,
+      "is_active": true
+    },
+    {
+      "id": 6,
+      "name": "Gạo Jasmine",
+      "category_id": 6,
+      "unit_id": 1,
+      "unit_cost": 25000,
+      "selling_price": null,
+      "min_stock": 50.0,
+      "max_stock": 200.0,
+      "reorder_point": 75.0,
+      "sku": "RICE-JAS-001",
+      "barcode": "8936000000006",
+      "description": "Gạo Jasmine thơm, hạt dài",
+      "aliases": ["gao jasmine", "jasmine rice", "gạo thơm"],
+      "is_perishable": false,
+      "shelf_life_days": 365,
+      "storage_conditions": "Bảo quản khô ráo, thoáng mát",
+      "primary_supplier_id": 4,
+      "is_active": true
+    },
+    {
+      "id": 7,
+      "name": "Cà chua",
+      "category_id": 3,
+      "unit_id": 1,
+      "unit_cost": 35000,
+      "selling_price": 50000,
+      "min_stock": 3.0,
+      "max_stock": 15.0,
+      "reorder_point": 5.0,
+      "sku": "VEG-TOM-001",
+      "barcode": "8936000000007",
+      "description": "Cà chua chín đỏ, quả to",
+      "aliases": ["ca chua", "tomato", "cà chua chín"],
+      "is_perishable": true,
+      "shelf_life_days": 4,
+      "storage_conditions": "Bảo quản mát 8-10°C",
+      "primary_supplier_id": 1,
+      "is_active": true
+    },
+    {
+      "id": 8,
+      "name": "Coca Cola 350ml",
+      "category_id": 5,
+      "unit_id": 5,
+      "unit_cost": 8000,
+      "selling_price": 15000,
+      "min_stock": 200.0,
+      "max_stock": 1000.0,
+      "reorder_point": 300.0,
+      "sku": "DRINK-COC-350",
+      "barcode": "8935049003501",
+      "description": "Coca Cola lon 350ml",
+      "aliases": ["coca cola", "coke", "coca", "cola"],
+      "is_perishable": false,
+      "shelf_life_days": 365,
+      "storage_conditions": "Bảo quản mát",
+      "primary_supplier_id": 4,
+      "is_active": true
+    },
+    {
+      "id": 9,
+      "name": "Thịt heo ba chỉ",
+      "category_id": 1,
+      "unit_id": 1,
+      "unit_cost": 180000,
+      "selling_price": 250000,
+      "min_stock": 3.0,
+      "max_stock": 15.0,
+      "reorder_point": 5.0,
+      "sku": "PORK-BAC-001",
+      "barcode": "8936000000009",
+      "description": "Thịt heo ba chỉ tươi, có da",
+      "aliases": ["thit heo ba chi", "pork belly", "ba chỉ"],
+      "is_perishable": true,
+      "shelf_life_days": 3,
+      "storage_conditions": "Bảo quản lạnh 2-4°C",
+      "primary_supplier_id": 1,
+      "is_active": true
+    },
+    {
+      "id": 10,
+      "name": "Cá diêu hồng",
+      "category_id": 2,
+      "unit_id": 9,
+      "unit_cost": 80000,
+      "selling_price": 120000,
+      "min_stock": 5.0,
+      "max_stock": 20.0,
+      "reorder_point": 8.0,
+      "sku": "FISH-DIE-001",
+      "barcode": "8936000000010",
+      "description": "Cá diêu hồng tươi, size 0.8-1kg/con",
+      "aliases": ["ca dieu hong", "red snapper", "cá diêu"],
+      "is_perishable": true,
+      "shelf_life_days": 1,
+      "storage_conditions": "Bảo quản đá lạnh 0-2°C",
+      "primary_supplier_id": 3,
+      "is_active": true
+    }
+  ],
+
+  "users": [
+    {
+      "id": 1,
+      "email": "owner@restaurant.com",
+      "full_name": "Nguyễn Văn An",
+      "phone": "0901111111",
+      "role": "owner",
+      "department": "management",
+      "is_active": true,
+      "email_verified": true,
+      "language": "vi",
+      "timezone": "Asia/Ho_Chi_Minh"
+    },
+    {
+      "id": 2,
+      "email": "manager@restaurant.com",
+      "full_name": "Trần Thị Bình",
+      "phone": "0902222222",
+      "role": "manager",
+      "department": "management",
+      "is_active": true,
+      "email_verified": true,
+      "language": "vi",
+      "timezone": "Asia/Ho_Chi_Minh"
+    },
+    {
+      "id": 3,
+      "email": "kitchen@restaurant.com",
+      "full_name": "Lê Văn Cường",
+      "phone": "0903333333",
+      "role": "supervisor",
+      "department": "kitchen_main",
+      "is_active": true,
+      "email_verified": true,
+      "language": "vi",
+      "timezone": "Asia/Ho_Chi_Minh"
+    },
+    {
+      "id": 4,
+      "email": "bar@restaurant.com",
+      "full_name": "Phạm Thị Dung",
+      "phone": "0904444444",
+      "role": "supervisor",
+      "department": "bar",
+      "is_active": true,
+      "email_verified": true,
+      "language": "vi",
+      "timezone": "Asia/Ho_Chi_Minh"
+    },
+    {
+      "id": 5,
+      "email": "staff1@restaurant.com",
+      "full_name": "Hoàng Văn Em",
+      "phone": "0905555555",
+      "role": "staff",
+      "department": "kitchen_main",
+      "is_active": true,
+      "email_verified": true,
+      "language": "vi",
+      "timezone": "Asia/Ho_Chi_Minh"
+    }
+  ],
+
+  "departments": [
+    {
+      "id": "kitchen_main",
+      "name": "Bếp chính",
+      "description": "Bộ phận chế biến món chính",
+      "supervisor_id": 3,
+      "typical_items": ["Thịt bò úc", "Thịt heo ba chỉ", "Tôm tươi", "Cà chua", "Rau muống"],
+      "staff_count": 4,
+      "shift_patterns": ["morning", "afternoon", "evening"]
+    },
+    {
+      "id": "bar",
+      "name": "Quầy bar",
+      "description": "Bộ phận pha chế và phục vụ đồ uống",
+      "supervisor_id": 4,
+      "typical_items": ["Bia Saigon 330ml", "Coca Cola 350ml"],
+      "staff_count": 2,
+      "shift_patterns": ["afternoon", "evening"]
+    },
+    {
+      "id": "storage",
+      "name": "Kho tổng",
+      "description": "Bộ phận quản lý kho chung",
+      "supervisor_id": 2,
+      "typical_items": ["Gạo Jasmine", "Nước mắm"],
+      "staff_count": 2,
+      "shift_patterns": ["morning", "afternoon"]
+    },
+    {
+      "id": "prep",
+      "name": "Bếp chuẩn bị",
+      "description": "Bộ phận sơ chế và chuẩn bị nguyên liệu",
+      "supervisor_id": 3,
+      "typical_items": ["Rau muống", "Cà chua", "Cá diêu hồng"],
+      "staff_count": 3,
+      "shift_patterns": ["morning", "afternoon"]
+    }
+  ],
+
+  "sample_receipts": [
+    {
+      "id": "receipt_001",
+      "type": "machine_printed",
+      "supplier": "Chợ Bến Thành",
+      "date": "2025-07-02",
+      "image_description": "Hóa đơn máy in với header 'CHỢ BẾN THÀNH', địa chỉ, số điện thoại",
+      "extracted_text": "CHỢ BẾN THÀNH\nĐịa chỉ: Quận 1, TP.HCM\nĐT: 0901234567\n\nHÓA ĐƠN BÁN HÀNG\nNgày: 02/07/2025\nSố: 001234\n\nThịt bò úc        2.5kg    625.000\nCà chua          1.0kg     35.000\nRau muống        3 bó      45.000\n\nTổng cộng:              705.000 VND\nThành tiền:             705.000 VND",
+      "expected_output": {
+        "items": [
+          {"name": "Thịt bò úc", "quantity": 2.5, "unit": "kg", "unit_price": 250000, "total": 625000},
+          {"name": "Cà chua", "quantity": 1.0, "unit": "kg", "unit_price": 35000, "total": 35000},
+          {"name": "Rau muống", "quantity": 3, "unit": "bó", "unit_price": 15000, "total": 45000}
+        ],
+        "total": 705000,
+        "supplier": "Chợ Bến Thành",
+        "date": "2025-07-02",
+        "invoice_number": "001234"
+      },
+      "ocr_confidence": 0.95
+    },
+    {
+      "id": "receipt_002",
+      "type": "handwritten",
+      "supplier": "Cảng cá Vũng Tàu",
+      "date": "2025-07-02",
+      "image_description": "Phiếu viết tay với chữ viết không đều, có xóa chữa",
+      "extracted_text": "Cảng cá Vũng Tàu\nNgày 2/7/2025\n\nTôm tươi    0.8kg    240k\nCá diêu     2 con    160k\n\nTổng: 400k",
+      "expected_output": {
+        "items": [
+          {"name": "Tôm tươi", "quantity": 0.8, "unit": "kg", "unit_price": 300000, "total": 240000},
+          {"name": "Cá diêu hồng", "quantity": 2, "unit": "con", "unit_price": 80000, "total": 160000}
+        ],
+        "total": 400000,
+        "supplier": "Cảng cá Vũng Tàu",
+        "date": "2025-07-02"
+      },
+      "ocr_confidence": 0.82
+    },
+    {
+      "id": "receipt_003",
+      "type": "mixed_format",
+      "supplier": "Siêu thị Metro",
+      "date": "2025-07-01",
+      "image_description": "Hóa đơn in có logo Metro, footer in sẵn, phần items ghi tay",
+      "extracted_text": "METRO Cash & Carry Vietnam\nĐịa chỉ: Quận 7, TP.HCM\nMST: 0223344556\n\nPhiếu mua hàng\nNgày: 01/07/2025\n\nGạo Jasmine    25kg     625k\nNước mắm       10 chai  350k\nCoca Cola      2 thùng  384k\n\nTổng tiền: 1.359.000 VND\nĐã thanh toán",
+      "expected_output": {
+        "items": [
+          {"name": "Gạo Jasmine", "quantity": 25, "unit": "kg", "unit_price": 25000, "total": 625000},
+          {"name": "Nước mắm", "quantity": 10, "unit": "chai", "unit_price": 35000, "total": 350000},
+          {"name": "Coca Cola 350ml", "quantity": 48, "unit": "chai", "unit_price": 8000, "total": 384000}
+        ],
+        "total": 1359000,
+        "supplier": "Siêu thị Metro",
+        "date": "2025-07-01"
+      },
+      "ocr_confidence": 0.88
+    }
+  ],
+
+  "sample_transactions": [
+    {
+      "id": 1,
+      "transaction_number": "TR-20250702-001",
+      "type": "IN",
+      "item_id": 1,
+      "quantity": 2.5,
+      "unit_cost": 250000,
+      "total_value": 625000,
+      "department": "storage",
+      "reference_type": "receipt",
+      "reference_number": "CHO-001234",
+      "processed_by": 2,
+      "source": "ocr",
+      "ocr_confidence": 0.95,
+      "status": "approved",
+      "created_at": "2025-07-02T08:30:00Z",
+      "notes": "Thịt bò úc chất lượng tốt"
+    },
+    {
+      "id": 2,
+      "transaction_number": "TR-20250702-002",
+      "type": "OUT",
+      "item_id": 1,
+      "quantity": 0.5,
+      "unit_cost": 250000,
+      "total_value": 125000,
+      "department": "kitchen_main",
+      "reference_type": "withdrawal_slip",
+      "reference_number": "WS-20250702-001",
+      "processed_by": 3,
+      "source": "manual",
+      "status": "approved",
+      "created_at": "2025-07-02T10:15:00Z",
+      "notes": "Cho món bò nướng lúc 10:30"
+    },
+    {
+      "id": 3,
+      "transaction_number": "TR-20250702-003",
+      "type": "OUT",
+      "item_id": 2,
+      "quantity": 10,
+      "unit_cost": 15000,
+      "total_value": 150000,
+      "department": "bar",
+      "reference_type": "withdrawal_slip",
+      "reference_number": "WS-20250702-002",
+      "processed_by": 4,
+      "source": "manual",
+      "status": "approved",
+      "created_at": "2025-07-02T12:00:00Z",
+      "notes": "Chuẩn bị cho ca chiều"
+    },
+    {
+      "id": 4,
+      "transaction_number": "TR-20250702-004",
+      "type": "WASTE",
+      "item_id": 2,
+      "quantity": 1,
+      "unit_cost": 15000,
+      "total_value": 15000,
+      "department": "bar",
+      "reference_type": "waste_report",
+      "reference_number": "WR-20250702-001",
+      "processed_by": 4,
+      "source": "manual",
+      "status": "approved",
+      "created_at": "2025-07-02T14:30:00Z",
+      "notes": "Chai vỡ khi vận chuyển"
+    }
+  ],
+
+  "sample_reconciliation": [
+    {
+      "id": 1,
+      "department": "bar",
+      "item_id": 2,
+      "shift_date": "2025-07-02",
+      "shift_type": "afternoon",
+      "opening_stock": 250.0,
+      "withdrawn": 10.0,
+      "sold": 9.0,
+      "returned": 0.0,
+      "wasted": 1.0,
+      "staff_consumed": 0.0,
+      "sampled": 0.0,
+      "transferred_out": 0.0,
+      "transferred_in": 0.0,
+      "actual_remaining": 250.0,
+      "discrepancy_value": 15000,
+      "status": "resolved",
+      "alert_level": "none",
+      "reviewed_by": 2,
+      "reviewed_at": "2025-07-02T15:00:00Z",
+      "resolution_notes": "Chai vỡ đã được báo cáo và có ảnh minh chứng"
+    },
+    {
+      "id": 2,
+      "department": "kitchen_main",
+      "item_id": 1,
+      "shift_date": "2025-07-02",
+      "shift_type": "morning",
+      "opening_stock": 5.0,
+      "withdrawn": 0.5,
+      "sold": 0.5,
+      "returned": 0.0,
+      "wasted": 0.0,
+      "staff_consumed": 0.0,
+      "sampled": 0.0,
+      "transferred_out": 0.0,
+      "transferred_in": 0.0,
+      "actual_remaining

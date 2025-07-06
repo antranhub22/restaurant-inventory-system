@@ -1,0 +1,119 @@
+# Restaurant Inventory Management System - Cursor Rules
+
+## Project Context
+This is a restaurant inventory management system with OCR capabilities for receipt processing and real-time reconciliation tracking for Vietnamese restaurants.
+
+## File References
+Always refer to these documentation files:
+- /docs/requirements/ - for business logic and requirements
+- /docs/design/ - for UI/UX standards and components  
+- /docs/data/ - for database schema and sample data
+- /docs/api/ - for API specifications and error handling
+
+## Technology Stack
+- Frontend: React 18 + TypeScript + Tailwind CSS + Vite
+- Backend: Node.js + Express + TypeScript + PostgreSQL + Redis
+- OCR: Google Vision API + OpenAI for smart matching
+- State Management: Zustand + React Query
+- Testing: Jest + React Testing Library + Playwright
+
+## Coding Standards
+- Use TypeScript for all new code
+- Follow the component structure in /frontend/src/components/
+- Use Tailwind CSS classes as defined in /docs/design/ui_specs.md
+- Implement proper error handling as per /docs/api/error_handling.md
+- Add comprehensive JSDoc comments for functions
+- Use sample data from /docs/data/sample_data.json for testing
+
+## Business Logic Priority
+1. Always implement reconciliation logic: WITHDRAWN = SOLD + RETURNED + WASTED + STAFF_CONSUMED + SAMPLED
+2. Apply business rules from /docs/requirements/business_rules.md
+3. Use Vietnamese language for user-facing text
+4. Implement proper role-based access control (owner > manager > supervisor > staff)
+5. Handle mobile-first responsive design
+
+## OCR Implementation Guidelines
+- Machine-printed receipts: Target >95% accuracy
+- Handwritten receipts: Target >85% accuracy  
+- Always provide manual review interface
+- Use fuzzy matching with Vietnamese aliases from sample data
+- Implement confidence scoring and learning from corrections
+
+## Component Development
+- Create reusable components in /frontend/src/components/common/
+- Follow the component examples in sample_data.json
+- Implement proper loading states and error boundaries
+- Use proper TypeScript interfaces from /types/ directories
+- Ensure accessibility (WCAG 2.1 AA compliance)
+
+## API Development
+- Follow REST conventions and OpenAPI spec in /docs/api/
+- Implement proper input validation using Zod schemas
+- Use consistent error response format
+- Add proper logging and monitoring
+- Implement rate limiting and security middleware
+
+## Database Operations
+- Use the schema from /docs/data/database_schema.sql
+- Implement proper migrations in /backend/database/migrations/
+- Use transactions for complex operations
+- Add proper indexes for performance
+- Implement audit logging for sensitive operations
+
+## Testing Requirements
+- Write unit tests for all business logic
+- Add integration tests for API endpoints
+- Include E2E tests for critical user flows
+- Test OCR accuracy with sample receipts
+- Verify mobile responsiveness
+
+## Mobile Considerations
+- Touch targets minimum 44px
+- Implement offline-first approach where possible
+- Optimize images for mobile performance
+- Use progressive loading for large datasets
+- Implement proper camera integration for receipt capture
+
+## Vietnamese Localization
+- Use Vietnamese business terms from sample data
+- Support diacritics in search and OCR
+- Format numbers and currency correctly (1.000.000 VND)
+- Use DD/MM/YYYY date format
+- Handle longer text in Vietnamese vs English
+
+## Performance Requirements
+- API responses < 500ms (95th percentile)
+- OCR processing < 30 seconds
+- Dashboard load < 3 seconds
+- Mobile app startup < 3 seconds
+- Support 20 concurrent users
+
+## Security Implementation
+- JWT authentication with refresh tokens
+- Role-based authorization middleware
+- Input sanitization and validation
+- SQL injection prevention
+- XSS protection
+- HTTPS enforcement in production
+
+## Error Handling Patterns
+- Use consistent error response format
+- Implement graceful degradation
+- Provide user-friendly error messages in Vietnamese
+- Log errors with proper context
+- Implement retry mechanisms for transient failures
+
+## File Upload Guidelines
+- Support images up to 10MB
+- Validate file types (JPEG, PNG, WebP)
+- Implement virus scanning
+- Generate thumbnails for performance
+- Store in organized directory structure (/uploads/receipts/, /uploads/evidence/)
+
+When generating code:
+1. Check existing patterns in the codebase first
+2. Use the exact component structure and naming conventions
+3. Reference the business rules and requirements docs
+4. Test with the provided sample data
+5. Ensure mobile responsiveness and accessibility
+6. Add proper TypeScript types and error handling

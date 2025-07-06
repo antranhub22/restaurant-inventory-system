@@ -6,10 +6,217 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  passwordHash      String
+  fullName          String
+  phone             String?
+  role              Role
+  department        String?
+  permissions       Json?
+  isActive          Boolean  @default(true)
+  emailVerified     Boolean  @default(false)
+  lastLogin         DateTime?
+  failedLoginAttempts Int    @default(0)
+  lockedUntil       DateTime?
+  avatarUrl         String?
+  language          Language @default(vi)
+  timezone          String   @default("Asia/Ho_Chi_Minh")
+  createdBy         Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  // Relations
+  transactions      Transaction[]
+  approvedReconciliations DepartmentReconciliation[] @relation("ApprovedBy")
+}
+
+enum Role {
+  owner
+  manager
+  supervisor
+  staff
+}
+
+enum Language {
+  vi
+  en
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  colorCode   String?  // Hex color
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  items       Item[]
+}
+
+model Supplier {
+  id          Int      @id @default(autoincrement())
+  name        String
+  contactPerson String?
+  phone       String?
+  email       String?
+  address     String?
+  paymentTerms String?
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  items       Item[]   @relation("PrimarySupplier")
+  secondaryItems Item[] @relation("SecondarySupplier")
+  inventoryBatches InventoryBatch[]
+}
+
+model Item {
+  id          Int      @id @default(autoincrement())
+  name        String
+  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId  Int
+  unit        String
+  unitCost    Float?
+  minStock    Float    @default(0)
+  maxStock    Float?
+  expiryDays  Int?
+  aliases     String[]
+  barcode     String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  inventory   Inventory?
+  transactions Transaction[]
+  inventoryBatches InventoryBatch[]
+  primarySupplier   Supplier? @relation("PrimarySupplier", fields: [primarySupplierId], references: [id])
+  primarySupplierId Int?
+  secondarySupplier Supplier? @relation("SecondarySupplier", fields: [secondarySupplierId], references: [id])
+  secondarySupplierId Int?
+  departmentReconciliations DepartmentReconciliation[]
+}
+
+model Inventory {
+  itemId        Int    @id
+  item          Item   @relation(fields: [itemId], references: [id])
+  currentStock  Float  @default(0)
+  reservedStock Float  @default(0)
+  lastUpdated   DateTime @default(now())
+  lastChecked   DateTime?
+  nextExpiry    DateTime?
+}
+
+model InventoryBatch {
+  id              Int      @id @default(autoincrement())
+  item            Item     @relation(fields: [itemId], references: [id])
+  itemId          Int
+  batchNumber     String?
+  initialQuantity Float
+  currentQuantity Float
+  reservedQuantity Float   @default(0)
+  unitCost        Float
+  receivedDate    DateTime
+  expiryDate      DateTime?
+  manufacturedDate DateTime?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId      Int?
+  status          BatchStatus @default(active)
+  location        String?
+  createdAt       DateTime @default(now())
+  transactions    Transaction[]
+}
+
+enum BatchStatus {
+  active
+  expired
+  consumed
+  damaged
+  returned
+}
+
+model Transaction {
+  id            Int      @id @default(autoincrement())
+  type          TransactionType
+  item          Item     @relation(fields: [itemId], references: [id])
+  itemId        Int
+  batch         InventoryBatch? @relation(fields: [batchId], references: [id])
+  batchId       Int?
+  quantity      Float
+  unitCost      Float?
+  department    String?
+  processedBy   User     @relation(fields: [processedById], references: [id])
+  processedById Int
+  status        TransactionStatus @default(approved)
+  notes         String?
+  createdAt     DateTime @default(now())
+  approvedAt    DateTime?
+}
+
+enum TransactionType {
+  IN
+  OUT
+  RETURN
+  ADJUSTMENT
+  TRANSFER
+  WASTE
+  STAFF_USE
+  SAMPLING
+}
+
+enum TransactionStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+model DepartmentReconciliation {
+  id            Int      @id @default(autoincrement())
+  department    String
+  item          Item     @relation(fields: [itemId], references: [id])
+  itemId        Int
+  shiftDate     DateTime
+  shiftType     ShiftType
+  withdrawn     Float    @default(0)
+  sold          Float    @default(0)
+  returned      Float    @default(0)
+  wasted        Float    @default(0)
+  staffConsumed Float    @default(0)
+  sampled       Float    @default(0)
+  discrepancy   Float?
+  discrepancyRate Float?
+  discrepancyValue Float?
+  status        ReconciliationStatus @default(pending)
+  requiresApproval Boolean @default(false)
+  approvedBy    User?    @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedById  Int?
+  approvedAt    DateTime?
+  resolutionNotes String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([department, itemId, shiftDate, shiftType])
+}
+
+enum ShiftType {
+  morning
+  afternoon
+  evening
+  night
+}
+
+enum ReconciliationStatus {
+  pending
+  acceptable
+  warning
+  investigation
+  critical
+  resolved
 }

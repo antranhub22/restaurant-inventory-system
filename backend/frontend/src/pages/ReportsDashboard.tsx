@@ -145,55 +145,5 @@ const ReportsDashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={lossAnalysis} dataKey="value" nameKey="category" cx="50%" cy="50%" outerRadius={80} label>
-                  {lossAnalysis.map((entry: any, idx: number) => (
-                    <Cell key={`cell-${idx}`} fill={LOSS_COLORS[idx % LOSS_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={v => v.toLocaleString('vi-VN')} labelFormatter={l => `Nhóm: ${l}`}/>
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-      <Card header="Hiệu suất các bộ phận">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="px-2 py-1 text-left">Bộ phận</th>
-                <th className="px-2 py-1 text-left">Hiệu suất</th>
-                <th className="px-2 py-1 text-left">Vấn đề</th>
-                <th className="px-2 py-1 text-left">Đối chiếu gần nhất</th>
-              </tr>
-            </thead>
-            <tbody>
-              {departments.map((d: any) => (
-                <tr key={d.department} className="border-b">
-                  <td className="px-2 py-1 font-medium">{d.department}</td>
-                  <td className="px-2 py-1">{d.efficiency}%</td>
-                  <td className="px-2 py-1">{d.issues}</td>
-                  <td className="px-2 py-1">{new Date(d.last_reconciliation).toLocaleDateString('vi-VN')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-        {quickReports.map(qr => (
-          <Card key={qr.key} header={qr.label}>
-            <div className="flex flex-col gap-2 items-start">
-              <Button variant={quickReport === qr.key ? 'primary' : 'secondary'} onClick={() => setQuickReport(qr.key)}>Xem báo cáo</Button>
-              <Button variant="secondary" onClick={() => exportPDF(qr.key)}>Xuất PDF</Button>
-              <Button variant="secondary" onClick={() => exportExcel(qr.key)}>Xuất Excel</Button>
-              <Button variant="secondary" onClick={() => exportCSV(qr.key)}>Xuất CSV</Button>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </Layout>
-  );
-};
-
-export default ReportsDashboard; 
+                  {lossAnalysis.map((_, idx) => (
+                    <Cell key={`cell-${idx}`

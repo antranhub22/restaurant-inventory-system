@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
-import Input from '../components/common/Input';
-// @ts-ignore
-import sampleData from '../../../docs/du_lieu/sample_data.json';
+import sampleData from '../data/sample_data.json';
 
-const transactions = sampleData.sample_transactions;
-const items = sampleData.sample_items;
+const transactions = sampleData.sample_transactions || [];
+const items = sampleData.sample_items || [];
 
 const TransactionHistory: React.FC = () => {
   const [itemId, setItemId] = useState('');
@@ -49,7 +47,7 @@ const TransactionHistory: React.FC = () => {
                     <td className="px-2 py-1">{t.transaction_number}</td>
                     <td className="px-2 py-1">{item?.name || 'Không rõ'}</td>
                     <td className="px-2 py-1">{t.type}</td>
-                    <td className="px-2 py-1">{t.quantity} {item?.unit_id || ''}</td>
+                    <td className="px-2 py-1">{t.quantity} {item?.unit || ''}</td>
                     <td className="px-2 py-1">{t.total_value.toLocaleString('vi-VN')} VND</td>
                     <td className="px-2 py-1">{t.department}</td>
                     <td className="px-2 py-1">{new Date(t.created_at).toLocaleString('vi-VN')}</td>

@@ -1,7 +1,6 @@
 import React from 'react';
 import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
-import Button from '../components/common/Button';
 
 interface DashboardStats {
   total_items: number;

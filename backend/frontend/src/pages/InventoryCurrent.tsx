@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import Modal from '../components/common/Modal';
 import { useAuthStore } from '../store';
 
 interface Item {
@@ -59,8 +60,15 @@ function getStockStatus(status: string): { label: string; color: string } {
 }
 
 const InventoryCurrent: React.FC = () => {
-  const [showAction, setShowAction] = useState<number|null>(null);
+  const [showAction, setShowAction] = useState<{id: number, type: 'import'|'export'|'adjust'}|null>(null);
   const { user } = useAuthStore();
+
+  const handleAction = (itemId: number, type: 'import'|'export'|'adjust') => {
+    setShowAction({ id: itemId, type });
+  };
+
+  const selectedItem = showAction ? getItem(showAction.id) : null;
+  const selectedInventory = showAction ? inventory.find(i => i.item_id === showAction.id) : null;
 
   return (
     <Layout header={<div className="text-2xl font-bold">Tồn kho thực tế</div>}>
@@ -81,16 +89,37 @@ const InventoryCurrent: React.FC = () => {
               <div className="mb-1 text-xs text-gray-400">Cập nhật: {new Date(inv.last_updated).toLocaleString('vi-VN')}</div>
               {user && ['owner','manager','supervisor'].includes(user.role) && (
                 <div className="flex gap-2 mt-2">
-                  <Button variant="primary" onClick={() => setShowAction(inv.item_id)}>Nhập kho</Button>
-                  <Button variant="secondary" onClick={() => setShowAction(inv.item_id)}>Xuất kho</Button>
-                  <Button variant="danger" onClick={() => setShowAction(inv.item_id)}>Điều chỉnh</Button>
+                  <Button variant="primary" onClick={() => handleAction(inv.item_id, 'import')}>Nhập kho</Button>
+                  <Button variant="secondary" onClick={() => handleAction(inv.item_id, 'export')}>Xuất kho</Button>
+                  <Button variant="danger" onClick={() => handleAction(inv.item_id, 'adjust')}>Điều chỉnh</Button>
                 </div>
               )}
-              {/* TODO: Hiển thị modal thao tác nhập/xuất/điều chỉnh */}
             </Card>
           );
         })}
       </div>
+
+      {showAction && selectedItem && selectedInventory && (
+        <Modal
+          title={`${showAction.type === 'import' ? 'Nhập kho' : showAction.type === 'export' ? 'Xuất kho' : 'Điều chỉnh'} - ${selectedItem.name}`}
+          onClose={() => setShowAction(null)}
+          open={true}
+        >
+          <div className="p-4">
+            <div className="mb-4">
+              <div>Tồn kho hiện tại: {selectedInventory.current_stock} {selectedItem.unit_id}</div>
+              <div>Giá trung bình: {selectedInventory.average_cost.toLocaleString('vi-VN')} VND</div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setShowAction(null)}>Hủy</Button>
+              <Button variant="primary" onClick={() => {
+                alert('Chức năng đang phát triển');
+                setShowAction(null);
+              }}>Xác nhận</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Layout>
   );
 };

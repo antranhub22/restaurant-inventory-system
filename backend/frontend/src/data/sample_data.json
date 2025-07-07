@@ -140,6 +140,88 @@
       ]
     }
   },
+  "units": [
+    {
+      "id": 1,
+      "name": "Kilogram",
+      "abbreviation": "kg"
+    },
+    {
+      "id": 2,
+      "name": "Chai",
+      "abbreviation": "chai"
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "Thực phẩm"
+    },
+    {
+      "id": 2,
+      "name": "Đồ uống"
+    }
+  ],
+  "sample_items": [
+    {
+      "id": 1,
+      "name": "Thịt bò",
+      "sku": "SKU001",
+      "barcode": "123456789",
+      "category_id": 1,
+      "unit_id": 1,
+      "unit_cost": 250000,
+      "selling_price": 300000,
+      "min_stock": 5,
+      "max_stock": 20,
+      "reorder_point": 8,
+      "description": "Thịt bò Úc nhập khẩu",
+      "is_perishable": true,
+      "is_active": true,
+      "aliases": ["thit bo", "beef"]
+    },
+    {
+      "id": 2,
+      "name": "Bia Saigon",
+      "sku": "SKU002",
+      "barcode": "987654321",
+      "category_id": 2,
+      "unit_id": 2,
+      "unit_cost": 15000,
+      "selling_price": 25000,
+      "min_stock": 50,
+      "max_stock": 200,
+      "reorder_point": 100,
+      "description": "Bia Sài Gòn Special",
+      "is_perishable": false,
+      "is_active": true,
+      "aliases": ["bia", "beer"]
+    }
+  ],
+  "sample_transactions": [
+    {
+      "id": 1,
+      "transaction_number": "TX-001",
+      "item_id": 1,
+      "type": "NHẬP",
+      "quantity": 10,
+      "total_value": 2500000,
+      "department": "kho",
+      "created_at": "2025-07-02T08:00:00Z",
+      "notes": "Nhập kho đầu ca"
+    },
+    {
+      "id": 2,
+      "transaction_number": "TX-002",
+      "item_id": 2,
+      "type": "XUẤT",
+      "quantity": 24,
+      "total_value": 360000,
+      "department": "bar",
+      "created_at": "2025-07-02T10:00:00Z",
+      "notes": "Xuất cho quầy bar"
+    }
+  ],
   "sample_reconciliation": [
     {
       "id": 1,
@@ -154,55 +236,6 @@
       "staff_consumed": 0,
       "sampled": 1,
       "status": "resolved"
-    },
-    {
-      "id": 2,
-      "department": "kitchen",
-      "item_id": 2,
-      "shift_date": "2025-07-02",
-      "shift_type": "morning",
-      "withdrawn": 15,
-      "sold": 10,
-      "returned": 2,
-      "wasted": 0,
-      "staff_consumed": 1,
-      "sampled": 0,
-      "status": "investigation"
-    }
-  ],
-  "sample_items": [
-    {
-      "id": 1,
-      "name": "Bia Saigon",
-      "unit": "chai",
-      "category": "đồ uống",
-      "min_stock": 50,
-      "max_stock": 200,
-      "current_stock": 150,
-      "unit_cost": 15000
-    },
-    {
-      "id": 2,
-      "name": "Thịt bò",
-      "unit": "kg",
-      "category": "thực phẩm",
-      "min_stock": 5,
-      "max_stock": 20,
-      "current_stock": 8,
-      "unit_cost": 250000
-    }
-  ],
-  "sample_transactions": [
-    {
-      "id": 1,
-      "transaction_number": "TX-001",
-      "item_id": 1,
-      "type": "NHẬP",
-      "quantity": 100,
-      "total_value": 1500000,
-      "department": "kho",
-      "created_at": "2025-07-02T08:00:00Z",
-      "notes": "Nhập kho đầu ca"
     }
   ],
   "mockup_data": {

@@ -5,26 +5,26 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import Input from '../components/common/Input';
-// @ts-ignore
-import sampleData from '../../../docs/du_lieu/sample_data.json';
+import sampleData from '../data/sample_data.json';
 import { useAuthStore } from '../store';
+import { Unit, Category, Item, Transaction, EditItemForm } from '../types/items';
 
-const units = sampleData.units;
-const itemsData = sampleData.sample_items;
-const transactions = sampleData.sample_transactions;
-const categories = sampleData.categories;
+const units = sampleData.units as Unit[];
+const itemsData = sampleData.sample_items as Item[];
+const transactions = sampleData.sample_transactions as Transaction[];
+const categories = sampleData.categories as Category[];
 
 function getUnitName(unit_id: number) {
-  const unit = units.find((u: any) => u.id === unit_id);
+  const unit = units.find(u => u.id === unit_id);
   return unit ? unit.abbreviation : '';
 }
 
-const defaultEditItem = (item: any) => ({
+const defaultEditItem = (item: Item): EditItemForm => ({
   name: item.name,
   category_id: item.category_id,
   unit_id: item.unit_id,
   unit_cost: item.unit_cost,
-  selling_price: item.selling_price || '',
+  selling_price: item.selling_price?.toString() || '',
   min_stock: item.min_stock,
   max_stock: item.max_stock,
   reorder_point: item.reorder_point,
@@ -34,15 +34,15 @@ const defaultEditItem = (item: any) => ({
 const ItemDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [items, setItems] = useState<any[]>(itemsData);
+  const [items, setItems] = useState<Item[]>(itemsData);
   const [showEdit, setShowEdit] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
+  const [editItem, setEditItem] = useState<EditItemForm | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showDelete, setShowDelete] = useState(false);
   const { user } = useAuthStore();
 
-  const item = items.find((i: any) => String(i.id) === id);
+  const item = items.find(i => String(i.id) === id);
   if (!item) {
     return (
       <Layout header={<div>Chi tiết hàng hóa</div>}>
@@ -51,43 +51,54 @@ const ItemDetail: React.FC = () => {
       </Layout>
     );
   }
-  const itemTransactions = transactions.filter((t: any) => t.item_id === item.id);
+  const itemTransactions = transactions.filter(t => t.item_id === item.id);
 
   const handleOpenEdit = () => {
     setEditItem(defaultEditItem(item));
     setError('');
     setShowEdit(true);
   };
+
   const handleCloseEdit = () => {
     setShowEdit(false);
     setError('');
   };
+
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setEditItem({ ...editItem, [e.target.name]: e.target.value });
+    if (editItem) {
+      setEditItem({ ...editItem, [e.target.name]: e.target.value });
+    }
   };
+
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editItem) return;
+
     if (!editItem.name || !editItem.category_id || !editItem.unit_id || !editItem.unit_cost) {
       setError('Vui lòng nhập đầy đủ các trường bắt buộc.');
       return;
     }
-    setItems(items.map((it: any) => it.id === item.id ? {
+
+    setItems(items.map(it => it.id === item.id ? {
       ...it,
-      ...editItem,
+      name: editItem.name,
       category_id: Number(editItem.category_id),
       unit_id: Number(editItem.unit_id),
       unit_cost: Number(editItem.unit_cost),
-      selling_price: editItem.selling_price ? Number(editItem.selling_price) : null,
-      min_stock: editItem.min_stock ? Number(editItem.min_stock) : 0,
-      max_stock: editItem.max_stock ? Number(editItem.max_stock) : 0,
-      reorder_point: editItem.reorder_point ? Number(editItem.reorder_point) : 0,
+      selling_price: editItem.selling_price ? Number(editItem.selling_price) : undefined,
+      min_stock: Number(editItem.min_stock),
+      max_stock: Number(editItem.max_stock),
+      reorder_point: Number(editItem.reorder_point),
+      description: editItem.description,
     } : it));
+
     setShowEdit(false);
     setSuccess('Cập nhật hàng hóa thành công!');
     setTimeout(() => setSuccess(''), 2000);
   };
+
   const handleDelete = () => {
-    setItems(items.filter((it: any) => it.id !== item.id));
+    setItems(items.filter(it => it.id !== item.id));
     setShowDelete(false);
     setSuccess('Đã xóa hàng hóa khỏi danh sách!');
     setTimeout(() => {
@@ -121,7 +132,7 @@ const ItemDetail: React.FC = () => {
         <div className="mb-1">Điểm đặt hàng lại: <span className="font-semibold">{item.reorder_point}</span></div>
         <div className="mb-1">Mô tả: <span className="text-gray-700">{item.description}</span></div>
         <div className="mt-2 flex flex-wrap gap-1">
-          {item.aliases.map((alias: string) => (
+          {item.aliases.map(alias => (
             <span key={alias} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">{alias}</span>
           ))}
         </div>
@@ -144,7 +155,7 @@ const ItemDetail: React.FC = () => {
               {itemTransactions.length === 0 && (
                 <tr><td colSpan={7} className="text-center text-gray-400 py-4">Chưa có giao dịch</td></tr>
               )}
-              {itemTransactions.map((t: any) => (
+              {itemTransactions.map(t => (
                 <tr key={t.id} className="border-b">
                   <td className="px-2 py-1">{t.transaction_number}</td>
                   <td className="px-2 py-1">{t.type}</td>
@@ -171,7 +182,7 @@ const ItemDetail: React.FC = () => {
               <label className="block mb-1 font-medium text-gray-700">Loại hàng*</label>
               <select name="category_id" value={editItem.category_id} onChange={handleEditChange} required className="w-full rounded border border-gray-300 px-3 py-2">
                 <option value="">Chọn loại hàng</option>
-                {categories.map((cat: any) => (
+                {categories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
@@ -180,7 +191,7 @@ const ItemDetail: React.FC = () => {
               <label className="block mb-1 font-medium text-gray-700">Đơn vị tính*</label>
               <select name="unit_id" value={editItem.unit_id} onChange={handleEditChange} required className="w-full rounded border border-gray-300 px-3 py-2">
                 <option value="">Chọn đơn vị</option>
-                {units.map((u: any) => (
+                {units.map(u => (
                   <option key={u.id} value={u.id}>{u.abbreviation}</option>
                 ))}
               </select>

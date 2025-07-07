@@ -26,9 +26,9 @@
     // "moduleDetection": "auto",                        /* Control what method is used to detect module-format JS files. */
 
     /* Modules */
-    "module": "commonjs",
+    "module": "Node16", 
     "rootDir": "./src",
-    "moduleResolution": "node",
+    "moduleResolution": "Node16",
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"]

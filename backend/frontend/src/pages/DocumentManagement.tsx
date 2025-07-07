@@ -1,11 +1,33 @@
 import React, { useState } from 'react';
 import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
-// @ts-ignore
-import sampleData from '@docs/du_lieu/sample_data.json';
+import sampleData from '../data/sample_data.json';
 import { useAuthStore } from '../store';
 
-const templates = sampleData.templates;
+interface Field {
+  label: string;
+  field_name: string;
+  type: string;
+  required: boolean;
+  example?: string;
+  options?: string[];
+  columns?: Array<{
+    name: string;
+    type: string;
+  }>;
+}
+
+interface Template {
+  title: string;
+  fields: Field[];
+  sample_data?: Record<string, any>;
+}
+
+interface Templates {
+  [key: string]: Template;
+}
+
+const templates = sampleData.templates as Templates;
 const docTypes = [
   { key: 'withdrawal_slip_template', label: 'Phiếu xuất kho' },
   { key: 'return_slip_template', label: 'Phiếu hoàn trả' },

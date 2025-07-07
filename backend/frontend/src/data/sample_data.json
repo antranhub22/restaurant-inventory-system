@@ -1,0 +1,143 @@
+{
+  "templates": {
+    "withdrawal_slip_template": {
+      "title": "PHIẾU XUẤT KHO",
+      "fields": [
+        {
+          "label": "Ngày",
+          "field_name": "date",
+          "type": "date",
+          "required": true,
+          "example": "02/07/2025"
+        },
+        {
+          "label": "Ca làm việc",
+          "field_name": "shift",
+          "type": "select",
+          "required": true,
+          "options": ["Sáng (6:00-14:00)", "Chiều (14:00-22:00)", "Tối (22:00-6:00)"]
+        },
+        {
+          "label": "Bộ phận",
+          "field_name": "department",
+          "type": "select",
+          "required": true,
+          "options": ["Bếp chính", "Bếp lạnh", "Quầy bar", "Kho tổng"]
+        },
+        {
+          "label": "Người lấy",
+          "field_name": "requester_name",
+          "type": "text",
+          "required": true,
+          "example": "Nguyễn Văn A"
+        },
+        {
+          "label": "Items",
+          "field_name": "items",
+          "type": "table",
+          "required": true,
+          "columns": [
+            {"name": "STT", "type": "number"},
+            {"name": "Tên hàng hóa", "type": "text"},
+            {"name": "Số lượng", "type": "number"},
+            {"name": "Đơn vị", "type": "text"},
+            {"name": "Ghi chú", "type": "text"}
+          ]
+        }
+      ],
+      "sample_data": {
+        "date": "02/07/2025",
+        "shift": "Chiều (14:00-22:00)",
+        "department": "Quầy bar",
+        "requester_name": "Phạm Thị Dung",
+        "items": [
+          {"stt": 1, "name": "Bia Saigon 330ml", "quantity": 10, "unit": "chai", "notes": "Cho ca chiều"},
+          {"stt": 2, "name": "Coca Cola 350ml", "quantity": 20, "unit": "chai", "notes": "Bổ sung quầy"},
+          {"stt": 3, "name": "Nước suối", "quantity": 5, "unit": "chai", "notes": ""}
+        ]
+      }
+    },
+    "return_slip_template": {
+      "title": "PHIẾU HOÀN TRẢ",
+      "fields": [
+        {
+          "label": "Ngày hoàn trả",
+          "field_name": "return_date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "label": "Phiếu xuất gốc",
+          "field_name": "original_withdrawal_ref",
+          "type": "text",
+          "required": true,
+          "example": "WS-20250702-001"
+        },
+        {
+          "label": "Bộ phận hoàn trả",
+          "field_name": "returning_department",
+          "type": "select",
+          "required": true,
+          "options": ["Bếp chính", "Bếp lạnh", "Quầy bar", "Kho tổng"]
+        },
+        {
+          "label": "Lý do hoàn trả",
+          "field_name": "return_reason",
+          "type": "select",
+          "required": true,
+          "options": ["Dư thừa sau ca", "Chất lượng không đạt", "Thay đổi menu", "Khác"]
+        }
+      ]
+    },
+    "waste_report_template": {
+      "title": "BÁO CÁO HAO HỤT",
+      "fields": [
+        {
+          "label": "Ngày phát hiện",
+          "field_name": "discovery_date",
+          "type": "datetime",
+          "required": true
+        },
+        {
+          "label": "Bộ phận",
+          "field_name": "department",
+          "type": "select",
+          "required": true,
+          "options": ["Bếp chính", "Bếp lạnh", "Quầy bar", "Kho tổng", "Prep"]
+        },
+        {
+          "label": "Loại hao hụt",
+          "field_name": "waste_type",
+          "type": "select",
+          "required": true,
+          "options": ["Hỏng hóc", "Hết hạn", "Vỡ/đổ", "Thiếu tự nhiên", "Khác"]
+        }
+      ]
+    },
+    "daily_reconciliation_template": {
+      "title": "BÁO CÁO ĐỐI CHIẾU CUỐI NGÀY",
+      "fields": [
+        {
+          "label": "Ngày đối chiếu",
+          "field_name": "reconciliation_date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "label": "Ca làm việc",
+          "field_name": "shift",
+          "type": "select",
+          "required": true,
+          "options": ["Sáng", "Chiều", "Tối", "Cả ngày"]
+        },
+        {
+          "label": "Bộ phận",
+          "field_name": "department",
+          "type": "select",
+          "required": true,
+          "options": ["Bếp chính", "Bếp lạnh", "Quầy bar", "Kho tổng"]
+        }
+      ]
+    }
+  }
+} 

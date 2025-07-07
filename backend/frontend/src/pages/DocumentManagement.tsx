@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
 // @ts-ignore
-import sampleData from '../../../docs/du_lieu/sample_data.json';
+import sampleData from '@docs/du_lieu/sample_data.json';
 import { useAuthStore } from '../store';
 
 const templates = sampleData.templates;

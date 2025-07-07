@@ -1,13 +1,35 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+
+interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+interface RegisterRequest extends LoginRequest {
+  fullName: string;
+  role?: 'owner' | 'manager' | 'supervisor' | 'staff';
+}
+
+interface UserResponse {
+  id: number;
+  email: string;
+  fullName: string;
+  role: string;
+}
+
+interface AuthResponse {
+  token: string;
+  user: UserResponse;
+}
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // Login
-router.post('/login', async (req, res): Promise<void> => {
+router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response<AuthResponse | { error: string }>): Promise<void> => {
   try {
     const { email, password } = req.body;
     
@@ -48,7 +70,7 @@ router.post('/login', async (req, res): Promise<void> => {
 });
 
 // Register
-router.post('/register', async (req, res): Promise<void> => {
+router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Response<AuthResponse | { error: string }>): Promise<void> => {
   try {
     const { email, password, fullName, role = 'staff' } = req.body;
     

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -24,8 +24,14 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+interface HealthResponse {
+  status: string;
+  timestamp: string;
+  environment: string;
+}
+
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req: Request, res: Response<HealthResponse>) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
@@ -47,8 +53,13 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ocr', ocrRoutes);
 
+interface ErrorResponse {
+  error: string;
+  message?: string;
+}
+
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: Request, res: Response<ErrorResponse>, next: NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ 
     error: 'Internal Server Error',
@@ -57,7 +68,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('*', (_req: Request, res: Response<ErrorResponse>) => {
   res.status(404).json({ error: 'Route not found' });
 });
 

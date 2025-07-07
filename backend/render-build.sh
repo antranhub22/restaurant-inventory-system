@@ -2,8 +2,8 @@
 # exit on error
 set -o errexit
 
-# Install dependencies with exact versions
-npm ci
+# Install dependencies
+npm install
 
 # Install type definitions explicitly
 npm install --save-dev @types/node @types/express @types/bcryptjs @types/jsonwebtoken @types/cors @types/compression @types/morgan

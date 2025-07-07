@@ -7,8 +7,8 @@ services:
     buildCommand: |
       cd backend
       npm install
-      npm install --save-dev @types/node @types/express @types/cors @types/bcrypt
-      export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DATABASE}"
+      npm install --save-dev @types/node @types/express @types/cors @types/bcrypt @types/compression @types/morgan
+      export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DATABASE}?schema=public"
       npx prisma generate
       npx prisma migrate deploy
       npm run build

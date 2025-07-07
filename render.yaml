@@ -7,6 +7,8 @@ services:
     buildCommand: |
       cd backend
       npm install
+      npm install --save-dev @types/node @types/express @types/cors @types/bcrypt
+      export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DATABASE}"
       npx prisma generate
       npx prisma migrate deploy
       npm run build
@@ -16,8 +18,14 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        value: ${DATABASE_URL}
+      - key: POSTGRES_USER
+        value: restaurant_user
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_DATABASE
+        value: restaurant_inventory
       - key: JWT_SECRET
         sync: false
       - key: REDIS_URL

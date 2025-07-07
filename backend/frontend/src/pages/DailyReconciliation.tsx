@@ -5,11 +5,11 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { useAuthStore } from '../store';
 import sampleData from '../data/sample_data.json';
-import { SampleData, SampleReconciliation } from '../types/sample';
+import { SampleData, Item, Reconciliation } from '../types/sample_data';
 
 const data = sampleData as SampleData;
-const reconciliations = data.sample_reconciliation || [];
-const items = data.sample_items || [];
+const reconciliations = data.sample_reconciliation;
+const items = data.sample_items;
 
 const statusMap: Record<string, { label: string; color: string }> = {
   resolved: { label: 'Đã giải quyết', color: 'green' },
@@ -17,14 +17,14 @@ const statusMap: Record<string, { label: string; color: string }> = {
   pending: { label: 'Chờ xử lý', color: 'orange' },
 };
 
-function calcWithdrawn(r: SampleReconciliation) {
+function calcWithdrawn(r: Reconciliation) {
   // RÚT HÀNG = BÁN + TRẢ HÀNG + LÃNG PHÍ + NHÂN VIÊN TIÊU THỤ + MẪU
   return (
     (r.sold || 0) + (r.returned || 0) + (r.wasted || 0) + (r.staff_consumed || 0) + (r.sampled || 0)
   );
 }
 
-function getAlertLevel(r: SampleReconciliation) {
+function getAlertLevel(r: Reconciliation) {
   const withdrawn = calcWithdrawn(r);
   const diff = Math.abs((r.withdrawn || 0) - withdrawn);
   if (diff === 0) return { level: 'ok', label: 'Chuẩn', color: 'green' };
@@ -35,6 +35,10 @@ function getAlertLevel(r: SampleReconciliation) {
 const DailyReconciliation: React.FC = () => {
   const [selected, setSelected] = useState<number|null>(null);
   const { user } = useAuthStore();
+
+  if (!user || !['owner','manager'].includes(user.role)) {
+    return <Layout header={<div className='text-2xl font-bold'>Đối chiếu cuối ngày</div>}><div className='text-center text-red-500 py-8'>Bạn không có quyền truy cập chức năng này.</div></Layout>;
+  }
 
   const selectedRecord = reconciliations.find(r => r.id === selected);
 

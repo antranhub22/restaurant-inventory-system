@@ -11,7 +11,7 @@ dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 // Middleware
 app.use(helmet());
@@ -33,12 +33,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Import routes
+import authRoutes from './routes/auth';
+import inventoryRoutes from './routes/inventory';
+import transactionRoutes from './routes/transactions';
+import reportRoutes from './routes/reports';
+import ocrRoutes from './routes/ocr';
+
 // API Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/inventory', require('./routes/inventory'));
-app.use('/api/transactions', require('./routes/transactions'));
-app.use('/api/reports', require('./routes/reports'));
-app.use('/api/ocr', require('./routes/ocr'));
+app.use('/api/auth', authRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/ocr', ocrRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

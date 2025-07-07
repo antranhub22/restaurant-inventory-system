@@ -37,4 +37,4 @@ router.post('/process-receipt', async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router; 

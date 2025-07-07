@@ -33,12 +33,15 @@ services:
     env: static
     buildCommand: |
       cd backend/frontend
-      npm install
-      npm run build
+      npm ci --include=dev
+      npm install --save-dev @testing-library/react @testing-library/jest-dom @types/jest
+      npm run build -- --skipLibCheck
     staticPublishPath: ./backend/frontend/dist
     envVars:
       - key: VITE_API_URL
         value: https://restaurant-inventory-backend.onrender.com
+      - key: NODE_ENV
+        value: production
     autoDeploy: true
 
 databases:

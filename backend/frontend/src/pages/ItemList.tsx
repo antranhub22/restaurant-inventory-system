@@ -5,30 +5,39 @@ import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { useNavigate } from 'react-router-dom';
-// @ts-ignore
-import sampleData from '../../../docs/du_lieu/sample_data.json';
+import sampleData from '../data/sample_data.json';
 import { useAuthStore } from '../store';
+import { SampleData, Item, Unit, Category } from '../types/sample_data';
 
-const units = sampleData.units;
-const categories = sampleData.categories;
-const inventoryCurrent = sampleData.sample_inventory_current;
+const data = sampleData as SampleData;
+const units = data.units;
+const categories = data.categories;
 
-function getUnitName(unit_id: number) {
-  const unit = units.find((u: any) => u.id === unit_id);
+function getUnitName(unit_id: number): string {
+  const unit = units.find(u => u.id === unit_id);
   return unit ? unit.abbreviation : '';
 }
 
-function getStockStatus(item_id: number) {
-  const inv = inventoryCurrent.find((i: any) => i.item_id === item_id);
-  if (!inv) return { status: 'unknown', label: 'Không rõ', color: 'gray' };
-  switch (inv.stock_status) {
-    case 'low_stock': return { status: 'low', label: 'Tồn kho thấp', color: 'red' };
-    case 'in_stock': return { status: 'ok', label: 'Đủ hàng', color: 'green' };
-    default: return { status: 'unknown', label: 'Không rõ', color: 'gray' };
+function getStockStatus(item: Item) {
+  if (item.min_stock > 0 && item.min_stock > item.max_stock) {
+    return { status: 'low', label: 'Tồn kho thấp', color: 'red' };
   }
+  return { status: 'ok', label: 'Đủ hàng', color: 'green' };
 }
 
-const defaultNewItem = {
+interface NewItem {
+  name: string;
+  category_id: string;
+  unit_id: string;
+  unit_cost: string;
+  selling_price: string;
+  min_stock: string;
+  max_stock: string;
+  reorder_point: string;
+  description: string;
+}
+
+const defaultNewItem: NewItem = {
   name: '',
   category_id: '',
   unit_id: '',
@@ -43,15 +52,15 @@ const defaultNewItem = {
 const ItemList: React.FC = () => {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
-  const [items, setItems] = useState<any[]>(sampleData.sample_items);
+  const [items, setItems] = useState<Item[]>(data.sample_items);
   const [showModal, setShowModal] = useState(false);
-  const [newItem, setNewItem] = useState<any>(defaultNewItem);
+  const [newItem, setNewItem] = useState<NewItem>(defaultNewItem);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
-  const filteredItems = items.filter((item: any) => {
+  const filteredItems = items.filter(item => {
     const matchName = item.name.toLowerCase().includes(search.toLowerCase());
     const matchCategory = category ? item.category_id === Number(category) : true;
     return matchName && matchCategory;
@@ -80,20 +89,21 @@ const ItemList: React.FC = () => {
       return;
     }
     // Thêm item mới
-    const item = {
-      ...newItem,
+    const item: Item = {
       id: Date.now(),
+      name: newItem.name,
+      sku: `SKU${Date.now()}`,
+      barcode: Date.now().toString(),
       category_id: Number(newItem.category_id),
       unit_id: Number(newItem.unit_id),
       unit_cost: Number(newItem.unit_cost),
-      selling_price: newItem.selling_price ? Number(newItem.selling_price) : null,
-      min_stock: newItem.min_stock ? Number(newItem.min_stock) : 0,
-      max_stock: newItem.max_stock ? Number(newItem.max_stock) : 0,
-      reorder_point: newItem.reorder_point ? Number(newItem.reorder_point) : 0,
+      selling_price: newItem.selling_price ? Number(newItem.selling_price) : undefined,
+      min_stock: Number(newItem.min_stock) || 0,
+      max_stock: Number(newItem.max_stock) || 0,
+      reorder_point: Number(newItem.reorder_point) || 0,
+      description: newItem.description || undefined,
       is_perishable: false,
       is_active: true,
-      sku: '',
-      barcode: '',
       aliases: [],
     };
     setItems([item, ...items]);
@@ -124,14 +134,14 @@ const ItemList: React.FC = () => {
           onChange={e => setCategory(e.target.value)}
         >
           <option value="">Tất cả loại hàng</option>
-          {categories.map((cat: any) => (
+          {categories.map((cat: Category) => (
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </select>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {pagedItems.map((item: any) => {
-          const stock = getStockStatus(item.id);
+        {pagedItems.map(item => {
+          const stock = getStockStatus(item);
           return (
             <Card key={item.id} header={item.name} className="relative cursor-pointer hover:shadow-lg" onClick={() => navigate(`/items/${item.id}`)}>
               <div className="flex items-center justify-between mb-2">
@@ -150,7 +160,7 @@ const ItemList: React.FC = () => {
               <div className="mb-1 text-xs text-gray-400">SKU: {item.sku}</div>
               <div className="mb-1 text-xs text-gray-400">Barcode: {item.barcode}</div>
               <div className="mt-2 flex flex-wrap gap-1">
-                {item.aliases.map((alias: string) => (
+                {item.aliases.map(alias => (
                   <span key={alias} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">{alias}</span>
                 ))}
               </div>
@@ -176,7 +186,7 @@ const ItemList: React.FC = () => {
             <label className="block mb-1 font-medium text-gray-700">Loại hàng*</label>
             <select name="category_id" value={newItem.category_id} onChange={handleChange} required className="w-full rounded border border-gray-300 px-3 py-2">
               <option value="">Chọn loại hàng</option>
-              {categories.map((cat: any) => (
+              {categories.map((cat: Category) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
@@ -185,7 +195,7 @@ const ItemList: React.FC = () => {
             <label className="block mb-1 font-medium text-gray-700">Đơn vị tính*</label>
             <select name="unit_id" value={newItem.unit_id} onChange={handleChange} required className="w-full rounded border border-gray-300 px-3 py-2">
               <option value="">Chọn đơn vị</option>
-              {units.map((u: any) => (
+              {units.map((u: Unit) => (
                 <option key={u.id} value={u.id}>{u.abbreviation}</option>
               ))}
             </select>

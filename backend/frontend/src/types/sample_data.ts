@@ -80,6 +80,13 @@ export interface Reconciliation {
   status: 'resolved' | 'investigation' | 'pending';
 }
 
+export interface Receipt {
+  id: number;
+  supplier: string;
+  type: string;
+  image: string;
+}
+
 export interface DashboardStats {
   total_items: number;
   total_value: number;
@@ -128,5 +135,6 @@ export interface SampleData {
   sample_items: Item[];
   sample_transactions: Transaction[];
   sample_reconciliation: Reconciliation[];
+  sample_receipts: Receipt[];
   mockup_data: MockupData;
 } 

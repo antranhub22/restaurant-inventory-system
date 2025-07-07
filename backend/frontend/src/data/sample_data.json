@@ -162,6 +162,20 @@
       "name": "Đồ uống"
     }
   ],
+  "sample_receipts": [
+    {
+      "id": 1,
+      "supplier": "Chợ Bến Thành",
+      "type": "Thực phẩm",
+      "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    },
+    {
+      "id": 2,
+      "supplier": "Siêu thị CoopMart",
+      "type": "Đồ uống",
+      "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    }
+  ],
   "sample_items": [
     {
       "id": 1,

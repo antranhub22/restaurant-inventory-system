@@ -2,16 +2,29 @@ import React, { useRef, useState } from 'react';
 import Layout from '../components/common/Layout';
 import Button from '../components/common/Button';
 import axios from 'axios';
-// @ts-ignore
-import sampleData from '../../../docs/du_lieu/sample_data.json';
+import sampleData from '../data/sample_data.json';
+import { SampleData, Receipt } from '../types/sample_data';
 
-const sampleReceipts = sampleData.sample_receipts;
+const data = sampleData as SampleData;
+const sampleReceipts = data.sample_receipts;
+
+interface OcrResult {
+  supplier: string;
+  date: string;
+  total: number;
+  items: Array<{
+    name: string;
+    quantity: number;
+    unit_price: number;
+    total: number;
+  }>;
+}
 
 const OcrReceiptFlow: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<OcrResult | null>(null);
   const [error, setError] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -51,12 +64,16 @@ const OcrReceiptFlow: React.FC = () => {
         return;
       }
       // Có thể bổ sung các trường khác như department/type nếu cần
-      const response = await axios.post('/api/ocr/process-receipt', formData, {
+      const response = await axios.post<{ data: OcrResult }>('/api/ocr/process-receipt', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setResult(response.data.data || response.data);
-    } catch (err: any) {
-      setError(err?.response?.data?.error?.message || 'Lỗi khi gửi ảnh lên OCR.');
+      setResult(response.data.data);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.error?.message || 'Lỗi khi gửi ảnh lên OCR.');
+      } else {
+        setError('Lỗi không xác định khi xử lý OCR.');
+      }
     } finally {
       setLoading(false);
     }
@@ -69,7 +86,7 @@ const OcrReceiptFlow: React.FC = () => {
           <input type="file" accept="image/*" ref={fileInput} onChange={handleFile} className="hidden" />
           <Button variant="primary" onClick={() => fileInput.current?.click()}>Tải ảnh hóa đơn</Button>
           <div className="flex flex-wrap gap-2">
-            {sampleReceipts.map((r: any) => (
+            {sampleReceipts.map((r: Receipt) => (
               <Button key={r.id} variant="secondary" onClick={() => handleSample(r.image)}>{r.supplier} ({r.type})</Button>
             ))}
           </div>

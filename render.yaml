@@ -2,61 +2,75 @@ services:
   # Backend API Service
   - type: web
     name: restaurant-inventory-backend
-    env: node
-    plan: starter
-    buildCommand: |
-      cd backend
-      npm install
-      npm install --save-dev @types/node @types/express @types/cors @types/bcrypt @types/compression @types/morgan
-      export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DATABASE}?schema=public"
-      npx prisma generate
-      npx prisma migrate deploy
-      npm run build
-    startCommand: |
-      cd backend
-      npm run start:prod
+    runtime: node
+    plan: starter # hoặc free
+    region: singapore # gần Việt Nam
+    buildCommand: cd backend && ./render-build.sh
+    startCommand: cd backend && ./render-start.sh
     envVars:
       - key: NODE_ENV
         value: production
-      - key: POSTGRES_USER
-        value: restaurant_user
-      - key: POSTGRES_PASSWORD
-        sync: false
-      - key: POSTGRES_HOST
-        sync: false
-      - key: POSTGRES_DATABASE
-        value: restaurant_inventory
-      - key: JWT_SECRET
-        sync: false
-      - key: REDIS_URL
-        sync: false
       - key: PORT
-        value: 3000
+        value: 4000
+      - key: DATABASE_URL
+        sync: false # Nhập từ Neon.tech dashboard
+      - key: JWT_SECRET
+        generateValue: true # Render tự generate
+      - key: REDIS_URL
+        sync: false # Optional - từ Redis provider
+      - key: FRONTEND_URL
+        value: https://restaurant-inventory-frontend.onrender.com
+      # OCR Services (optional)
+      - key: GOOGLE_CLOUD_PROJECT_ID
+        sync: false
+      - key: GOOGLE_CLOUD_PRIVATE_KEY
+        sync: false
+      - key: GOOGLE_CLOUD_CLIENT_EMAIL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
     healthCheckPath: /api/health
     autoDeploy: true
 
-  # Frontend Web Service
+  # Frontend Static Site
   - type: web
     name: restaurant-inventory-frontend
-    env: static
-    buildCommand: |
-      cd backend/frontend
-      find src -name "*.test.*" -type f -delete
-      npm ci
-      npm install --save-dev @types/react @types/react-dom @testing-library/react @testing-library/jest-dom @types/jest
-      VITE_SKIP_TESTS=true npm run build -- --skipLibCheck --force
+    runtime: static
+    plan: free
+    region: singapore
+    buildCommand: cd backend/frontend && ./render-build.sh
     staticPublishPath: ./backend/frontend/dist
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://restaurant-inventory-backend.onrender.com
-      - key: NODE_ENV
+        value: https://restaurant-inventory-backend.onrender.com/api
+      - key: VITE_ENV
         value: production
-      - key: VITE_SKIP_TESTS
-        value: "true"
     autoDeploy: true
 
-databases:
-  - name: restaurant-inventory-db
-    databaseName: restaurant_inventory
-    user: restaurant_user
-    plan: free 
+# HƯỚNG DẪN SETUP DATABASE VỚI NEON.TECH:
+# 1. Tạo tài khoản tại https://neon.tech
+# 2. Tạo database mới (free tier)
+# 3. Copy DATABASE_URL từ Neon dashboard
+# 4. Paste vào Render environment variables
+#
+# OPTIONAL: REDIS
+# Sử dụng Redis Cloud (redis.com) hoặc Upstash (upstash.com)
+# Copy REDIS_URL và paste vào Render environment variables
+#
+# LƯU Ý:
+# - Cập nhật VITE_API_URL trong frontend sau khi có URL của backend
+# - Đảm bảo DATABASE_URL format: postgresql://user:pass@host/database?sslmode=require 

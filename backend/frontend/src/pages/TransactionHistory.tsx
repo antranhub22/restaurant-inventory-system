@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
 import sampleData from '../data/sample_data.json';
-import { SampleData, Item, Transaction, Unit } from '../types/sample_data';
+import { SampleData } from '../types/sample_data';
 
 const data = sampleData as SampleData;
 const transactions = data.sample_transactions;

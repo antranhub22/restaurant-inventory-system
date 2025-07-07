@@ -5,7 +5,7 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { useAuthStore } from '../store';
 import sampleData from '../data/sample_data.json';
-import { SampleData, Item, Reconciliation } from '../types/sample_data';
+import { SampleData, Reconciliation } from '../types/sample_data';
 
 const data = sampleData as SampleData;
 const reconciliations = data.sample_reconciliation;
@@ -40,7 +40,8 @@ const DailyReconciliation: React.FC = () => {
     return <Layout header={<div className='text-2xl font-bold'>Đối chiếu cuối ngày</div>}><div className='text-center text-red-500 py-8'>Bạn không có quyền truy cập chức năng này.</div></Layout>;
   }
 
-  const selectedRecord = reconciliations.find(r => r.id === selected);
+  const selectedRecord = selected ? reconciliations.find(r => r.id === selected) : null;
+  const selectedItem = selectedRecord ? items.find(i => i.id === selectedRecord.item_id) : null;
 
   return (
     <Layout header={<div className="text-2xl font-bold">Đối chiếu cuối ngày</div>}>
@@ -93,7 +94,7 @@ const DailyReconciliation: React.FC = () => {
         </div>
       </Card>
 
-      {selected && selectedRecord && (
+      {selected && selectedRecord && selectedItem && (
         <Modal
           title={`Chi tiết đối chiếu #${selected}`}
           onClose={() => setSelected(null)}
@@ -105,6 +106,7 @@ const DailyReconciliation: React.FC = () => {
               <p>Ngày: {selectedRecord.shift_date}</p>
               <p>Ca: {selectedRecord.shift_type}</p>
               <p>Bộ phận: {selectedRecord.department}</p>
+              <p>Hàng hóa: {selectedItem.name}</p>
               <p>Trạng thái: {statusMap[selectedRecord.status]?.label}</p>
             </div>
             <div className="mt-4 flex justify-end gap-2">

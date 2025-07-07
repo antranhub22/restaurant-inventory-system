@@ -3,7 +3,7 @@ services:
   - type: web
     name: restaurant-inventory-backend
     env: node
-    plan: free
+    plan: starter
     buildCommand: |
       cd backend
       npm install
@@ -31,7 +31,7 @@ services:
   - type: web
     name: restaurant-inventory-frontend
     env: static
-    plan: free
+    plan: starter
     buildCommand: |
       cd backend/frontend
       npm install

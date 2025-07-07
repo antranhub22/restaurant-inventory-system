@@ -2,8 +2,8 @@
 # exit on error
 set -o errexit
 
-# Install dependencies
-npm ci --production=false
+# Clean install dependencies
+npm ci --legacy-peer-deps
 
 # Generate Prisma Client
 npx prisma generate

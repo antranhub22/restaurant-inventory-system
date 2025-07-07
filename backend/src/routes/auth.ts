@@ -1,5 +1,5 @@
 import express from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 
@@ -7,7 +7,7 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', async (req, res): Promise<void> => {
   try {
     const { email, password } = req.body;
     
@@ -16,12 +16,14 @@ router.post('/login', async (req, res) => {
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
     const token = jwt.sign(
@@ -46,7 +48,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Register
-router.post('/register', async (req, res) => {
+router.post('/register', async (req, res): Promise<void> => {
   try {
     const { email, password, fullName, role = 'staff' } = req.body;
     
@@ -55,7 +57,8 @@ router.post('/register', async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+      res.status(400).json({ error: 'User already exists' });
+      return;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);

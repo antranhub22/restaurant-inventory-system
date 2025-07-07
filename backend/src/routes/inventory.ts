@@ -5,7 +5,7 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // Get all inventory items
-router.get('/', async (req, res) => {
+router.get('/', async (req, res): Promise<void> => {
   try {
     const inventory = await prisma.inventory.findMany({
       include: {
@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get inventory by item ID
-router.get('/:itemId', async (req, res) => {
+router.get('/:itemId', async (req, res): Promise<void> => {
   try {
     const { itemId } = req.params;
     const inventory = await prisma.inventory.findUnique({
@@ -39,7 +39,8 @@ router.get('/:itemId', async (req, res) => {
     });
     
     if (!inventory) {
-      return res.status(404).json({ error: 'Inventory not found' });
+      res.status(404).json({ error: 'Inventory not found' });
+      return;
     }
     
     res.json(inventory);

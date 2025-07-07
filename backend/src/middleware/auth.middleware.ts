@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 interface JwtPayload {
   userId: number;
   email: string;
-  role: string;
+  role: Role;
 }
 
 declare global {
@@ -47,7 +47,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-export const authorize = (...roles: string[]) => {
+export const authorize = (...roles: Role[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });

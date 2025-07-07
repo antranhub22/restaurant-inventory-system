@@ -31,7 +31,6 @@ services:
   - type: web
     name: restaurant-inventory-frontend
     env: static
-    plan: starter
     buildCommand: |
       cd backend/frontend
       npm install

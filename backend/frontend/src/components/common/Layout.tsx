@@ -24,6 +24,7 @@ const navLinks = [
   { to: '/transactions', label: 'Giao dịch', roles: ['owner', 'manager', 'supervisor', 'staff'] },
   { to: '/reconciliation', label: 'Đối chiếu', roles: ['owner', 'manager', 'supervisor', 'staff'] },
   { to: '/documents', label: 'Phiếu & Báo cáo', roles: ['owner', 'manager'] },
+  { to: '/ocr', label: 'Xử lý hóa đơn OCR', roles: ['owner', 'manager', 'supervisor'] },
   { to: '/users', label: 'Quản lý người dùng', roles: ['owner'] },
 ];
 
@@ -50,19 +51,26 @@ const Layout: React.FC<LayoutProps> = ({ header, footer, children, className = '
           )}
         </div>
       </header>
-      <nav className="flex gap-2 flex-wrap mb-4">
-        {user && navLinks.filter(l => l.roles.includes(user.role)).map(link => (
-          <Link key={link.to} to={link.to} className={`px-3 py-1 rounded ${location.pathname.startsWith(link.to) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-blue-100'}`}>{link.label}</Link>
-        ))}
+      <nav className="bg-white shadow-sm py-2 px-6">
+        {user && (
+          <div className="flex gap-2 flex-wrap">
+            {navLinks.filter(l => l.roles.includes(user.role)).map(link => (
+              <Link 
+                key={link.to} 
+                to={link.to} 
+                className={`px-3 py-1.5 rounded-md transition-colors ${
+                  location.pathname.startsWith(link.to) 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-50 text-gray-700 hover:bg-blue-50'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </nav>
       <main className="flex-1 container mx-auto px-4 py-6">
-        {user && (
-          <nav className="flex gap-2 flex-wrap mb-4">
-            {navLinks.filter(l => l.roles.includes(user.role)).map(link => (
-              <Link key={link.to} to={link.to} className={`px-3 py-1 rounded ${location.pathname.startsWith(link.to) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-blue-100'}`}>{link.label}</Link>
-            ))}
-          </nav>
-        )}
         {children}
       </main>
       {footer && <footer className="bg-white py-4 px-6 shadow-inner">{footer}</footer>}

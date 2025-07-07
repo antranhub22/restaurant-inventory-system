@@ -139,5 +139,57 @@
         }
       ]
     }
-  }
+  },
+  "sample_reconciliation": [
+    {
+      "id": 1,
+      "department": "bar",
+      "item_id": 1,
+      "shift_date": "2025-07-02",
+      "shift_type": "evening",
+      "withdrawn": 20,
+      "sold": 18,
+      "returned": 0,
+      "wasted": 1,
+      "staff_consumed": 0,
+      "sampled": 1,
+      "status": "resolved"
+    },
+    {
+      "id": 2,
+      "department": "kitchen",
+      "item_id": 2,
+      "shift_date": "2025-07-02",
+      "shift_type": "morning",
+      "withdrawn": 15,
+      "sold": 10,
+      "returned": 2,
+      "wasted": 0,
+      "staff_consumed": 1,
+      "sampled": 0,
+      "status": "investigation"
+    }
+  ],
+  "sample_items": [
+    {
+      "id": 1,
+      "name": "Bia Saigon",
+      "unit": "chai",
+      "category": "đồ uống",
+      "min_stock": 50,
+      "max_stock": 200,
+      "current_stock": 150,
+      "unit_cost": 15000
+    },
+    {
+      "id": 2,
+      "name": "Thịt bò",
+      "unit": "kg",
+      "category": "thực phẩm",
+      "min_stock": 5,
+      "max_stock": 20,
+      "current_stock": 8,
+      "unit_cost": 250000
+    }
+  ]
 } 

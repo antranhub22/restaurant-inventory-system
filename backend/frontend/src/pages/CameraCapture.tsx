@@ -50,6 +50,19 @@ const CameraCapture: React.FC = () => {
     startCamera();
   };
 
+  const handleOCR = async () => {
+    setLoading(true);
+    try {
+      // Giả lập gọi API OCR
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      alert('OCR xử lý thành công!');
+    } catch (err) {
+      setError('Lỗi khi xử lý OCR. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Layout header={<div className="text-2xl font-bold">Chụp ảnh hóa đơn</div>}>
       <div className="max-w-md mx-auto flex flex-col items-center gap-4">
@@ -69,10 +82,10 @@ const CameraCapture: React.FC = () => {
         {streaming && (
           <Button variant="primary" onClick={takePhoto}>Chụp ảnh</Button>
         )}
-        {photo && (
+        {photo && !loading && (
           <div className="flex gap-2">
             <Button variant="secondary" onClick={retake}>Chụp lại</Button>
-            <Button variant="primary" onClick={() => alert('Gửi ảnh lên OCR!')}>Gửi OCR</Button>
+            <Button variant="primary" onClick={handleOCR}>Gửi OCR</Button>
           </div>
         )}
         {loading && <div className="text-blue-600">Đang xử lý OCR...</div>}

@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import Modal from '../components/common/Modal';
 import { useAuthStore } from '../store';
-// @ts-ignore
-import sampleData from '../../../docs/du_lieu/sample_data.json';
+import sampleData from '../data/sample_data.json';
+import { SampleData, SampleReconciliation } from '../types/sample';
 
-const reconciliations = sampleData.sample_reconciliation;
-const items = sampleData.sample_items;
+const data = sampleData as SampleData;
+const reconciliations = data.sample_reconciliation || [];
+const items = data.sample_items || [];
 
 const statusMap: Record<string, { label: string; color: string }> = {
   resolved: { label: 'Đã giải quyết', color: 'green' },
@@ -15,14 +17,14 @@ const statusMap: Record<string, { label: string; color: string }> = {
   pending: { label: 'Chờ xử lý', color: 'orange' },
 };
 
-function calcWithdrawn(r: any) {
+function calcWithdrawn(r: SampleReconciliation) {
   // RÚT HÀNG = BÁN + TRẢ HÀNG + LÃNG PHÍ + NHÂN VIÊN TIÊU THỤ + MẪU
   return (
     (r.sold || 0) + (r.returned || 0) + (r.wasted || 0) + (r.staff_consumed || 0) + (r.sampled || 0)
   );
 }
 
-function getAlertLevel(r: any) {
+function getAlertLevel(r: SampleReconciliation) {
   const withdrawn = calcWithdrawn(r);
   const diff = Math.abs((r.withdrawn || 0) - withdrawn);
   if (diff === 0) return { level: 'ok', label: 'Chuẩn', color: 'green' };
@@ -33,6 +35,8 @@ function getAlertLevel(r: any) {
 const DailyReconciliation: React.FC = () => {
   const [selected, setSelected] = useState<number|null>(null);
   const { user } = useAuthStore();
+
+  const selectedRecord = reconciliations.find(r => r.id === selected);
 
   return (
     <Layout header={<div className="text-2xl font-bold">Đối chiếu cuối ngày</div>}>
@@ -58,8 +62,8 @@ const DailyReconciliation: React.FC = () => {
               {reconciliations.length === 0 && (
                 <tr><td colSpan={11} className="text-center text-gray-400 py-4">Không có dữ liệu</td></tr>
               )}
-              {reconciliations.map((r: any) => {
-                const item = items.find((i: any) => i.id === r.item_id);
+              {reconciliations.map((r) => {
+                const item = items.find(i => i.id === r.item_id);
                 const status = statusMap[r.status] || { label: r.status, color: 'gray' };
                 const withdrawnCalc = calcWithdrawn(r);
                 const diff = (r.withdrawn || 0) - withdrawnCalc;
@@ -84,7 +88,28 @@ const DailyReconciliation: React.FC = () => {
           </table>
         </div>
       </Card>
-      {/* TODO: Modal chi tiết đối chiếu, quy trình phê duyệt, upload bằng chứng, giải trình... */}
+
+      {selected && selectedRecord && (
+        <Modal
+          title={`Chi tiết đối chiếu #${selected}`}
+          onClose={() => setSelected(null)}
+          open={true}
+        >
+          <div className="p-4">
+            <h3 className="font-semibold mb-2">Thông tin chi tiết</h3>
+            <div className="space-y-2">
+              <p>Ngày: {selectedRecord.shift_date}</p>
+              <p>Ca: {selectedRecord.shift_type}</p>
+              <p>Bộ phận: {selectedRecord.department}</p>
+              <p>Trạng thái: {statusMap[selectedRecord.status]?.label}</p>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setSelected(null)}>Đóng</Button>
+              <Button variant="primary" onClick={() => alert('Chức năng đang phát triển')}>Phê duyệt</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Layout>
   );
 };

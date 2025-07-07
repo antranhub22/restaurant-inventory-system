@@ -2,9 +2,13 @@
 # exit on error
 set -o errexit
 
+echo "🧹 Cleaning up old dependencies..."
+rm -rf node_modules
+rm -rf dist
+
 echo "🔧 Installing dependencies..."
-# Clean install with legacy peer deps to avoid issues
-npm ci --legacy-peer-deps
+# Install all dependencies including dev dependencies
+npm install --production=false
 
 echo "📦 Generating Prisma Client..."
 # Generate Prisma Client

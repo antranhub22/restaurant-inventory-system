@@ -37,7 +37,6 @@ services:
     name: restaurant-inventory-frontend
     runtime: static
     plan: free
-    region: singapore
     buildCommand: cd backend/frontend && ./render-build.sh
     staticPublishPath: ./backend/frontend/dist
     headers:

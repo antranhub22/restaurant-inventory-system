@@ -2,14 +2,90 @@ import React from 'react';
 import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-// Import dữ liệu mẫu (giả lập import, thực tế sẽ fetch hoặc require)
-// @ts-ignore
-import sampleData from '../../../docs/du_lieu/sample_data.json';
 
-const stats = sampleData.mockup_data.dashboard_stats;
-const alerts = sampleData.mockup_data.alert_samples;
-const activities = sampleData.mockup_data.recent_activities;
-const departments = sampleData.mockup_data.department_performance;
+interface DashboardStats {
+  total_items: number;
+  total_value: number;
+  low_stock_items: number;
+  critical_alerts: number;
+}
+
+interface Activity {
+  id: number;
+  description: string;
+  timestamp: string;
+}
+
+interface Alert {
+  id: number;
+  message: string;
+  severity: 'critical' | 'warning' | 'info';
+  created_at: string;
+}
+
+interface Department {
+  department: string;
+  efficiency: number;
+  issues: number;
+  last_reconciliation: string;
+}
+
+// Mock data
+const sampleData = {
+  mockup_data: {
+    dashboard_stats: {
+      total_items: 150,
+      total_value: 125000000,
+      low_stock_items: 5,
+      critical_alerts: 2
+    },
+    alert_samples: [
+      {
+        id: 1,
+        message: "Gạo dưới mức tồn kho tối thiểu",
+        severity: "warning" as const,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        message: "Thịt bò sắp hết hạn sử dụng",
+        severity: "critical" as const,
+        created_at: new Date().toISOString()
+      }
+    ],
+    recent_activities: [
+      {
+        id: 1,
+        description: "Nhập kho 50kg gạo",
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: 2,
+        description: "Xuất kho 10kg thịt bò",
+        timestamp: new Date().toISOString()
+      }
+    ],
+    department_performance: [
+      {
+        department: "Nhà bếp",
+        efficiency: 95,
+        issues: 1,
+        last_reconciliation: new Date().toISOString()
+      },
+      {
+        department: "Kho lạnh",
+        efficiency: 98,
+        issues: 0,
+        last_reconciliation: new Date().toISOString()
+      }
+    ]
+  }
+};
+
+const stats: DashboardStats = sampleData.mockup_data.dashboard_stats;
+const alerts: Alert[] = sampleData.mockup_data.alert_samples;
+const activities: Activity[] = sampleData.mockup_data.recent_activities;
+const departments: Department[] = sampleData.mockup_data.department_performance;
 
 const Dashboard: React.FC = () => {
   return (
@@ -31,7 +107,7 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <Card header="Hoạt động gần đây">
           <ul className="divide-y divide-gray-200">
-            {activities.map((act: any) => (
+            {activities.map((act) => (
               <li key={act.id} className="py-2 flex flex-col md:flex-row md:items-center md:justify-between">
                 <span>{act.description}</span>
                 <span className="text-sm text-gray-500">{new Date(act.timestamp).toLocaleString('vi-VN')}</span>
@@ -41,7 +117,7 @@ const Dashboard: React.FC = () => {
         </Card>
         <Card header="Cảnh báo & Thông báo">
           <ul className="divide-y divide-gray-200">
-            {alerts.map((alert: any) => (
+            {alerts.map((alert) => (
               <li key={alert.id} className="py-2 flex flex-col md:flex-row md:items-center md:justify-between">
                 <span className={`font-semibold ${alert.severity === 'critical' ? 'text-red-600' : alert.severity === 'warning' ? 'text-yellow-600' : 'text-blue-600'}`}>{alert.message}</span>
                 <span className="text-sm text-gray-500">{new Date(alert.created_at).toLocaleString('vi-VN')}</span>
@@ -62,7 +138,7 @@ const Dashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {departments.map((d: any) => (
+              {departments.map((d) => (
                 <tr key={d.department} className="border-b">
                   <td className="px-2 py-1 font-medium">{d.department}</td>
                   <td className="px-2 py-1">{d.efficiency}%</td>

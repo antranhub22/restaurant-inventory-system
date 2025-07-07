@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 
 interface LoginRequest {
   email: string;
@@ -10,14 +10,14 @@ interface LoginRequest {
 
 interface RegisterRequest extends LoginRequest {
   fullName: string;
-  role?: 'owner' | 'manager' | 'supervisor' | 'staff';
+  role?: Role;
 }
 
 interface UserResponse {
   id: number;
   email: string;
   fullName: string;
-  role: string;
+  role: Role;
 }
 
 interface AuthResponse {

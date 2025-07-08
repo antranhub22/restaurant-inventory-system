@@ -6,7 +6,7 @@ const router = Router();
 
 router.use(authMiddleware);
 
-router.post('/process', ocrController.processImage);
+router.post('/process-receipt', ocrController.processImage);
 router.get('/history', ocrController.getHistory);
 
 export default router; 

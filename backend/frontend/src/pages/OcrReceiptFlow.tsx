@@ -12,15 +12,10 @@ const data = sampleData as SampleData;
 const sampleReceipts = data.sample_receipts;
 
 interface OcrResult {
-  supplier: string;
-  date: string;
-  total: number;
-  items: Array<{
-    name: string;
-    quantity: number;
-    unit_price: number;
-    total: number;
-  }>;
+  rawText: string;           // Toàn bộ text trích xuất được
+  confidence: number;        // Độ tin cậy trung bình
+  wordCount: number;         // Số từ đã trích xuất
+  processingTime: number;    // Thời gian xử lý (ms)
 }
 
 const OcrReceiptFlow: React.FC = () => {
@@ -175,6 +170,17 @@ const OcrReceiptFlow: React.FC = () => {
     startCamera();
   };
 
+  // Copy text to clipboard
+  const handleCopyText = () => {
+    if (result?.rawText) {
+      navigator.clipboard.writeText(result.rawText).then(() => {
+        alert('Đã sao chép văn bản vào clipboard!');
+      }).catch(() => {
+        alert('Không thể sao chép văn bản!');
+      });
+    }
+  };
+
   return (
     <Layout header={<div className="text-2xl font-bold">Xử lý biên lai OCR</div>}>
       <div className="max-w-md mx-auto flex flex-col items-center gap-4">
@@ -236,36 +242,38 @@ const OcrReceiptFlow: React.FC = () => {
         {/* OCR Results */}
         {result && (
           <Card className="w-full">
-            <div className="font-semibold mb-2">Kết quả OCR:</div>
-            <div className="space-y-2">
-              <div>Nhà cung cấp: <span className="font-semibold">{result.supplier}</span></div>
-              <div>Ngày: <span className="font-semibold">{result.date}</span></div>
-              <div>Tổng tiền: <span className="font-semibold">{result.total.toLocaleString('vi-VN')} VND</span></div>
-              <div className="font-semibold mt-4 mb-2">Chi tiết sản phẩm:</div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-2 py-1 text-left">Tên</th>
-                      <th className="px-2 py-1 text-right">SL</th>
-                      <th className="px-2 py-1 text-right">Đơn giá</th>
-                      <th className="px-2 py-1 text-right">Thành tiền</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.items.map((item, idx) => (
-                      <tr key={idx} className="border-b">
-                        <td className="px-2 py-1">{item.name}</td>
-                        <td className="px-2 py-1 text-right">{item.quantity}</td>
-                        <td className="px-2 py-1 text-right">{item.unit_price.toLocaleString('vi-VN')}</td>
-                        <td className="px-2 py-1 text-right">{item.total.toLocaleString('vi-VN')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">Kết quả OCR</h3>
+              <Button variant="secondary" onClick={handleCopyText}>
+                Sao chép văn bản
+              </Button>
+            </div>
+            
+            {/* Metadata */}
+            <div className="bg-gray-50 p-3 rounded-lg mb-4 space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Số từ trích xuất:</span>
+                <span className="font-medium">{result.wordCount} từ</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Độ tin cậy:</span>
+                <span className="font-medium">{(result.confidence * 100).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Thời gian xử lý:</span>
+                <span className="font-medium">{result.processingTime}ms</span>
               </div>
             </div>
-            <div className="mt-4 flex justify-end">
+
+            {/* Raw text content */}
+            <div className="border rounded-lg p-4 bg-white">
+              <h4 className="font-medium mb-2 text-sm text-gray-600">Nội dung văn bản:</h4>
+              <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                {result.rawText}
+              </pre>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setResult(null)}>Xử lý lại</Button>
             </div>
           </Card>

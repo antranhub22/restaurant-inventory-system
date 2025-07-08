@@ -6,6 +6,13 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 
+// Import routes
+import authRoutes from './routes/auth';
+import inventoryRoutes from './routes/inventory';
+import transactionRoutes from './routes/transactions';
+import reportRoutes from './routes/reports';
+import ocrRoutes from './routes/ocr';
+
 // Load environment variables
 dotenv.config();
 
@@ -56,13 +63,6 @@ app.get('/api/health', (_req: Request, res: Response) => {
     environment: process.env.NODE_ENV || 'development'
   });
 });
-
-// Import routes
-import authRoutes from './routes/auth';
-import inventoryRoutes from './routes/inventory';
-import transactionRoutes from './routes/transactions';
-import reportRoutes from './routes/reports';
-import ocrRoutes from './routes/ocr';
 
 // API Routes
 app.use('/api/auth', authRoutes);

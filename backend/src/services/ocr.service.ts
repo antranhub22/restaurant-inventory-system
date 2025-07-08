@@ -5,6 +5,20 @@ import ocrLearningService from './ocr.learning.service';
 
 const prisma = new PrismaClient();
 
+interface ReceiptSection {
+  header: TextBlock[];    // Thông tin nhà cung cấp, ngày
+  items: TextBlock[];     // Danh sách sản phẩm
+  summary: TextBlock[];   // Tổng tiền, thuế, etc.
+}
+
+interface ReceiptItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  confidence: number;
+}
+
 export interface OcrResult {
   supplier: string;
   date: string;
@@ -32,7 +46,7 @@ interface TextBlock {
 }
 
 class OcrService {
-  private static readonly MIN_CONFIDENCE_SCORE = parseFloat(process.env.OCR_MIN_CONFIDENCE_SCORE || '0.8');
+  private static readonly MIN_CONFIDENCE_SCORE = 0.5; // Giảm threshold để test
   private static readonly MIN_ITEM_MATCH_SCORE = 0.85;
   private static readonly REVIEW_THRESHOLD = 0.9;
 
@@ -67,12 +81,11 @@ class OcrService {
       
       // Xử lý từng dòng text
       const lines = data.text.split('\n');
-      const avgConfidence = data.confidence || 85; // Default confidence nếu không có
+      const avgConfidence = data.confidence || 85;
       
       lines.forEach((line: string, index: number) => {
         const trimmedLine = line.trim();
         if (trimmedLine) {
-          // Tính confidence cho từng dòng dựa vào độ dài và các ký tự đặc biệt
           const lineConfidence = this.calculateLineConfidence(trimmedLine, avgConfidence);
           
           textBlocks.push({
@@ -90,9 +103,8 @@ class OcrService {
 
       await worker.terminate();
       
-      // Giảm threshold để test
       const filteredBlocks = textBlocks.filter(block => 
-        block.confidence >= 0.5 // Giảm từ 0.8 xuống 0.5 để test
+        block.confidence >= OcrService.MIN_CONFIDENCE_SCORE
       );
       
       console.log(`\n✨ Kết quả OCR: ${filteredBlocks.length} dòng text`);
@@ -106,35 +118,131 @@ class OcrService {
       console.error('Chi tiết lỗi:', error.message || error);
       console.error('Stack trace:', error.stack);
       
-      // Fallback với mock data để test
-      if (process.env.NODE_ENV === 'development') {
-        console.log('⚠️ Sử dụng mock data để test...');
-        return [
-          {
-            text: 'CỬA HÀNG THỰC PHẨM ABC',
-            confidence: 0.9,
-            boundingBox: { left: 0, top: 0, right: 300, bottom: 50 }
-          },
-          {
-            text: '15/07/2025',
-            confidence: 0.95,
-            boundingBox: { left: 0, top: 60, right: 150, bottom: 80 }
-          },
-          {
-            text: 'Gà ta 2 x 280000',
-            confidence: 0.85,
-            boundingBox: { left: 0, top: 100, right: 200, bottom: 120 }
-          },
-          {
-            text: 'Tổng tiền: 560000',
-            confidence: 0.9,
-            boundingBox: { left: 0, top: 200, right: 200, bottom: 220 }
-          }
-        ];
-      }
-      
       throw new Error(`Lỗi khi xử lý OCR: ${error.message || 'Unknown error'}`);
     }
+  }
+
+  private analyzeStructure(blocks: TextBlock[]): ReceiptSection {
+    // Sắp xếp blocks theo vị trí từ trên xuống
+    const sortedBlocks = [...blocks].sort((a, b) => a.boundingBox.top - b.boundingBox.top);
+    
+    // Phân tích cấu trúc hóa đơn
+    const header: TextBlock[] = [];
+    const items: TextBlock[] = [];
+    const summary: TextBlock[] = [];
+
+    let currentSection = 'header';
+    
+    for (const block of sortedBlocks) {
+      // Chuyển sang phần items nếu tìm thấy dòng sản phẩm đầu tiên
+      if (currentSection === 'header' && this.isItemLine(block.text)) {
+        currentSection = 'items';
+      }
+      // Chuyển sang phần summary nếu tìm thấy từ khóa tổng tiền
+      else if (currentSection === 'items' && this.isSummaryLine(block.text)) {
+        currentSection = 'summary';
+      }
+
+      // Thêm block vào section tương ứng
+      switch (currentSection) {
+        case 'header':
+          header.push(block);
+          break;
+        case 'items':
+          items.push(block);
+          break;
+        case 'summary':
+          summary.push(block);
+          break;
+      }
+    }
+
+    return { header, items, summary };
+  }
+
+  private isItemLine(text: string): boolean {
+    // Kiểm tra xem dòng có phải là sản phẩm không
+    const itemPatterns = [
+      /^\d+\s*x\s*\d+/,  // "2 x 50000"
+      /\d+\s*(?:cái|kg|g|ml|l)\s*x\s*\d+/i,  // "2 kg x 50000"
+      /^[\p{L}\s]+\s+\d+\s*x\s*\d+/u,  // "Gà ta 2 x 50000"
+      /^[\p{L}\s]+\s+\d+\s*(?:cái|kg|g|ml|l)\s*x\s*\d+/iu  // "Gà ta 2 kg x 50000"
+    ];
+
+    return itemPatterns.some(pattern => pattern.test(text));
+  }
+
+  private isSummaryLine(text: string): boolean {
+    // Kiểm tra xem dòng có phải là tổng tiền không
+    const summaryPatterns = [
+      /tổng\s*(?:tiền|cộng)/i,
+      /thành\s*tiền/i,
+      /total/i,
+      /sum/i
+    ];
+
+    return summaryPatterns.some(pattern => pattern.test(text));
+  }
+
+  private extractItem(text: string): ReceiptItem | null {
+    try {
+      // Các pattern để trích xuất thông tin sản phẩm
+      const patterns = [
+        // "Gà ta 2 x 50000"
+        /^([\p{L}\s]+)\s+(\d+)\s*x\s*(\d+)/u,
+        // "2 x 50000 Gà ta"
+        /^(\d+)\s*x\s*(\d+)\s+([\p{L}\s]+)/u,
+        // "Gà ta 2kg x 50000"
+        /^([\p{L}\s]+)\s+(\d+)\s*(?:cái|kg|g|ml|l)\s*x\s*(\d+)/iu
+      ];
+
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+          const [_, nameOrQuantity1, quantityOrPrice, priceOrName] = match;
+          
+          // Xác định đúng thứ tự các thành phần
+          let name: string, quantity: number, price: number;
+          
+          if (/^\d+$/.test(nameOrQuantity1)) {
+            // Trường hợp "2 x 50000 Gà ta"
+            name = priceOrName;
+            quantity = parseInt(nameOrQuantity1);
+            price = parseInt(quantityOrPrice);
+          } else {
+            // Trường hợp "Gà ta 2 x 50000"
+            name = nameOrQuantity1;
+            quantity = parseInt(quantityOrPrice);
+            price = parseInt(priceOrName);
+          }
+
+          return {
+            name: name.trim(),
+            quantity,
+            unitPrice: price,
+            total: quantity * price,
+            confidence: this.calculateItemConfidence(text)
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi khi trích xuất thông tin sản phẩm:', error);
+    }
+
+    return null;
+  }
+
+  private calculateItemConfidence(text: string): number {
+    // Tính độ tin cậy cho sản phẩm dựa trên format
+    let confidence = 0.5; // Điểm cơ bản
+
+    // Cộng điểm nếu có các thành phần chuẩn
+    if (/^[\p{L}\s]+/.test(text)) confidence += 0.1; // Có tên sản phẩm
+    if (/\d+\s*x\s*\d+/.test(text)) confidence += 0.2; // Có format số lượng x đơn giá
+    if (/(?:cái|kg|g|ml|l)/.test(text)) confidence += 0.1; // Có đơn vị tính
+    if (/\d{4,}/.test(text)) confidence += 0.1; // Có giá tiền (ít nhất 4 chữ số)
+
+    return Math.min(1, confidence);
   }
 
   private calculateLineConfidence(text: string, baseConfidence: number): number {
@@ -166,213 +274,69 @@ class OcrService {
     return Math.max(0, Math.min(1, confidence));
   }
 
-  private async findSupplier(textBlocks: TextBlock[]): Promise<{ text: string; confidence: number }> {
-    console.log('\n🏪 Tìm kiếm thông tin nhà cung cấp...');
-    
-    const potentialSuppliers = textBlocks
-      .filter(block => block.boundingBox.top < 200)
-      .sort((a, b) => {
-        const aWidth = a.boundingBox.right - a.boundingBox.left;
-        const bWidth = b.boundingBox.right - b.boundingBox.left;
-        return bWidth - aWidth;
-      });
-
-    console.log('- Số ứng viên tiềm năng:', potentialSuppliers.length);
-    potentialSuppliers.forEach((supplier, index) => {
-      console.log(`  ${index + 1}. "${supplier.text}" (độ tin cậy: ${(supplier.confidence * 100).toFixed(1)}%)`);
-    });
-
-    if (potentialSuppliers.length > 0) {
-      const supplierText = vietnameseService.normalizeVietnameseText(potentialSuppliers[0].text);
-      console.log('- Text đã chuẩn hóa:', supplierText);
-      
-      const correction = await ocrLearningService.findBestCorrection(supplierText, 'supplier');
-      
-      if (correction) {
-        console.log('✅ Đã tìm thấy correction:', correction.correctedText);
-        return {
-          text: correction.correctedText,
-          confidence: correction.confidence
-        };
-      }
-
-      console.log('- Sử dụng text gốc');
-      return {
-        text: supplierText,
-        confidence: potentialSuppliers[0].confidence
-      };
-    }
-
-    console.log('❌ Không tìm thấy thông tin nhà cung cấp');
-    return {
-      text: 'Không xác định',
-      confidence: 0
-    };
-  }
-
-  private async findDate(textBlocks: TextBlock[]): Promise<{ text: string; confidence: number }> {
-    const dateRegex = /(\d{1,2})[/-](\d{1,2})[/-](\d{4})/;
-    
-    for (const block of textBlocks) {
-      const match = block.text.match(dateRegex);
-      if (match) {
-        const [_, day, month, year] = match;
-        const dateStr = `${day}/${month}/${year}`;
-        
-        // Kiểm tra correction
-        const correction = await ocrLearningService.findBestCorrection(dateStr, 'date');
-        
-        if (correction) {
-          return {
-            text: correction.correctedText,
-            confidence: correction.confidence
-          };
-        }
-
-        return {
-          text: dateStr,
-          confidence: block.confidence
-        };
-      }
-    }
-
-    const today = new Date().toLocaleDateString('vi-VN');
-    return {
-      text: today,
-      confidence: 0
-    };
-  }
-
-  private async findTotal(textBlocks: TextBlock[]): Promise<{ value: number; confidence: number }> {
-    const totalRegex = /(?:tổng\s*(?:tiền|cộng)|thành\s*tiền)\s*:?\s*([\d,.]+)/i;
-    
-    for (const block of textBlocks) {
-      const normalizedText = vietnameseService.normalizeVietnameseText(block.text);
-      const match = normalizedText.toLowerCase().match(totalRegex);
-      if (match) {
-        const totalStr = match[1].replace(/[,.]/g, '');
-        const total = parseInt(totalStr, 10);
-        
-        // Kiểm tra correction
-        const correction = await ocrLearningService.findBestCorrection(totalStr, 'total');
-        
-        if (correction) {
-          return {
-            value: parseInt(correction.correctedText, 10),
-            confidence: correction.confidence
-          };
-        }
-
-        return {
-          value: total,
-          confidence: block.confidence
-        };
-      }
-    }
-
-    return {
-      value: 0,
-      confidence: 0
-    };
-  }
-
-  private async findItems(textBlocks: TextBlock[]): Promise<Array<{
-    name: string;
-    quantity: number;
-    unit_price: number;
-    total: number;
-    confidence: number;
-  }>> {
-    const items: Array<{
-      name: string;
-      quantity: number;
-      unit_price: number;
-      total: number;
-      confidence: number;
-    }> = [];
-    
-    const itemRegex = /^([\p{L}\s]+)\s*(\d+)\s*(?:x\s*)?(\d+(?:[,.]\d+)?)/u;
-
-    // Lấy danh sách sản phẩm từ database để so khớp
-    const dbItems = await prisma.item.findMany({
-      select: { name: true }
-    });
-    const itemNames = dbItems.map(item => item.name);
-
-    for (const block of textBlocks) {
-      const match = block.text.match(itemRegex);
-      if (match) {
-        const [_, rawName, quantity, price] = match;
-        
-        // Tìm tên sản phẩm phù hợp nhất
-        const bestMatch = vietnameseService.findBestMatch(rawName, itemNames);
-        
-        if (bestMatch.similarity >= OcrService.MIN_ITEM_MATCH_SCORE) {
-          // Kiểm tra correction cho tên sản phẩm
-          const nameCorrection = await ocrLearningService.findBestCorrection(bestMatch.text, 'item');
-          const finalName = nameCorrection ? nameCorrection.correctedText : bestMatch.text;
-          const confidence = nameCorrection ? nameCorrection.confidence : bestMatch.similarity;
-
-          const unitPrice = parseFloat(price.replace(',', '.'));
-          items.push({
-            name: finalName,
-            quantity: parseInt(quantity, 10),
-            unit_price: unitPrice,
-            total: parseInt(quantity, 10) * unitPrice,
-            confidence: confidence
-          });
-        }
-      }
-    }
-
-    return items;
-  }
-
   public async processReceipt(imageBuffer: Buffer): Promise<OcrResult> {
-    console.log('\n🚀 Bắt đầu xử lý hóa đơn...');
+    // Nhận dạng text từ ảnh
+    const blocks = await this.extractTextFromImage(imageBuffer);
     
-    const textBlocks = await this.extractTextFromImage(imageBuffer);
+    // Phân tích cấu trúc hóa đơn
+    const { header, items, summary } = this.analyzeStructure(blocks);
     
-    console.log('\n📊 Xử lý từng phần của hóa đơn...');
-    const [supplier, date, total, items] = await Promise.all([
-      this.findSupplier(textBlocks),
-      this.findDate(textBlocks),
-      this.findTotal(textBlocks),
-      this.findItems(textBlocks)
-    ]);
-
-    console.log('\n📋 Kết quả xử lý:');
-    console.log('- Nhà cung cấp:', supplier.text);
-    console.log('- Ngày:', date.text);
-    console.log('- Tổng tiền:', total.value);
-    console.log('- Số mặt hàng:', items.length);
-
+    // Trích xuất thông tin nhà cung cấp từ header
+    const supplier = header.length > 0 ? header[0].text : 'Không xác định';
+    
+    // Trích xuất ngày tháng từ header
+    const dateMatch = header.find(block => /\d{1,2}\/\d{1,2}\/\d{4}/.test(block.text));
+    const date = dateMatch ? dateMatch.text.match(/\d{1,2}\/\d{1,2}\/\d{4}/)![0] : new Date().toLocaleDateString('vi-VN');
+    
+    // Trích xuất danh sách sản phẩm
+    const extractedItems: ReceiptItem[] = [];
+    for (const block of items) {
+      const item = this.extractItem(block.text);
+      if (item) {
+        extractedItems.push(item);
+      }
+    }
+    
+    // Trích xuất tổng tiền từ summary
+    let total = 0;
+    const totalLine = summary.find(block => this.isSummaryLine(block.text));
+    if (totalLine) {
+      const numbers = totalLine.text.match(/\d+/g);
+      if (numbers) {
+        total = parseInt(numbers[numbers.length - 1]);
+      }
+    } else if (extractedItems.length > 0) {
+      // Tính tổng từ các sản phẩm nếu không tìm thấy dòng tổng
+      total = extractedItems.reduce((sum, item) => sum + item.total, 0);
+    }
+    
+    // Tính độ tin cậy trung bình
     const confidences = [
-      supplier.confidence,
-      date.confidence,
-      total.confidence,
-      ...items.map(item => item.confidence)
+      header[0]?.confidence || 0,
+      ...extractedItems.map(item => item.confidence),
+      summary[0]?.confidence || 0
     ];
     const avgConfidence = confidences.reduce((sum, conf) => sum + conf, 0) / confidences.length;
-
+    
+    // Kiểm tra xem có cần review không
     const needsReview = avgConfidence < OcrService.REVIEW_THRESHOLD || 
-      confidences.some(conf => conf < OcrService.MIN_CONFIDENCE_SCORE);
+      extractedItems.length === 0 || 
+      !total;
 
-    console.log('\n📊 Thống kê:');
-    console.log('- Độ tin cậy trung bình:', (avgConfidence * 100).toFixed(1) + '%');
-    console.log('- Cần review:', needsReview ? 'Có' : 'Không');
-
-    const result = {
-      supplier: supplier.text,
-      date: date.text,
-      total: total.value,
-      items,
+    return {
+      supplier,
+      date,
+      total,
+      items: extractedItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        total: item.total,
+        confidence: item.confidence
+      })),
       confidence: avgConfidence,
       needsReview
     };
-
-    console.log('\n✅ Hoàn thành xử lý hóa đơn');
-    return result;
   }
 
   public async saveCorrections(original: OcrResult, corrected: OcrResult): Promise<void> {

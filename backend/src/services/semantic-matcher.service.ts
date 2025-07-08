@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { PrismaClient } from '@prisma/client';
 import { Redis } from 'ioredis';
+import enhancedVietnameseService from './enhanced-vietnamese.service';
 
 interface EmbeddingResult {
   text: string;
@@ -16,25 +17,27 @@ interface SemanticMatch {
 }
 
 export class SemanticMatcherService {
-  private openai: OpenAI;
+  private openai: OpenAI | null = null;
   private prisma: PrismaClient;
   private redis: Redis;
   private static instance: SemanticMatcherService;
 
   private constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
+    // Khởi tạo OpenAI client nếu có API key
+    if (process.env.OPENAI_API_KEY) {
+      this.openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+      });
+    } else {
+      console.warn('OPENAI_API_KEY not found, semantic matching will use fallback method');
+    }
+
     this.prisma = new PrismaClient();
-    
-    // Khởi tạo Redis với options
-    const redisOptions = {
+    this.redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      db: parseInt(process.env.REDIS_DB || '0')
-    };
-    this.redis = new Redis(redisOptions);
+      password: process.env.REDIS_PASSWORD
+    });
   }
 
   public static getInstance(): SemanticMatcherService {
@@ -44,7 +47,7 @@ export class SemanticMatcherService {
     return SemanticMatcherService.instance;
   }
 
-  private async getEmbedding(text: string): Promise<number[]> {
+  private async getEmbedding(text: string): Promise<number[] | null> {
     const cacheKey = `embedding:${text}`;
     
     // Kiểm tra cache
@@ -54,6 +57,11 @@ export class SemanticMatcherService {
     }
 
     try {
+      // Nếu không có OpenAI, trả về null để dùng phương pháp khác
+      if (!this.openai) {
+        return null;
+      }
+
       const response = await this.openai.embeddings.create({
         model: "text-embedding-3-small",
         input: text
@@ -67,7 +75,7 @@ export class SemanticMatcherService {
       return embedding;
     } catch (error) {
       console.error('Error getting embedding:', error);
-      throw error;
+      return null;
     }
   }
 
@@ -92,18 +100,31 @@ export class SemanticMatcherService {
   ): Promise<SemanticMatch> {
     try {
       const inputEmbedding = await this.getEmbedding(input);
+      
+      // Nếu không có embedding, dùng text matching
+      if (!inputEmbedding) {
+        const textMatch = enhancedVietnameseService.findBestMatch(input, candidates);
+        return {
+          text: textMatch.text,
+          similarity: textMatch.similarity,
+          confidence: textMatch.similarity,
+          alternatives: []
+        };
+      }
+
       const results: EmbeddingResult[] = [];
 
       // Tính toán embeddings cho tất cả candidates
       for (const candidate of candidates) {
         const embedding = await this.getEmbedding(candidate);
-        const similarity = this.cosineSimilarity(inputEmbedding, embedding);
-        
-        results.push({
-          text: candidate,
-          embedding,
-          similarity
-        });
+        if (embedding) {
+          const similarity = this.cosineSimilarity(inputEmbedding, embedding);
+          results.push({
+            text: candidate,
+            embedding,
+            similarity
+          });
+        }
       }
 
       // Sắp xếp theo độ tương đồng
@@ -124,7 +145,15 @@ export class SemanticMatcherService {
       };
     } catch (error) {
       console.error('Error in semantic matching:', error);
-      throw error;
+      
+      // Fallback to text matching
+      const textMatch = enhancedVietnameseService.findBestMatch(input, candidates);
+      return {
+        text: textMatch.text,
+        similarity: textMatch.similarity,
+        confidence: textMatch.similarity,
+        alternatives: []
+      };
     }
   }
 
@@ -133,16 +162,19 @@ export class SemanticMatcherService {
       // Xóa cache cũ
       await this.redis.del(`embedding:${text}`);
       
-      // Tạo embedding mới cho correctedText
-      const embedding = await this.getEmbedding(correctedText);
-      
-      // Cache embedding mới
-      await this.redis.set(
-        `embedding:${correctedText}`,
-        JSON.stringify(embedding),
-        'EX',
-        86400
-      );
+      // Nếu có OpenAI, tạo embedding mới
+      if (this.openai) {
+        const embedding = await this.getEmbedding(correctedText);
+        if (embedding) {
+          // Cache embedding mới
+          await this.redis.set(
+            `embedding:${correctedText}`,
+            JSON.stringify(embedding),
+            'EX',
+            86400
+          );
+        }
+      }
     } catch (error) {
       console.error('Error updating embedding cache:', error);
     }

@@ -3,7 +3,6 @@ import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
-import Input from '../components/common/Input';
 import sampleData from '../data/sample_data.json';
 import { SampleData } from '../types/sample_data';
 import axios from 'axios';

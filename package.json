@@ -1,43 +1,34 @@
 {
   "name": "restaurant-inventory-system",
   "version": "1.0.0",
-  "description": "Hệ thống quản lý kho nhà hàng",
+  "description": "Restaurant Inventory Management System with OCR capabilities",
+  "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc && cp -r src/types dist/",
-    "start": "node dist/server.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate deploy",
-    "prisma:seed": "ts-node prisma/seed.ts",
-    "setup": "npm run prisma:generate && npm run prisma:migrate && npm run prisma:seed"
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "setup": "npm run install:all && cd backend && npm run db:migrate && npm run db:seed",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "start": "cd backend && npm start"
   },
-  "dependencies": {
-    "@prisma/client": "^5.0.0",
-    "@types/xlsx": "^0.0.35",
-    "express": "^4.18.2",
-    "ioredis": "^5.3.2",
-    "jspdf": "^3.0.1",
-    "jspdf-autotable": "^5.0.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-json-editor-ajrm": "^2.5.14",
-    "react-router-dom": "^6.14.2",
-    "socket.io": "^4.7.1",
-    "socket.io-client": "^4.7.1",
-    "tesseract.js": "^6.0.0",
-    "xlsx": "^0.18.5",
-    "zod": "^3.22.4"
-  },
+  "keywords": [
+    "restaurant",
+    "inventory",
+    "management",
+    "ocr",
+    "typescript",
+    "react",
+    "nodejs"
+  ],
+  "author": "Restaurant Inventory Team",
+  "license": "MIT",
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.10.5",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@types/react-json-editor-ajrm": "^2.5.3",
-    "@types/socket.io": "^3.0.2",
-    "prisma": "^5.0.0",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.3.3"
+    "concurrently": "^8.2.2"
   }
 }

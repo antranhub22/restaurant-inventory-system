@@ -3,9 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 
 interface LayoutProps {
   children: React.ReactNode;
+  onLogout?: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children, onLogout }) => {
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -51,6 +52,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
           </li>
         </ul>
+        
+        {/* Logout button */}
+        {onLogout && (
+          <div className="sidebar-footer">
+            <button
+              onClick={onLogout}
+              className="logout-button"
+            >
+              🚪 Đăng xuất
+            </button>
+          </div>
+        )}
       </nav>
       <main className="main-content">
         {children}

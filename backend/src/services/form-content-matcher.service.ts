@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import enhancedMatcherService from './enhanced-matcher.service';
-import type { FormType } from '../types/form-template';
+import { FormType } from '../types/form-template';
 
 interface ExtractedContent {
   text: string;
@@ -58,18 +58,8 @@ export class FormContentMatcherService {
     formType: FormType
   ): Promise<ProcessedForm> {
     try {
-      // 1. Lấy form template
-      const template = await this.prisma.formTemplate.findFirst({
-        where: {
-          type: formType,
-          isDefault: true,
-          isActive: true
-        }
-      });
-
-      if (!template) {
-        throw new Error(`No template found for form type: ${formType}`);
-      }
+      // 1. Lấy form template cứng (hardcoded) thay vì từ database
+      const template = this.getHardcodedTemplate(formType);
 
       // 2. Xử lý các trường thông tin chung
       const generalFields = await this.processGeneralFields(
@@ -94,6 +84,64 @@ export class FormContentMatcherService {
       console.error('Error processing OCR content:', error);
       throw error;
     }
+  }
+
+  private getHardcodedTemplate(formType: FormType): any {
+    // Template cứng cho các loại form cơ bản
+    const templates = {
+      IMPORT: {
+        sections: [
+          {
+            fields: [
+              { name: 'date', type: 'date', label: 'Ngày nhập' },
+              { name: 'supplierId', type: 'select', label: 'Nhà cung cấp' },
+              { name: 'invoice_no', type: 'text', label: 'Số hóa đơn' },
+              { name: 'total', type: 'currency', label: 'Tổng tiền' },
+              { name: 'notes', type: 'text', label: 'Ghi chú' }
+            ]
+          }
+        ]
+      },
+      EXPORT: {
+        sections: [
+          {
+            fields: [
+              { name: 'date', type: 'date', label: 'Ngày xuất' },
+              { name: 'department', type: 'select', label: 'Phòng ban' },
+              { name: 'purpose', type: 'select', label: 'Mục đích' },
+              { name: 'total', type: 'currency', label: 'Tổng tiền' },
+              { name: 'notes', type: 'text', label: 'Ghi chú' }
+            ]
+          }
+        ]
+      },
+      RETURN: {
+        sections: [
+          {
+            fields: [
+              { name: 'date', type: 'date', label: 'Ngày hoàn' },
+              { name: 'reason', type: 'select', label: 'Lý do hoàn' },
+              { name: 'total', type: 'currency', label: 'Tổng tiền' },
+              { name: 'notes', type: 'text', label: 'Ghi chú' }
+            ]
+          }
+        ]
+      },
+      ADJUSTMENT: {
+        sections: [
+          {
+            fields: [
+              { name: 'date', type: 'date', label: 'Ngày điều chỉnh' },
+              { name: 'reason', type: 'select', label: 'Lý do điều chỉnh' },
+              { name: 'total', type: 'currency', label: 'Tổng tiền' },
+              { name: 'notes', type: 'text', label: 'Ghi chú' }
+            ]
+          }
+        ]
+      }
+    };
+
+    return templates[formType] || templates.IMPORT;
   }
 
   private async processGeneralFields(

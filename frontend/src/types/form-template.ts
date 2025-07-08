@@ -2,7 +2,8 @@ export enum FormType {
   IMPORT = 'IMPORT',
   EXPORT = 'EXPORT',
   RETURN = 'RETURN',
-  ADJUSTMENT = 'ADJUSTMENT'
+  ADJUSTMENT = 'ADJUSTMENT',
+  WASTE = 'WASTE'
 }
 
 export interface FormFieldOption {

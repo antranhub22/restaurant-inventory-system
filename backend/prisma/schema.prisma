@@ -543,3 +543,15 @@ model WasteItem {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+model OCRFormDraft {
+  id            String   @id @default(cuid())
+  type          String   // IMPORT, EXPORT, RETURN, ADJUSTMENT, ...
+  fields        Json     // Thông tin chung (ngày, nhà cung cấp, ...)
+  items         Json     // Danh sách mặt hàng
+  originalImage String?  // Đường dẫn ảnh gốc
+  status        String   @default("pending") // pending, confirmed, rejected
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

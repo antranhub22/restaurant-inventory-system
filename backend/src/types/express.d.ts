@@ -1,14 +1,14 @@
-import { Role } from '@prisma/client';
+import 'express';
 
 declare global {
   namespace Express {
+    interface User {
+      id: string;
+      role?: string;
+      [key: string]: any;
+    }
     interface Request {
-      user?: {
-        id: number;
-        username: string;
-        role: Role;
-        permissions?: string[];
-      };
+      user?: User;
     }
   }
 } 

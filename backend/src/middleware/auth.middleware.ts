@@ -1,24 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export interface AuthRequest extends Request {
-  user?: {
-    id: number;
-    username: string;
-    role: Role;
-    permissions?: string[];
-  };
-}
+// Không cần AuthRequest riêng, dùng luôn Express.Request đã mở rộng
 
 interface JwtPayload {
   userId: number;
 }
 
 export const authMiddleware = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -32,23 +25,21 @@ export const authMiddleware = async (
       });
     }
 
-    const token = authHeader.split(' ')[1];
+    const token: string = (authHeader && typeof authHeader === 'string' && authHeader.split(' ')[1]) ? authHeader.split(' ')[1] : '';
 
     // 2. Verify token
-    const payload = jwt.verify(
-      token,
-      process.env.JWT_SECRET || 'your-secret-key'
-    );
+    const jwtSecret: string = process.env.JWT_SECRET || '';
+    const decoded = jwt.verify(token, jwtSecret);
 
     // Type guard cho payload
     if (
-      typeof payload === 'object' &&
-      payload !== null &&
-      'userId' in payload
+      typeof decoded === 'object' &&
+      decoded !== null &&
+      'userId' in decoded
     ) {
       // 3. Lấy thông tin user
       const user = await prisma.user.findUnique({
-        where: { id: payload.userId },
+        where: { id: decoded.userId },
         select: {
           id: true,
           username: true,
@@ -67,10 +58,10 @@ export const authMiddleware = async (
 
       // 4. Gắn thông tin user vào request
       req.user = {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        permissions: user.permissions as string[]
+        id: user.id ? user.id.toString() : '',
+        username: user.username ? user.username.toString() : '',
+        role: user.role ? user.role.toString() : '',
+        permissions: Array.isArray(user.permissions) ? user.permissions : []
       };
 
       next();
@@ -90,13 +81,13 @@ export const authMiddleware = async (
 };
 
 export const authorize = (allowedRoles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: 'Chưa xác thực người dùng' });
       }
 
-      if (!allowedRoles.includes(req.user.role)) {
+      if (!allowedRoles.includes(req.user.role || '')) {
         return res.status(403).json({ message: 'Không có quyền thực hiện thao tác này' });
       }
 

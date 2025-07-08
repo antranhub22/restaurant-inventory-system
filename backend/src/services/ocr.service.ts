@@ -1,4 +1,4 @@
-import { protos } from '@google-cloud/vision';
+import { ImageAnnotatorClient, protos } from '@google-cloud/vision';
 import visionClient from '../config/vision.config';
 import { PrismaClient } from '@prisma/client';
 import vietnameseService from './vietnamese.service';
@@ -32,6 +32,13 @@ interface TextBlock {
   };
 }
 
+type Page = protos.google.cloud.vision.v1.IPage;
+type Block = protos.google.cloud.vision.v1.IBlock;
+type Paragraph = protos.google.cloud.vision.v1.IParagraph;
+type Word = protos.google.cloud.vision.v1.IWord;
+type Symbol = protos.google.cloud.vision.v1.ISymbol;
+type Vertex = protos.google.cloud.vision.v1.IVertex;
+
 class OcrService {
   private static readonly MIN_CONFIDENCE_SCORE = parseFloat(process.env.OCR_MIN_CONFIDENCE_SCORE || '0.8');
   private static readonly MIN_ITEM_MATCH_SCORE = 0.85;
@@ -62,13 +69,13 @@ class OcrService {
 
       const textBlocks: TextBlock[] = [];
       
-      fullTextAnnotation.pages.forEach((page, pageIndex) => {
+      fullTextAnnotation.pages.forEach((page: Page, pageIndex: number) => {
         console.log(`\n📄 Xử lý trang ${pageIndex + 1}:`);
         console.log(`- Số blocks: ${page.blocks?.length || 0}`);
         
-        page.blocks?.forEach((block, blockIndex) => {
+        page.blocks?.forEach((block: Block, blockIndex: number) => {
           if (block.boundingBox?.vertices) {
-            const [topLeft, topRight, bottomRight, bottomLeft] = block.boundingBox.vertices;
+            const [topLeft, topRight, bottomRight, bottomLeft] = block.boundingBox.vertices as Vertex[];
             
             const text = block.paragraphs?.map(p => 
               p.words?.map(w => 
@@ -87,10 +94,10 @@ class OcrService {
                 text,
                 confidence,
                 boundingBox: {
-                  left: Math.min(topLeft.x || 0, bottomLeft.x || 0),
-                  top: Math.min(topLeft.y || 0, topRight.y || 0),
-                  right: Math.max(topRight.x || 0, bottomRight.x || 0),
-                  bottom: Math.max(bottomLeft.y || 0, bottomRight.y || 0)
+                  left: Math.min(topLeft?.x || 0, bottomLeft?.x || 0),
+                  top: Math.min(topLeft?.y || 0, topRight?.y || 0),
+                  right: Math.max(topRight?.x || 0, bottomRight?.x || 0),
+                  bottom: Math.max(bottomLeft?.y || 0, bottomRight?.y || 0)
                 }
               });
             } else {

@@ -26,8 +26,8 @@ services:
   - type: web
     name: restaurant-inventory-frontend
     runtime: static
-    buildCommand: cd backend/frontend && ./render-build.sh
-    staticPublishPath: ./backend/frontend/dist
+    buildCommand: cd frontend && ./render-build.sh
+    staticPublishPath: ./frontend/dist
     headers:
       - path: /*
         name: X-Frame-Options

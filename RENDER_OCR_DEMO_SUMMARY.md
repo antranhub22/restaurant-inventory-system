@@ -78,8 +78,8 @@ window.open('https://restaurant-inventory-backend.onrender.com/api/health', '_bl
 - type: web
   name: restaurant-inventory-frontend
   runtime: static
-  buildCommand: cd backend/frontend && ./render-build.sh
-  staticPublishPath: ./backend/frontend/dist
+  buildCommand: cd frontend && ./render-build.sh
+staticPublishPath: ./frontend/dist
   envVars:
     - VITE_API_URL=https://restaurant-inventory-backend.onrender.com
     - VITE_ENV=production

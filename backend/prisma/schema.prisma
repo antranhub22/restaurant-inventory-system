@@ -39,6 +39,9 @@ model User {
   // Relations
   transactions      Transaction[]
   approvedReconciliations DepartmentReconciliation[] @relation("ApprovedBy")
+  processedImports    Import[]  @relation("ProcessedBy")
+  approvedImports     Import[]  @relation("ApprovedBy")
+  rejectedImports     Import[]  @relation("RejectedBy")
 }
 
 enum Role {
@@ -78,6 +81,7 @@ model Supplier {
   items       Item[]   @relation("PrimarySupplier")
   secondaryItems Item[] @relation("SecondarySupplier")
   inventoryBatches InventoryBatch[]
+  imports       Import[]
 }
 
 model Item {
@@ -104,6 +108,7 @@ model Item {
   secondarySupplier Supplier? @relation("SecondarySupplier", fields: [secondarySupplierId], references: [id])
   secondarySupplierId Int?
   departmentReconciliations DepartmentReconciliation[]
+  importItems ImportItem[]
 }
 
 model Inventory {
@@ -249,4 +254,43 @@ model OcrLearning {
   @@index([type])
   @@index([originalText])
   @@index([correctionCount])
+}
+
+model Import {
+  id              Int           @id @default(autoincrement())
+  date            DateTime
+  supplier        Supplier      @relation(fields: [supplierId], references: [id])
+  supplierId      Int
+  invoiceNumber   String        @unique
+  processedBy     User          @relation("ProcessedBy", fields: [processedById], references: [id])
+  processedById   Int
+  totalAmount     Float
+  notes           String?
+  attachments     String[]
+  status          String        @default("pending")
+  approvedBy      User?         @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedById    Int?
+  approvedAt      DateTime?
+  rejectedBy      User?         @relation("RejectedBy", fields: [rejectedById], references: [id])
+  rejectedById    Int?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  items           ImportItem[]
+}
+
+model ImportItem {
+  id          Int       @id @default(autoincrement())
+  import      Import    @relation(fields: [importId], references: [id], onDelete: Cascade)
+  importId    Int
+  item        Item      @relation(fields: [itemId], references: [id])
+  itemId      Int
+  quantity    Float
+  unitPrice   Float
+  expiryDate  DateTime?
+  batchNumber String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

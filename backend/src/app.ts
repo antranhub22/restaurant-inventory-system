@@ -12,6 +12,7 @@ import inventoryRoutes from './routes/inventory';
 import transactionRoutes from './routes/transactions';
 import reportRoutes from './routes/reports';
 import ocrRoutes from './routes/ocr';
+import importRoutes from './routes/import.routes';
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +56,9 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Static files
+app.use('/uploads', express.static('uploads'));
+
 // Health check endpoint
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ 
@@ -80,6 +84,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ocr', ocrRoutes);
+app.use('/api/imports', importRoutes);
 
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {

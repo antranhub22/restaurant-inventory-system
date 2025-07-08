@@ -1,0 +1,301 @@
+import { PrismaClient } from '@prisma/client';
+import { ImportData, ImportItem, ImportStatus, ImportValidationError } from '../types/import';
+import { Redis } from 'ioredis';
+
+class ImportService {
+  private prisma: PrismaClient;
+  private redis: Redis;
+
+  constructor() {
+    this.prisma = new PrismaClient();
+    this.redis = new Redis(process.env.REDIS_URL || '');
+  }
+
+  async validateImport(data: ImportData): Promise<ImportValidationError[]> {
+    const errors: ImportValidationError[] = [];
+
+    // Kiểm tra ngày
+    if (!data.date || data.date > new Date()) {
+      errors.push({
+        field: 'date',
+        message: 'Ngày nhập không hợp lệ'
+      });
+    }
+
+    // Kiểm tra nhà cung cấp
+    const supplier = await this.prisma.supplier.findUnique({
+      where: { id: data.supplierId }
+    });
+    if (!supplier) {
+      errors.push({
+        field: 'supplierId',
+        message: 'Nhà cung cấp không tồn tại'
+      });
+    }
+
+    // Kiểm tra items
+    if (!data.items?.length) {
+      errors.push({
+        field: 'items',
+        message: 'Phiếu nhập phải có ít nhất một mặt hàng'
+      });
+    } else {
+      for (const item of data.items) {
+        // Kiểm tra sản phẩm tồn tại
+        const product = await this.prisma.item.findUnique({
+          where: { id: item.itemId }
+        });
+        if (!product) {
+          errors.push({
+            field: `items[${item.itemId}]`,
+            message: `Sản phẩm ID ${item.itemId} không tồn tại`
+          });
+        }
+
+        // Kiểm tra số lượng
+        if (item.quantity <= 0) {
+          errors.push({
+            field: `items[${item.itemId}].quantity`,
+            message: 'Số lượng phải lớn hơn 0'
+          });
+        }
+
+        // Kiểm tra đơn giá
+        if (item.unitPrice <= 0) {
+          errors.push({
+            field: `items[${item.itemId}].unitPrice`,
+            message: 'Đơn giá phải lớn hơn 0'
+          });
+        }
+
+        // Kiểm tra hạn sử dụng
+        if (item.expiryDate && new Date(item.expiryDate) <= new Date()) {
+          errors.push({
+            field: `items[${item.itemId}].expiryDate`,
+            message: 'Hạn sử dụng không hợp lệ'
+          });
+        }
+      }
+    }
+
+    return errors;
+  }
+
+  async createImport(data: ImportData) {
+    // Validate dữ liệu
+    const errors = await this.validateImport(data);
+    if (errors.length > 0) {
+      throw new Error(JSON.stringify(errors));
+    }
+
+    // Bắt đầu transaction
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. Tạo phiếu nhập
+      const importRecord = await tx.import.create({
+        data: {
+          date: data.date,
+          supplierId: data.supplierId,
+          invoiceNumber: data.invoiceNumber,
+          processedById: data.processedById,
+          totalAmount: data.totalAmount,
+          notes: data.notes,
+          status: ImportStatus.PENDING,
+          attachments: data.attachments
+        }
+      });
+
+      // 2. Tạo chi tiết nhập
+      const importItems = await Promise.all(
+        data.items.map(item =>
+          tx.importItem.create({
+            data: {
+              importId: importRecord.id,
+              itemId: item.itemId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              expiryDate: item.expiryDate,
+              batchNumber: item.batchNumber,
+              notes: item.notes
+            }
+          })
+        )
+      );
+
+      // 3. Cập nhật tồn kho
+      await Promise.all(
+        data.items.map(async (item) => {
+          const inventory = await tx.inventory.findUnique({
+            where: { itemId: item.itemId }
+          });
+
+          if (inventory) {
+            await tx.inventory.update({
+              where: { itemId: item.itemId },
+              data: {
+                currentStock: inventory.currentStock + item.quantity,
+                lastUpdated: new Date()
+              }
+            });
+          } else {
+            await tx.inventory.create({
+              data: {
+                itemId: item.itemId,
+                currentStock: item.quantity,
+                lastUpdated: new Date()
+              }
+            });
+          }
+
+          // Tạo batch mới
+          if (item.expiryDate || item.batchNumber) {
+            await tx.inventoryBatch.create({
+              data: {
+                itemId: item.itemId,
+                batchNumber: item.batchNumber,
+                initialQuantity: item.quantity,
+                currentQuantity: item.quantity,
+                unitCost: item.unitPrice,
+                receivedDate: data.date,
+                expiryDate: item.expiryDate
+              }
+            });
+          }
+        })
+      );
+
+      // 4. Tạo transaction log
+      await tx.transaction.create({
+        data: {
+          type: 'IN',
+          itemId: data.items[0].itemId, // Ghi log cho item đầu tiên
+          quantity: data.items[0].quantity,
+          unitCost: data.items[0].unitPrice,
+          processedById: data.processedById,
+          notes: `Nhập kho từ ${data.invoiceNumber}`
+        }
+      });
+
+      // 5. Cập nhật cache Redis
+      await this.updateCache(importRecord.id);
+
+      return {
+        ...importRecord,
+        items: importItems
+      };
+    });
+  }
+
+  private async updateCache(importId: number) {
+    const cacheKey = `import:${importId}`;
+    const import_data = await this.prisma.import.findUnique({
+      where: { id: importId },
+      include: {
+        items: {
+          include: {
+            item: true
+          }
+        },
+        supplier: true
+      }
+    });
+
+    if (import_data) {
+      await this.redis.set(cacheKey, JSON.stringify(import_data), 'EX', 3600); // Cache 1 giờ
+    }
+  }
+
+  async getImportById(id: number) {
+    // Thử lấy từ cache
+    const cacheKey = `import:${id}`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    // Nếu không có trong cache, lấy từ database
+    const import_data = await this.prisma.import.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            item: true
+          }
+        },
+        supplier: true
+      }
+    });
+
+    if (import_data) {
+      // Cập nhật cache
+      await this.redis.set(cacheKey, JSON.stringify(import_data), 'EX', 3600);
+    }
+
+    return import_data;
+  }
+
+  async approveImport(id: number, approvedById: number) {
+    return await this.prisma.$transaction(async (tx) => {
+      const import_data = await tx.import.findUnique({
+        where: { id },
+        include: { items: true }
+      });
+
+      if (!import_data) {
+        throw new Error('Phiếu nhập không tồn tại');
+      }
+
+      if (import_data.status !== ImportStatus.PENDING) {
+        throw new Error('Phiếu nhập không ở trạng thái chờ duyệt');
+      }
+
+      // Cập nhật trạng thái phiếu nhập
+      const updated = await tx.import.update({
+        where: { id },
+        data: {
+          status: ImportStatus.APPROVED,
+          approvedById,
+          approvedAt: new Date()
+        }
+      });
+
+      // Xóa cache
+      await this.redis.del(`import:${id}`);
+
+      return updated;
+    });
+  }
+
+  async rejectImport(id: number, rejectedById: number, reason: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const import_data = await tx.import.findUnique({
+        where: { id }
+      });
+
+      if (!import_data) {
+        throw new Error('Phiếu nhập không tồn tại');
+      }
+
+      if (import_data.status !== ImportStatus.PENDING) {
+        throw new Error('Phiếu nhập không ở trạng thái chờ duyệt');
+      }
+
+      // Cập nhật trạng thái phiếu nhập
+      const updated = await tx.import.update({
+        where: { id },
+        data: {
+          status: ImportStatus.REJECTED,
+          rejectedById,
+          rejectedAt: new Date(),
+          rejectionReason: reason
+        }
+      });
+
+      // Xóa cache
+      await this.redis.del(`import:${id}`);
+
+      return updated;
+    });
+  }
+}
+
+export default new ImportService(); 

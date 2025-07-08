@@ -1,7 +1,7 @@
-import OpenAI from 'openai';
 import { PrismaClient } from '@prisma/client';
 import { Redis } from 'ioredis';
 import enhancedVietnameseService from './enhanced-vietnamese.service';
+import aiEmbeddingsService from './ai-embeddings.service';
 
 interface EmbeddingResult {
   text: string;
@@ -17,21 +17,11 @@ interface SemanticMatch {
 }
 
 export class SemanticMatcherService {
-  private openai: OpenAI | null = null;
   private prisma: PrismaClient;
   private redis: Redis;
   private static instance: SemanticMatcherService;
 
   private constructor() {
-    // Khởi tạo OpenAI client nếu có API key
-    if (process.env.OPENAI_API_KEY) {
-      this.openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY
-      });
-    } else {
-      console.warn('OPENAI_API_KEY not found, semantic matching will use fallback method');
-    }
-
     this.prisma = new PrismaClient();
     this.redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
@@ -57,20 +47,12 @@ export class SemanticMatcherService {
     }
 
     try {
-      // Nếu không có OpenAI, trả về null để dùng phương pháp khác
-      if (!this.openai) {
-        return null;
-      }
-
-      const response = await this.openai.embeddings.create({
-        model: "text-embedding-3-small",
-        input: text
-      });
-
-      const embedding = response.data[0].embedding;
+      const embedding = await aiEmbeddingsService.getEmbedding(text);
       
-      // Cache kết quả
-      await this.redis.set(cacheKey, JSON.stringify(embedding), 'EX', 86400); // Cache 24h
+      if (embedding) {
+        // Cache kết quả
+        await this.redis.set(cacheKey, JSON.stringify(embedding), 'EX', 86400); // Cache 24h
+      }
       
       return embedding;
     } catch (error) {
@@ -99,9 +81,21 @@ export class SemanticMatcherService {
     threshold: number = 0.7
   ): Promise<SemanticMatch> {
     try {
+      // Kiểm tra xem có AI service không
+      if (!aiEmbeddingsService.hasProvider()) {
+        // Fallback to text matching
+        const textMatch = enhancedVietnameseService.findBestMatch(input, candidates);
+        return {
+          text: textMatch.text,
+          similarity: textMatch.similarity,
+          confidence: textMatch.similarity,
+          alternatives: []
+        };
+      }
+
       const inputEmbedding = await this.getEmbedding(input);
       
-      // Nếu không có embedding, dùng text matching
+      // Nếu không lấy được embedding, dùng text matching
       if (!inputEmbedding) {
         const textMatch = enhancedVietnameseService.findBestMatch(input, candidates);
         return {
@@ -162,8 +156,8 @@ export class SemanticMatcherService {
       // Xóa cache cũ
       await this.redis.del(`embedding:${text}`);
       
-      // Nếu có OpenAI, tạo embedding mới
-      if (this.openai) {
+      // Nếu có AI service, tạo embedding mới
+      if (aiEmbeddingsService.hasProvider()) {
         const embedding = await this.getEmbedding(correctedText);
         if (embedding) {
           // Cache embedding mới

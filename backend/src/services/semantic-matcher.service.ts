@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { Redis } from 'ioredis';
+import RedisService from './redis.service';
 import enhancedVietnameseService from './enhanced-vietnamese.service';
 import aiEmbeddingsService from './ai-embeddings.service';
 
@@ -18,16 +18,12 @@ interface SemanticMatch {
 
 export class SemanticMatcherService {
   private prisma: PrismaClient;
-  private redis: Redis;
+  private redisService: RedisService;
   private static instance: SemanticMatcherService;
 
   private constructor() {
     this.prisma = new PrismaClient();
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD
-    });
+    this.redisService = RedisService.getInstance();
   }
 
   public static getInstance(): SemanticMatcherService {
@@ -40,18 +36,20 @@ export class SemanticMatcherService {
   private async getEmbedding(text: string): Promise<number[] | null> {
     const cacheKey = `embedding:${text}`;
     
-    // Kiểm tra cache
-    const cached = await this.redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
+    // Kiểm tra cache nếu Redis khả dụng
+    if (this.redisService.isAvailable()) {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
     }
 
     try {
       const embedding = await aiEmbeddingsService.getEmbedding(text);
       
-      if (embedding) {
-        // Cache kết quả
-        await this.redis.set(cacheKey, JSON.stringify(embedding), 'EX', 86400); // Cache 24h
+      if (embedding && this.redisService.isAvailable()) {
+        // Cache kết quả nếu Redis khả dụng
+        await this.redisService.set(cacheKey, JSON.stringify(embedding), 86400); // Cache 24h
       }
       
       return embedding;
@@ -153,18 +151,19 @@ export class SemanticMatcherService {
 
   public async updateEmbeddingCache(text: string, correctedText: string): Promise<void> {
     try {
-      // Xóa cache cũ
-      await this.redis.del(`embedding:${text}`);
+      // Xóa cache cũ nếu Redis khả dụng
+      if (this.redisService.isAvailable()) {
+        await this.redisService.del(`embedding:${text}`);
+      }
       
       // Nếu có AI service, tạo embedding mới
       if (aiEmbeddingsService.hasProvider()) {
         const embedding = await this.getEmbedding(correctedText);
-        if (embedding) {
+        if (embedding && this.redisService.isAvailable()) {
           // Cache embedding mới
-          await this.redis.set(
+          await this.redisService.set(
             `embedding:${correctedText}`,
             JSON.stringify(embedding),
-            'EX',
             86400
           );
         }

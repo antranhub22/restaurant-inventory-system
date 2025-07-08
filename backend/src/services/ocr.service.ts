@@ -1,25 +1,28 @@
 import { createWorker } from 'tesseract.js';
 import { PrismaClient } from '@prisma/client';
 import vietnameseService from './vietnamese.service';
-import ocrLearningService from './ocr.learning.service';
 
 const prisma = new PrismaClient();
 
-interface ReceiptSection {
-  header: TextBlock[];    // Thông tin nhà cung cấp, ngày
-  items: TextBlock[];     // Danh sách sản phẩm
-  summary: TextBlock[];   // Tổng tiền, thuế, etc.
+interface TextElement {
+  text: string;
+  confidence: number;
+  position: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
-interface ReceiptItem {
-  name: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-  confidence: number;
+interface DocumentStructure {
+  elements: TextElement[];
+  width: number;
+  height: number;
 }
 
 export interface OcrResult {
+  rawText: string;           // Toàn bộ text trích xuất được
   supplier: string;
   date: string;
   total: number;
@@ -34,23 +37,11 @@ export interface OcrResult {
   needsReview: boolean;
 }
 
-interface TextBlock {
-  text: string;
-  confidence: number;
-  boundingBox: {
-    left: number;
-    top: number;
-    right: number;
-    bottom: number;
-  };
-}
-
 class OcrService {
-  private static readonly MIN_CONFIDENCE_SCORE = 0.5; // Giảm threshold để test
-  private static readonly MIN_ITEM_MATCH_SCORE = 0.85;
+  private static readonly MIN_CONFIDENCE_SCORE = 0.5;
   private static readonly REVIEW_THRESHOLD = 0.9;
 
-  private async extractTextFromImage(imageBuffer: Buffer): Promise<TextBlock[]> {
+  private async extractTextFromImage(imageBuffer: Buffer): Promise<DocumentStructure> {
     try {
       console.log('🔍 Bắt đầu xử lý OCR với Tesseract...');
       console.log('📊 Kích thước ảnh:', imageBuffer.length, 'bytes');
@@ -65,325 +56,217 @@ class OcrService {
         }
       });
 
-      // Nhận dạng text
+      // Nhận dạng text với thông tin vị trí
       console.log('🔍 Đang xử lý OCR...');
-      const { data } = await worker.recognize(imageBuffer);
+      const { data } = await worker.recognize(imageBuffer, {
+        pageseg_mode: '1',
+        preserve_interword_spaces: '1'
+      });
       
-      if (!data || !data.text) {
+      if (!data || !data.words) {
         console.error('❌ Không nhận được kết quả từ Tesseract');
         await worker.terminate();
-        return [];
+        return { elements: [], width: 0, height: 0 };
       }
 
-      console.log('📝 Text nhận dạng được:', data.text.substring(0, 200) + '...');
-      
-      const textBlocks: TextBlock[] = [];
-      
-      // Xử lý từng dòng text
-      const lines = data.text.split('\n');
-      const avgConfidence = data.confidence || 85;
-      
-      lines.forEach((line: string, index: number) => {
-        const trimmedLine = line.trim();
-        if (trimmedLine) {
-          const lineConfidence = this.calculateLineConfidence(trimmedLine, avgConfidence);
-          
-          textBlocks.push({
-            text: trimmedLine,
-            confidence: lineConfidence,
-            boundingBox: {
-              left: 0,
-              top: index * 20,
-              right: 1000,
-              bottom: (index + 1) * 20
-            }
-          });
+      // Trích xuất thông tin vị trí của từng từ
+      const elements: TextElement[] = data.words.map(word => ({
+        text: word.text,
+        confidence: word.confidence / 100,
+        position: {
+          x: word.bbox.x0,
+          y: word.bbox.y0,
+          width: word.bbox.x1 - word.bbox.x0,
+          height: word.bbox.y1 - word.bbox.y0
         }
-      });
+      }));
 
       await worker.terminate();
-      
-      const filteredBlocks = textBlocks.filter(block => 
-        block.confidence >= OcrService.MIN_CONFIDENCE_SCORE
-      );
-      
-      console.log(`\n✨ Kết quả OCR: ${filteredBlocks.length} dòng text`);
-      filteredBlocks.slice(0, 5).forEach(block => {
-        console.log(`- "${block.text}" (${(block.confidence * 100).toFixed(1)}%)`);
+
+      // Sắp xếp các element theo vị trí từ trên xuống, trái sang phải
+      elements.sort((a, b) => {
+        const yDiff = a.position.y - b.position.y;
+        if (Math.abs(yDiff) < 10) { // Cùng một dòng
+          return a.position.x - b.position.x;
+        }
+        return yDiff;
       });
+
+      // Tính kích thước tổng thể của document
+      const width = Math.max(...elements.map(e => e.position.x + e.position.width));
+      const height = Math.max(...elements.map(e => e.position.y + e.position.height));
+
+      console.log(`\n✨ Đã trích xuất được ${elements.length} phần tử văn bản`);
       
-      return filteredBlocks;
+      return { elements, width, height };
     } catch (error: any) {
       console.error('❌ Lỗi trong quá trình xử lý OCR:', error);
       console.error('Chi tiết lỗi:', error.message || error);
       console.error('Stack trace:', error.stack);
-      
       throw new Error(`Lỗi khi xử lý OCR: ${error.message || 'Unknown error'}`);
     }
   }
 
-  private analyzeStructure(blocks: TextBlock[]): ReceiptSection {
-    // Sắp xếp blocks theo vị trí từ trên xuống
-    const sortedBlocks = [...blocks].sort((a, b) => a.boundingBox.top - b.boundingBox.top);
-    
-    // Phân tích cấu trúc hóa đơn
-    const header: TextBlock[] = [];
-    const items: TextBlock[] = [];
-    const summary: TextBlock[] = [];
+  private groupElementsByLine(elements: TextElement[]): TextElement[][] {
+    const lines: TextElement[][] = [];
+    let currentLine: TextElement[] = [];
+    let lastY = -1;
 
-    let currentSection = 'header';
-    
-    for (const block of sortedBlocks) {
-      // Chuyển sang phần items nếu tìm thấy dòng sản phẩm đầu tiên
-      if (currentSection === 'header' && this.isItemLine(block.text)) {
-        currentSection = 'items';
-      }
-      // Chuyển sang phần summary nếu tìm thấy từ khóa tổng tiền
-      else if (currentSection === 'items' && this.isSummaryLine(block.text)) {
-        currentSection = 'summary';
-      }
-
-      // Thêm block vào section tương ứng
-      switch (currentSection) {
-        case 'header':
-          header.push(block);
-          break;
-        case 'items':
-          items.push(block);
-          break;
-        case 'summary':
-          summary.push(block);
-          break;
-      }
-    }
-
-    return { header, items, summary };
-  }
-
-  private isItemLine(text: string): boolean {
-    // Kiểm tra xem dòng có phải là sản phẩm không
-    const itemPatterns = [
-      /^\d+\s*x\s*\d+/,  // "2 x 50000"
-      /\d+\s*(?:cái|kg|g|ml|l)\s*x\s*\d+/i,  // "2 kg x 50000"
-      /^[\p{L}\s]+\s+\d+\s*x\s*\d+/u,  // "Gà ta 2 x 50000"
-      /^[\p{L}\s]+\s+\d+\s*(?:cái|kg|g|ml|l)\s*x\s*\d+/iu  // "Gà ta 2 kg x 50000"
-    ];
-
-    return itemPatterns.some(pattern => pattern.test(text));
-  }
-
-  private isSummaryLine(text: string): boolean {
-    // Kiểm tra xem dòng có phải là tổng tiền không
-    const summaryPatterns = [
-      /tổng\s*(?:tiền|cộng)/i,
-      /thành\s*tiền/i,
-      /total/i,
-      /sum/i
-    ];
-
-    return summaryPatterns.some(pattern => pattern.test(text));
-  }
-
-  private extractItem(text: string): ReceiptItem | null {
-    try {
-      // Các pattern để trích xuất thông tin sản phẩm
-      const patterns = [
-        // "Gà ta 2 x 50000"
-        /^([\p{L}\s]+)\s+(\d+)\s*x\s*(\d+)/u,
-        // "2 x 50000 Gà ta"
-        /^(\d+)\s*x\s*(\d+)\s+([\p{L}\s]+)/u,
-        // "Gà ta 2kg x 50000"
-        /^([\p{L}\s]+)\s+(\d+)\s*(?:cái|kg|g|ml|l)\s*x\s*(\d+)/iu
-      ];
-
-      for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match) {
-          const [_, nameOrQuantity1, quantityOrPrice, priceOrName] = match;
-          
-          // Xác định đúng thứ tự các thành phần
-          let name: string, quantity: number, price: number;
-          
-          if (/^\d+$/.test(nameOrQuantity1)) {
-            // Trường hợp "2 x 50000 Gà ta"
-            name = priceOrName;
-            quantity = parseInt(nameOrQuantity1);
-            price = parseInt(quantityOrPrice);
-          } else {
-            // Trường hợp "Gà ta 2 x 50000"
-            name = nameOrQuantity1;
-            quantity = parseInt(quantityOrPrice);
-            price = parseInt(priceOrName);
-          }
-
-          return {
-            name: name.trim(),
-            quantity,
-            unitPrice: price,
-            total: quantity * price,
-            confidence: this.calculateItemConfidence(text)
-          };
+    for (const element of elements) {
+      if (lastY === -1 || Math.abs(element.position.y - lastY) < 10) {
+        // Cùng dòng
+        currentLine.push(element);
+      } else {
+        // Dòng mới
+        if (currentLine.length > 0) {
+          lines.push([...currentLine]);
         }
+        currentLine = [element];
       }
-    } catch (error) {
-      console.error('Lỗi khi trích xuất thông tin sản phẩm:', error);
+      lastY = element.position.y;
     }
 
-    return null;
+    if (currentLine.length > 0) {
+      lines.push(currentLine);
+    }
+
+    return lines;
   }
 
-  private calculateItemConfidence(text: string): number {
-    // Tính độ tin cậy cho sản phẩm dựa trên format
-    let confidence = 0.5; // Điểm cơ bản
+  private async analyzeDocument(doc: DocumentStructure): Promise<OcrResult> {
+    // Nhóm các element thành dòng
+    const lines = this.groupElementsByLine(doc.elements);
+    
+    // Tính toán các vùng của document dựa vào khoảng cách
+    const headerRegion = doc.height * 0.3;  // 30% đầu trang
+    const footerRegion = doc.height * 0.8;  // 20% cuối trang
 
-    // Cộng điểm nếu có các thành phần chuẩn
-    if (/^[\p{L}\s]+/.test(text)) confidence += 0.1; // Có tên sản phẩm
-    if (/\d+\s*x\s*\d+/.test(text)) confidence += 0.2; // Có format số lượng x đơn giá
-    if (/(?:cái|kg|g|ml|l)/.test(text)) confidence += 0.1; // Có đơn vị tính
-    if (/\d{4,}/.test(text)) confidence += 0.1; // Có giá tiền (ít nhất 4 chữ số)
+    // Phân loại các dòng theo vùng
+    const headerLines = lines.filter(line => 
+      line[0].position.y < headerRegion
+    );
+    const bodyLines = lines.filter(line => 
+      line[0].position.y >= headerRegion && line[0].position.y < footerRegion
+    );
+    const footerLines = lines.filter(line => 
+      line[0].position.y >= footerRegion
+    );
 
-    return Math.min(1, confidence);
-  }
+    // Trích xuất thông tin từ header
+    const supplier = this.extractSupplier(headerLines);
+    const date = this.extractDate(headerLines);
 
-  private calculateLineConfidence(text: string, baseConfidence: number): number {
-    // Các pattern để kiểm tra tính hợp lệ của dòng
-    const patterns = {
-      date: /\d{1,2}\/\d{1,2}\/\d{4}/,
-      money: /\d+(\.\d{3})*(\s*(VND|đ|₫|vnd))?/i,
-      quantity: /x\s*\d+|\d+\s*x/i,
-      supplier: /(cty|công\s*ty|cửa\s*hàng|ch|siêu\s*thị|st)/i
-    };
+    // Trích xuất thông tin từ body
+    const items = this.extractItems(bodyLines);
 
-    let patternMatches = 0;
-    for (const pattern of Object.values(patterns)) {
-      if (pattern.test(text)) {
-        patternMatches++;
-      }
-    }
+    // Trích xuất thông tin từ footer
+    const total = this.extractTotal(footerLines);
 
-    // Tăng confidence nếu dòng chứa các pattern mong muốn
-    const patternBonus = patternMatches * 0.1;
-    
-    // Giảm confidence nếu dòng quá ngắn hoặc chứa nhiều ký tự đặc biệt
-    const lengthPenalty = text.length < 5 ? 0.2 : 0;
-    const specialCharPenalty = (text.match(/[^a-zA-Z0-9\s\u00C0-\u1EF9]/g) || []).length * 0.05;
-
-    let confidence = baseConfidence / 100 + patternBonus - lengthPenalty - specialCharPenalty;
-    
-    // Giới hạn confidence trong khoảng [0, 1]
-    return Math.max(0, Math.min(1, confidence));
-  }
-
-  public async processReceipt(imageBuffer: Buffer): Promise<OcrResult> {
-    // Nhận dạng text từ ảnh
-    const blocks = await this.extractTextFromImage(imageBuffer);
-    
-    // Phân tích cấu trúc hóa đơn
-    const { header, items, summary } = this.analyzeStructure(blocks);
-    
-    // Trích xuất thông tin nhà cung cấp từ header
-    const supplier = header.length > 0 ? header[0].text : 'Không xác định';
-    
-    // Trích xuất ngày tháng từ header
-    const dateMatch = header.find(block => /\d{1,2}\/\d{1,2}\/\d{4}/.test(block.text));
-    const date = dateMatch ? dateMatch.text.match(/\d{1,2}\/\d{1,2}\/\d{4}/)![0] : new Date().toLocaleDateString('vi-VN');
-    
-    // Trích xuất danh sách sản phẩm
-    const extractedItems: ReceiptItem[] = [];
-    for (const block of items) {
-      const item = this.extractItem(block.text);
-      if (item) {
-        extractedItems.push(item);
-      }
-    }
-    
-    // Trích xuất tổng tiền từ summary
-    let total = 0;
-    const totalLine = summary.find(block => this.isSummaryLine(block.text));
-    if (totalLine) {
-      const numbers = totalLine.text.match(/\d+/g);
-      if (numbers) {
-        total = parseInt(numbers[numbers.length - 1]);
-      }
-    } else if (extractedItems.length > 0) {
-      // Tính tổng từ các sản phẩm nếu không tìm thấy dòng tổng
-      total = extractedItems.reduce((sum, item) => sum + item.total, 0);
-    }
-    
     // Tính độ tin cậy trung bình
-    const confidences = [
-      header[0]?.confidence || 0,
-      ...extractedItems.map(item => item.confidence),
-      summary[0]?.confidence || 0
-    ];
+    const confidences = doc.elements.map(e => e.confidence);
     const avgConfidence = confidences.reduce((sum, conf) => sum + conf, 0) / confidences.length;
-    
-    // Kiểm tra xem có cần review không
-    const needsReview = avgConfidence < OcrService.REVIEW_THRESHOLD || 
-      extractedItems.length === 0 || 
-      !total;
+
+    // Tạo raw text
+    const rawText = lines.map(line => 
+      line.map(element => element.text).join(' ')
+    ).join('\n');
 
     return {
+      rawText,
       supplier,
       date,
       total,
-      items: extractedItems.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        total: item.total,
-        confidence: item.confidence
-      })),
+      items,
       confidence: avgConfidence,
-      needsReview
+      needsReview: avgConfidence < this.REVIEW_THRESHOLD
     };
   }
 
-  public async saveCorrections(original: OcrResult, corrected: OcrResult): Promise<void> {
-    // Lưu correction cho supplier
-    if (original.supplier !== corrected.supplier) {
-      await ocrLearningService.saveCorrection({
-        originalText: original.supplier,
-        correctedText: corrected.supplier,
-        type: 'supplier',
-        confidence: corrected.confidence
-      });
+  private extractSupplier(headerLines: TextElement[][]): string {
+    // Tìm dòng có chứa tên nhà cung cấp
+    const supplierLine = headerLines.find(line => {
+      const text = line.map(e => e.text).join(' ').toLowerCase();
+      return text.includes('nhà hàng') || 
+             text.includes('quán') || 
+             text.includes('cửa hàng') ||
+             text.includes('da thu tien');
+    });
+
+    return supplierLine ? 
+      supplierLine.map(e => e.text).join(' ') : 
+      (headerLines[0] ? headerLines[0].map(e => e.text).join(' ') : 'Không xác định');
+  }
+
+  private extractDate(headerLines: TextElement[][]): string {
+    // Tìm dòng có định dạng ngày tháng
+    for (const line of headerLines) {
+      const text = line.map(e => e.text).join(' ');
+      const match = text.match(/\d{1,2}\/\d{1,2}\/\d{4}/);
+      if (match) return match[0];
     }
+    return new Date().toLocaleDateString('vi-VN');
+  }
 
-    // Lưu correction cho date
-    if (original.date !== corrected.date) {
-      await ocrLearningService.saveCorrection({
-        originalText: original.date,
-        correctedText: corrected.date,
-        type: 'date',
-        confidence: corrected.confidence
-      });
-    }
+  private extractItems(bodyLines: TextElement[][]): Array<{
+    name: string;
+    quantity: number;
+    unit_price: number;
+    total: number;
+    confidence: number;
+  }> {
+    const items: Array<{
+      name: string;
+      quantity: number;
+      unit_price: number;
+      total: number;
+      confidence: number;
+    }> = [];
 
-    // Lưu correction cho total
-    if (original.total !== corrected.total) {
-      await ocrLearningService.saveCorrection({
-        originalText: original.total.toString(),
-        correctedText: corrected.total.toString(),
-        type: 'total',
-        confidence: corrected.confidence
-      });
-    }
+    for (const line of bodyLines) {
+      const text = line.map(e => e.text).join(' ');
+      const numbers = text.match(/\d+/g);
+      
+      if (numbers && numbers.length >= 2) {
+        // Tách phần text không phải số để làm tên
+        const name = text.replace(/\d+/g, '').trim();
+        
+        // Lấy các số cuối cùng làm giá và số lượng
+        const lastNumbers = numbers.slice(-2);
+        const quantity = parseInt(lastNumbers[0]);
+        const price = parseInt(lastNumbers[1]);
 
-    // Lưu correction cho items
-    for (let i = 0; i < Math.min(original.items.length, corrected.items.length); i++) {
-      const originalItem = original.items[i];
-      const correctedItem = corrected.items[i];
-
-      if (originalItem.name !== correctedItem.name) {
-        await ocrLearningService.saveCorrection({
-          originalText: originalItem.name,
-          correctedText: correctedItem.name,
-          type: 'item',
-          confidence: correctedItem.confidence
-        });
+        if (name && !isNaN(quantity) && !isNaN(price)) {
+          items.push({
+            name,
+            quantity,
+            unit_price: price,
+            total: quantity * price,
+            confidence: line.reduce((sum, e) => sum + e.confidence, 0) / line.length
+          });
+        }
       }
     }
+
+    return items;
+  }
+
+  private extractTotal(footerLines: TextElement[][]): number {
+    // Tìm dòng có chứa tổng tiền
+    for (const line of footerLines.reverse()) { // Duyệt từ dưới lên
+      const text = line.map(e => e.text).join(' ').toLowerCase();
+      if (text.includes('tổng') || text.includes('total') || text.includes('sum')) {
+        const numbers = text.match(/\d+/g);
+        if (numbers) {
+          return parseInt(numbers[numbers.length - 1]);
+        }
+      }
+    }
+    return 0;
+  }
+
+  public async processReceipt(imageBuffer: Buffer): Promise<OcrResult> {
+    const document = await this.extractTextFromImage(imageBuffer);
+    return this.analyzeDocument(document);
   }
 }
 

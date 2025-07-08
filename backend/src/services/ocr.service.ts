@@ -1,9 +1,24 @@
-import { createWorker, RecognizeResult, Line } from 'tesseract.js';
+import { createWorker } from 'tesseract.js';
 import { PrismaClient } from '@prisma/client';
 import vietnameseService from './vietnamese.service';
 import ocrLearningService from './ocr.learning.service';
 
 const prisma = new PrismaClient();
+
+interface TesseractResult {
+  text: string;
+  confidence: number;
+  words: Array<{
+    text: string;
+    confidence: number;
+    bbox: {
+      x0: number;
+      y0: number;
+      x1: number;
+      y1: number;
+    };
+  }>;
+}
 
 export interface OcrResult {
   supplier: string;
@@ -43,21 +58,22 @@ class OcrService {
 
       const worker = await createWorker('vie');
       
-      const { data } = await worker.recognize(imageBuffer) as RecognizeResult;
+      const result = await worker.recognize(imageBuffer);
+      const data = result.data as unknown as TesseractResult;
       
       console.log('✅ Nhận được kết quả từ Tesseract');
       console.log('📝 Độ tin cậy:', data.confidence);
       
-      const textBlocks: TextBlock[] = data.lines.map((line: Line) => ({
-        text: line.text,
-        confidence: line.confidence / 100, // Tesseract returns confidence as percentage
+      const textBlocks: TextBlock[] = data.words.map(word => ({
+        text: word.text,
+        confidence: word.confidence / 100, // Tesseract returns confidence as percentage
         boundingBox: {
-          left: line.bbox.x0,
-          top: line.bbox.y0,
-          right: line.bbox.x1,
-          bottom: line.bbox.y1
+          left: word.bbox.x0,
+          top: word.bbox.y0,
+          right: word.bbox.x1,
+          bottom: word.bbox.y1
         }
-      })).filter((block: TextBlock) => block.confidence >= OcrService.MIN_CONFIDENCE_SCORE);
+      })).filter(block => block.confidence >= OcrService.MIN_CONFIDENCE_SCORE);
 
       await worker.terminate();
       

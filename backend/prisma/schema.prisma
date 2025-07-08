@@ -222,3 +222,30 @@ enum ReconciliationStatus {
   critical
   resolved
 }
+
+// OCR Learning Tables
+model OcrCorrection {
+  id            Int      @id @default(autoincrement())
+  originalText  String
+  correctedText String
+  type          String   // 'supplier' | 'item' | 'unit' | 'date' | 'total'
+  confidence    Float
+  createdAt     DateTime @default(now())
+
+  @@index([type])
+  @@index([originalText])
+}
+
+model OcrLearning {
+  id             Int      @id @default(autoincrement())
+  originalText   String
+  correctedText  String
+  type           String   // 'supplier' | 'item' | 'unit' | 'date' | 'total'
+  correctionCount Int     @default(1)
+  confidence     Float
+  lastUpdated    DateTime @default(now())
+
+  @@index([type])
+  @@index([originalText])
+  @@index([correctionCount])
+}

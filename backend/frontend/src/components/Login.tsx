@@ -8,7 +8,7 @@ import authService from '../services/auth.service';
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
@@ -27,7 +27,10 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      await authService.login(formData);
+      await authService.login({
+        email: formData.username, // Backend vẫn đang sử dụng email
+        password: formData.password
+      });
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Đăng nhập thất bại');
@@ -48,13 +51,13 @@ const Login: React.FC = () => {
             )}
             
             <Input
-              label="Email"
-              name="email"
-              type="email"
-              value={formData.email}
+              label="Tên đăng nhập"
+              name="username"
+              type="text"
+              value={formData.username}
               onChange={handleChange}
               required
-              placeholder="email@example.com"
+              placeholder="Nhập tên đăng nhập"
             />
 
             <Input

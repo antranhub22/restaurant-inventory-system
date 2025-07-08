@@ -33,18 +33,24 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response<A
   try {
     const { email, password } = req.body;
     
-    const user = await prisma.user.findUnique({
-      where: { email }
+    // Tìm user bằng email hoặc username
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { email: email.toLowerCase() } // Hỗ trợ cả lowercase
+        ]
+      }
     });
 
     if (!user) {
-      res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
       return;
     }
 
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
-      res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
       return;
     }
 
@@ -65,7 +71,7 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response<A
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Lỗi hệ thống' });
   }
 });
 
@@ -79,7 +85,7 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
     });
 
     if (existingUser) {
-      res.status(400).json({ error: 'User already exists' });
+      res.status(400).json({ error: 'Tài khoản đã tồn tại' });
       return;
     }
 
@@ -111,7 +117,7 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
     });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Lỗi hệ thống' });
   }
 });
 

@@ -64,6 +64,16 @@ app.get('/api/health', (_req: Request, res: Response) => {
   });
 });
 
+// Root route handler
+app.get('/', (_req: Request, res: Response) => {
+  res.json({ 
+    status: 'OK',
+    message: 'Restaurant Inventory System API',
+    version: '1.0.0',
+    docs: '/api/docs'
+  });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);

@@ -6,4 +6,4 @@ set -o errexit
 npx prisma migrate deploy
 
 # Start the server
-node dist/app.js
+node dist/server.js

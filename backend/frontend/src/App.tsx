@@ -9,6 +9,8 @@ import DailyReconciliation from './pages/DailyReconciliation';
 import DocumentManagement from './pages/DocumentManagement';
 import CameraCapture from './pages/CameraCapture';
 import OcrReceiptFlow from './pages/OcrReceiptFlow';
+import Login from './components/Login';
+import { useAuthStore } from './store';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -20,25 +22,83 @@ const queryClient = new QueryClient({
   },
 });
 
+// Protected Route component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const token = useAuthStore.getState().token;
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/items" element={<ItemList />} />
-          <Route path="/items/:id" element={<ItemDetail />} />
-          <Route path="/inventory" element={<InventoryCurrent />} />
-          <Route path="/transactions" element={<TransactionHistory />} />
-          <Route path="/reconciliation" element={<DailyReconciliation />} />
-          <Route path="/documents" element={<DocumentManagement />} />
-          <Route path="/camera" element={<CameraCapture />} />
-          <Route path="/ocr" element={<OcrReceiptFlow />} />
+          <Route path="/login" element={<Login />} />
+          
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/items" element={
+            <ProtectedRoute>
+              <ItemList />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/items/:id" element={
+            <ProtectedRoute>
+              <ItemDetail />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/inventory" element={
+            <ProtectedRoute>
+              <InventoryCurrent />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/transactions" element={
+            <ProtectedRoute>
+              <TransactionHistory />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/reconciliation" element={
+            <ProtectedRoute>
+              <DailyReconciliation />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/documents" element={
+            <ProtectedRoute>
+              <DocumentManagement />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/camera" element={
+            <ProtectedRoute>
+              <CameraCapture />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/ocr" element={
+            <ProtectedRoute>
+              <OcrReceiptFlow />
+            </ProtectedRoute>
+          } />
+          
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Router>
     </QueryClientProvider>
-  )
+  );
 }
 
 export default App

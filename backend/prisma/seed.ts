@@ -1,7 +1,46 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Hash mật khẩu mặc định
+  const defaultPassword = 'password123';
+  const passwordHash = await bcrypt.hash(defaultPassword, 10);
+
+  // Seed users
+  const users = await prisma.user.createMany({
+    data: [
+      {
+        email: 'owner@restaurant.com',
+        passwordHash,
+        fullName: 'Nguyễn Văn An',
+        role: 'owner',
+        isActive: true
+      },
+      {
+        email: 'manager@restaurant.com',
+        passwordHash,
+        fullName: 'Trần Thị Bình',
+        role: 'manager',
+        isActive: true
+      },
+      {
+        email: 'kitchen@restaurant.com',
+        passwordHash,
+        fullName: 'Lê Văn Cường',
+        role: 'supervisor',
+        isActive: true
+      },
+      {
+        email: 'staff1@restaurant.com',
+        passwordHash,
+        fullName: 'Hoàng Văn Em',
+        role: 'staff',
+        isActive: true
+      }
+    ]
+  });
+
   // Seed categories
   const categories = await prisma.category.createMany({
     data: [
@@ -25,17 +64,6 @@ async function main() {
     }
   });
 
-  // Seed users
-  const user = await prisma.user.create({
-    data: {
-      email: 'owner@restaurant.com',
-      passwordHash: '$2b$10$hashdemo', // Demo hash, cần thay bằng hash thực tế
-      fullName: 'Nguyễn Văn Chủ',
-      role: 'owner',
-      isActive: true
-    }
-  });
-
   // Seed items
   await prisma.item.create({
     data: {
@@ -54,6 +82,9 @@ async function main() {
       aliases: ['Bia SG', 'Saigon Beer']
     }
   });
+
+  console.log('🌱 Seeding completed!');
+  console.log('📝 Default users created with password:', defaultPassword);
 }
 
 main()

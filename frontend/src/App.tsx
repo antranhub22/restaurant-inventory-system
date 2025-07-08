@@ -57,11 +57,7 @@ const App: React.FC = () => {
     <Router>
       <Layout onLogout={handleLogout}>
         <Routes>
-          <Route path="/" element={
-            <ProtectedRoute>
-              <OCRFormDemo />
-            </ProtectedRoute>
-          } />
+          <Route path="/" element={<Navigate to="/ocr-demo" replace />} />
           <Route path="/ocr-demo" element={
             <ProtectedRoute>
               <OCRFormDemo />
@@ -72,7 +68,7 @@ const App: React.FC = () => {
               <FormTemplatesPage />
             </ProtectedRoute>
           } />
-          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/login" element={<Navigate to="/ocr-demo" replace />} />
         </Routes>
       </Layout>
     </Router>

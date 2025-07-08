@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { apiService } from '../services/api.service';
+import { useNavigate } from 'react-router-dom';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -10,6 +11,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,6 +22,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       const response = await apiService.login(email, password);
       if (response.success) {
         onLoginSuccess();
+        navigate('/ocr-demo');
       } else {
         setError(response.message || 'Đăng nhập thất bại');
       }

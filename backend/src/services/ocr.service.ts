@@ -39,23 +39,34 @@ class OcrService {
 
   private async extractTextFromImage(imageBuffer: Buffer): Promise<TextBlock[]> {
     try {
+      console.log('🔍 Bắt đầu xử lý OCR với Google Vision API...');
+      console.log('📊 Kích thước ảnh:', imageBuffer.length, 'bytes');
+
       const [result] = await visionClient.documentTextDetection({
         image: { content: imageBuffer },
         imageContext: {
-          languageHints: ['vi'] // Thiết lập ngôn ngữ là tiếng Việt
+          languageHints: ['vi']
         }
       });
+
+      console.log('✅ Nhận được kết quả từ Google Vision API');
       
       const fullTextAnnotation = result.fullTextAnnotation;
       
       if (!fullTextAnnotation || !fullTextAnnotation.pages) {
+        console.error('❌ Không có kết quả text annotation');
         throw new Error('Không thể nhận dạng văn bản trong ảnh');
       }
 
+      console.log('📝 Số trang được nhận dạng:', fullTextAnnotation.pages.length);
+
       const textBlocks: TextBlock[] = [];
       
-      fullTextAnnotation.pages.forEach(page => {
-        page.blocks?.forEach(block => {
+      fullTextAnnotation.pages.forEach((page, pageIndex) => {
+        console.log(`\n📄 Xử lý trang ${pageIndex + 1}:`);
+        console.log(`- Số blocks: ${page.blocks?.length || 0}`);
+        
+        page.blocks?.forEach((block, blockIndex) => {
           if (block.boundingBox?.vertices) {
             const [topLeft, topRight, bottomRight, bottomLeft] = block.boundingBox.vertices;
             
@@ -66,6 +77,10 @@ class OcrService {
             ).join('\n') || '';
 
             const confidence = block.confidence || 0;
+
+            console.log(`\n  📌 Block #${blockIndex + 1}:`);
+            console.log(`  - Text: "${text}"`);
+            console.log(`  - Độ tin cậy: ${(confidence * 100).toFixed(1)}%`);
 
             if (confidence >= OcrService.MIN_CONFIDENCE_SCORE) {
               textBlocks.push({
@@ -78,47 +93,59 @@ class OcrService {
                   bottom: Math.max(bottomLeft.y || 0, bottomRight.y || 0)
                 }
               });
+            } else {
+              console.log(`  ⚠️ Block bị bỏ qua do độ tin cậy thấp`);
             }
           }
         });
       });
 
+      console.log(`\n✨ Tổng số blocks đạt yêu cầu: ${textBlocks.length}`);
       return textBlocks;
     } catch (error) {
-      console.error('Error in extractTextFromImage:', error);
+      console.error('❌ Lỗi trong quá trình xử lý OCR:', error);
       throw new Error('Lỗi khi xử lý OCR');
     }
   }
 
   private async findSupplier(textBlocks: TextBlock[]): Promise<{ text: string; confidence: number }> {
-    // Thường supplier sẽ ở đầu hóa đơn và có font size lớn (boundingBox rộng)
+    console.log('\n🏪 Tìm kiếm thông tin nhà cung cấp...');
+    
     const potentialSuppliers = textBlocks
-      .filter(block => block.boundingBox.top < 200) // Chỉ xét phần đầu hóa đơn
+      .filter(block => block.boundingBox.top < 200)
       .sort((a, b) => {
         const aWidth = a.boundingBox.right - a.boundingBox.left;
         const bWidth = b.boundingBox.right - b.boundingBox.left;
-        return bWidth - aWidth; // Sort by width descending
+        return bWidth - aWidth;
       });
+
+    console.log('- Số ứng viên tiềm năng:', potentialSuppliers.length);
+    potentialSuppliers.forEach((supplier, index) => {
+      console.log(`  ${index + 1}. "${supplier.text}" (độ tin cậy: ${(supplier.confidence * 100).toFixed(1)}%)`);
+    });
 
     if (potentialSuppliers.length > 0) {
       const supplierText = vietnameseService.normalizeVietnameseText(potentialSuppliers[0].text);
+      console.log('- Text đã chuẩn hóa:', supplierText);
       
-      // Kiểm tra xem có correction nào phù hợp không
       const correction = await ocrLearningService.findBestCorrection(supplierText, 'supplier');
       
       if (correction) {
+        console.log('✅ Đã tìm thấy correction:', correction.correctedText);
         return {
           text: correction.correctedText,
           confidence: correction.confidence
         };
       }
 
+      console.log('- Sử dụng text gốc');
       return {
         text: supplierText,
         confidence: potentialSuppliers[0].confidence
       };
     }
 
+    console.log('❌ Không tìm thấy thông tin nhà cung cấp');
     return {
       text: 'Không xác định',
       confidence: 0
@@ -244,8 +271,11 @@ class OcrService {
   }
 
   public async processReceipt(imageBuffer: Buffer): Promise<OcrResult> {
+    console.log('\n🚀 Bắt đầu xử lý hóa đơn...');
+    
     const textBlocks = await this.extractTextFromImage(imageBuffer);
     
+    console.log('\n📊 Xử lý từng phần của hóa đơn...');
     const [supplier, date, total, items] = await Promise.all([
       this.findSupplier(textBlocks),
       this.findDate(textBlocks),
@@ -253,7 +283,12 @@ class OcrService {
       this.findItems(textBlocks)
     ]);
 
-    // Tính toán độ tin cậy trung bình
+    console.log('\n📋 Kết quả xử lý:');
+    console.log('- Nhà cung cấp:', supplier.text);
+    console.log('- Ngày:', date.text);
+    console.log('- Tổng tiền:', total.value);
+    console.log('- Số mặt hàng:', items.length);
+
     const confidences = [
       supplier.confidence,
       date.confidence,
@@ -262,11 +297,14 @@ class OcrService {
     ];
     const avgConfidence = confidences.reduce((sum, conf) => sum + conf, 0) / confidences.length;
 
-    // Kiểm tra xem có cần review không
     const needsReview = avgConfidence < OcrService.REVIEW_THRESHOLD || 
       confidences.some(conf => conf < OcrService.MIN_CONFIDENCE_SCORE);
 
-    return {
+    console.log('\n📊 Thống kê:');
+    console.log('- Độ tin cậy trung bình:', (avgConfidence * 100).toFixed(1) + '%');
+    console.log('- Cần review:', needsReview ? 'Có' : 'Không');
+
+    const result = {
       supplier: supplier.text,
       date: date.text,
       total: total.value,
@@ -274,6 +312,9 @@ class OcrService {
       confidence: avgConfidence,
       needsReview
     };
+
+    console.log('\n✅ Hoàn thành xử lý hóa đơn');
+    return result;
   }
 
   // Lưu các sửa đổi từ người dùng

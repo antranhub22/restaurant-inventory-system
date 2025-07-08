@@ -1,5 +1,4 @@
-import { ImageAnnotatorClient, protos } from '@google-cloud/vision';
-import visionClient from '../config/vision.config';
+import { createWorker, RecognizeResult, Line } from 'tesseract.js';
 import { PrismaClient } from '@prisma/client';
 import vietnameseService from './vietnamese.service';
 import ocrLearningService from './ocr.learning.service';
@@ -32,13 +31,6 @@ interface TextBlock {
   };
 }
 
-type Page = protos.google.cloud.vision.v1.IPage;
-type Block = protos.google.cloud.vision.v1.IBlock;
-type Paragraph = protos.google.cloud.vision.v1.IParagraph;
-type Word = protos.google.cloud.vision.v1.IWord;
-type Symbol = protos.google.cloud.vision.v1.ISymbol;
-type Vertex = protos.google.cloud.vision.v1.IVertex;
-
 class OcrService {
   private static readonly MIN_CONFIDENCE_SCORE = parseFloat(process.env.OCR_MIN_CONFIDENCE_SCORE || '0.8');
   private static readonly MIN_ITEM_MATCH_SCORE = 0.85;
@@ -46,67 +38,29 @@ class OcrService {
 
   private async extractTextFromImage(imageBuffer: Buffer): Promise<TextBlock[]> {
     try {
-      console.log('🔍 Bắt đầu xử lý OCR với Google Vision API...');
+      console.log('🔍 Bắt đầu xử lý OCR với Tesseract...');
       console.log('📊 Kích thước ảnh:', imageBuffer.length, 'bytes');
 
-      const [result] = await visionClient.documentTextDetection({
-        image: { content: imageBuffer },
-        imageContext: {
-          languageHints: ['vi']
+      const worker = await createWorker('vie');
+      
+      const { data } = await worker.recognize(imageBuffer) as RecognizeResult;
+      
+      console.log('✅ Nhận được kết quả từ Tesseract');
+      console.log('📝 Độ tin cậy:', data.confidence);
+      
+      const textBlocks: TextBlock[] = data.lines.map((line: Line) => ({
+        text: line.text,
+        confidence: line.confidence / 100, // Tesseract returns confidence as percentage
+        boundingBox: {
+          left: line.bbox.x0,
+          top: line.bbox.y0,
+          right: line.bbox.x1,
+          bottom: line.bbox.y1
         }
-      });
+      })).filter((block: TextBlock) => block.confidence >= OcrService.MIN_CONFIDENCE_SCORE);
 
-      console.log('✅ Nhận được kết quả từ Google Vision API');
+      await worker.terminate();
       
-      const fullTextAnnotation = result.fullTextAnnotation;
-      
-      if (!fullTextAnnotation || !fullTextAnnotation.pages) {
-        console.error('❌ Không có kết quả text annotation');
-        throw new Error('Không thể nhận dạng văn bản trong ảnh');
-      }
-
-      console.log('📝 Số trang được nhận dạng:', fullTextAnnotation.pages.length);
-
-      const textBlocks: TextBlock[] = [];
-      
-      fullTextAnnotation.pages.forEach((page: Page, pageIndex: number) => {
-        console.log(`\n📄 Xử lý trang ${pageIndex + 1}:`);
-        console.log(`- Số blocks: ${page.blocks?.length || 0}`);
-        
-        page.blocks?.forEach((block: Block, blockIndex: number) => {
-          if (block.boundingBox?.vertices) {
-            const [topLeft, topRight, bottomRight, bottomLeft] = block.boundingBox.vertices as Vertex[];
-            
-            const text = block.paragraphs?.map(p => 
-              p.words?.map(w => 
-                w.symbols?.map(s => s.text).join('')
-              ).join(' ')
-            ).join('\n') || '';
-
-            const confidence = block.confidence || 0;
-
-            console.log(`\n  📌 Block #${blockIndex + 1}:`);
-            console.log(`  - Text: "${text}"`);
-            console.log(`  - Độ tin cậy: ${(confidence * 100).toFixed(1)}%`);
-
-            if (confidence >= OcrService.MIN_CONFIDENCE_SCORE) {
-              textBlocks.push({
-                text,
-                confidence,
-                boundingBox: {
-                  left: Math.min(topLeft?.x || 0, bottomLeft?.x || 0),
-                  top: Math.min(topLeft?.y || 0, topRight?.y || 0),
-                  right: Math.max(topRight?.x || 0, bottomRight?.x || 0),
-                  bottom: Math.max(bottomLeft?.y || 0, bottomRight?.y || 0)
-                }
-              });
-            } else {
-              console.log(`  ⚠️ Block bị bỏ qua do độ tin cậy thấp`);
-            }
-          }
-        });
-      });
-
       console.log(`\n✨ Tổng số blocks đạt yêu cầu: ${textBlocks.length}`);
       return textBlocks;
     } catch (error) {
@@ -324,7 +278,6 @@ class OcrService {
     return result;
   }
 
-  // Lưu các sửa đổi từ người dùng
   public async saveCorrections(original: OcrResult, corrected: OcrResult): Promise<void> {
     // Lưu correction cho supplier
     if (original.supplier !== corrected.supplier) {

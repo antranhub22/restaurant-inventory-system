@@ -42,6 +42,18 @@ model User {
   processedImports    Import[]  @relation("ProcessedBy")
   approvedImports     Import[]  @relation("ApprovedBy")
   rejectedImports     Import[]  @relation("RejectedBy")
+  processedExports    Export[] @relation("ProcessedExports")
+  approvedExports     Export[] @relation("ApprovedExports")
+  rejectedExports     Export[] @relation("RejectedExports")
+  processedReturns  Return[] @relation("ProcessedReturns")
+  approvedReturns   Return[] @relation("ApprovedReturns")
+  rejectedReturns   Return[] @relation("RejectedReturns")
+  processedWastes Waste[] @relation("ProcessedWastes")
+  approvedWastes  Waste[] @relation("ApprovedWastes")
+  rejectedWastes  Waste[] @relation("RejectedWastes")
+  processedReconciliations Reconciliation[] @relation("ProcessedReconciliations")
+  approvedReconciliations  Reconciliation[] @relation("ApprovedReconciliations")
+  rejectedReconciliations  Reconciliation[] @relation("RejectedReconciliations")
 }
 
 enum Role {
@@ -109,6 +121,10 @@ model Item {
   secondarySupplierId Int?
   departmentReconciliations DepartmentReconciliation[]
   importItems ImportItem[]
+  exportItems ExportItem[]
+  returnItems ReturnItem[]
+  wasteItems WasteItem[]
+  reconciliationItems ReconciliationItem[]
 }
 
 model Inventory {
@@ -217,16 +233,63 @@ enum ShiftType {
   morning
   afternoon
   evening
-  night
+  full_day
 }
 
 enum ReconciliationStatus {
+  draft
   pending
-  acceptable
-  warning
-  investigation
-  critical
-  resolved
+  approved
+  rejected
+  cancelled
+}
+
+model Reconciliation {
+  id              Int           @id @default(autoincrement())
+  date            DateTime
+  department      Department    @relation(fields: [departmentId], references: [id])
+  departmentId    Int
+  shiftType       ShiftType
+  processedBy     User         @relation("ProcessedReconciliations", fields: [processedById], references: [id])
+  processedById   Int
+  notes           String?
+  status          ReconciliationStatus  @default(pending)
+  approvedBy      User?        @relation("ApprovedReconciliations", fields: [approvedById], references: [id])
+  approvedById    Int?
+  approvedAt      DateTime?
+  rejectedBy      User?        @relation("RejectedReconciliations", fields: [rejectedById], references: [id])
+  rejectedById    Int?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  items           ReconciliationItem[]
+
+  @@unique([date, departmentId, shiftType])
+}
+
+model ReconciliationItem {
+  id               Int           @id @default(autoincrement())
+  reconciliation   Reconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  reconciliationId Int
+  item            Item          @relation(fields: [itemId], references: [id])
+  itemId          Int
+  openingStock    Float
+  received        Float         @default(0)
+  withdrawn       Float         @default(0)
+  sold            Float         @default(0)
+  returned        Float         @default(0)
+  wasted          Float         @default(0)
+  staffConsumed   Float         @default(0)
+  sampled         Float         @default(0)
+  systemStock     Float
+  actualStock     Float
+  discrepancy     Float
+  discrepancyRate Float
+  discrepancyValue Float
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 // OCR Learning Tables
@@ -293,4 +356,190 @@ model ImportItem {
   notes       String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+enum ExportPurpose {
+  production
+  sale
+  damage
+  return
+  transfer
+}
+
+enum ExportStatus {
+  draft
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+model Export {
+  id              Int           @id @default(autoincrement())
+  date            DateTime
+  purpose         ExportPurpose
+  department      Department    @relation(fields: [departmentId], references: [id])
+  departmentId    Int
+  processedBy     User         @relation("ProcessedExports", fields: [processedById], references: [id])
+  processedById   Int
+  notes           String?
+  attachments     String[]
+  status          ExportStatus  @default(pending)
+  approvedBy      User?        @relation("ApprovedExports", fields: [approvedById], references: [id])
+  approvedById    Int?
+  approvedAt      DateTime?
+  rejectedBy      User?        @relation("RejectedExports", fields: [rejectedById], references: [id])
+  rejectedById    Int?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  items           ExportItem[]
+  returnItems     ReturnItem[]
+}
+
+model ExportItem {
+  id           Int      @id @default(autoincrement())
+  export       Export   @relation(fields: [exportId], references: [id], onDelete: Cascade)
+  exportId     Int
+  item         Item     @relation(fields: [itemId], references: [id])
+  itemId       Int
+  quantity     Float
+  currentStock Float
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum ReturnReason {
+  excess
+  defective
+  menu_change
+  expired
+  other
+}
+
+enum ReturnStatus {
+  draft
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+enum ItemCondition {
+  good
+  fair
+  poor
+  damaged
+  expired
+}
+
+model Return {
+  id              Int           @id @default(autoincrement())
+  date            DateTime
+  department      Department    @relation(fields: [departmentId], references: [id])
+  departmentId    Int
+  reason          ReturnReason
+  processedBy     User         @relation("ProcessedReturns", fields: [processedById], references: [id])
+  processedById   Int
+  notes           String?
+  attachments     String[]
+  status          ReturnStatus  @default(pending)
+  approvedBy      User?        @relation("ApprovedReturns", fields: [approvedById], references: [id])
+  approvedById    Int?
+  approvedAt      DateTime?
+  rejectedBy      User?        @relation("RejectedReturns", fields: [rejectedById], references: [id])
+  rejectedById    Int?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  items           ReturnItem[]
+}
+
+model ReturnItem {
+  id              Int           @id @default(autoincrement())
+  return          Return        @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  returnId        Int
+  item            Item          @relation(fields: [itemId], references: [id])
+  itemId          Int
+  quantity        Float
+  condition       ItemCondition
+  originalExport  Export?       @relation(fields: [originalExportId], references: [id])
+  originalExportId Int?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Department {
+  id          Int       @id @default(autoincrement())
+  name        String
+  code        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  exports     Export[]
+  returns     Return[]
+  wastes      Waste[]
+  reconciliations Reconciliation[]
+}
+
+enum WasteType {
+  damage
+  expiry
+  breakage
+  natural
+  cooking
+  quality
+  other
+}
+
+enum WasteStatus {
+  draft
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+model Waste {
+  id              Int           @id @default(autoincrement())
+  date            DateTime
+  department      Department    @relation(fields: [departmentId], references: [id])
+  departmentId    Int
+  wasteType       WasteType
+  description     String
+  processedBy     User         @relation("ProcessedWastes", fields: [processedById], references: [id])
+  processedById   Int
+  witnesses       String[]
+  evidencePhotos  String[]
+  notes           String?
+  status          WasteStatus  @default(pending)
+  approvedBy      User?        @relation("ApprovedWastes", fields: [approvedById], references: [id])
+  approvedById    Int?
+  approvedAt      DateTime?
+  rejectedBy      User?        @relation("RejectedWastes", fields: [rejectedById], references: [id])
+  rejectedById    Int?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  items           WasteItem[]
+}
+
+model WasteItem {
+  id             Int      @id @default(autoincrement())
+  waste          Waste    @relation(fields: [wasteId], references: [id], onDelete: Cascade)
+  wasteId        Int
+  item           Item     @relation(fields: [itemId], references: [id])
+  itemId         Int
+  quantity       Float
+  estimatedValue Float
+  reason         String
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

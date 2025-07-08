@@ -13,6 +13,9 @@ import transactionRoutes from './routes/transactions';
 import reportRoutes from './routes/reports';
 import ocrRoutes from './routes/ocr';
 import importRoutes from './routes/import.routes';
+import exportRoutes from './routes/export.routes';
+import returnRoutes from './routes/return.routes';
+import wasteRoutes from './routes/waste.routes';
 
 // Load environment variables
 dotenv.config();
@@ -85,6 +88,9 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/imports', importRoutes);
+app.use('/api/exports', exportRoutes);
+app.use('/api/returns', returnRoutes);
+app.use('/api/wastes', wasteRoutes);
 
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {

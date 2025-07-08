@@ -8,7 +8,6 @@ import TransactionHistory from './pages/TransactionHistory';
 import DailyReconciliation from './pages/DailyReconciliation';
 import DocumentManagement from './pages/DocumentManagement';
 import CameraCapture from './pages/CameraCapture';
-import OcrReceiptFlow from './pages/OcrReceiptFlow';
 import Login from './components/Login';
 import { useAuthStore } from './store';
 
@@ -85,12 +84,6 @@ function App() {
           <Route path="/camera" element={
             <ProtectedRoute>
               <CameraCapture />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/ocr" element={
-            <ProtectedRoute>
-              <OcrReceiptFlow />
             </ProtectedRoute>
           } />
           

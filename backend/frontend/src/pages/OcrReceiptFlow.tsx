@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import Layout from '../components/common/Layout';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
-import axios from 'axios';
+import api from '../utils/api';
+import { AxiosError } from 'axios';
 import sampleData from '../data/sample_data.json';
 import { SampleData, Receipt } from '../types/sample_data';
 
@@ -130,13 +131,13 @@ const OcrReceiptFlow: React.FC = () => {
         return;
       }
 
-      const response = await axios.post<{ data: OcrResult }>('/api/ocr/process-receipt', formData, {
+      const response = await api.post<{ data: OcrResult }>('/ocr/process-receipt', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       setResult(response.data.data);
     } catch (err) {
-      if (axios.isAxiosError(err)) {
+      if (err instanceof AxiosError) {
         setError(err.response?.data?.error?.message || 'Lỗi khi gửi ảnh lên OCR.');
       } else {
         setError('Lỗi không xác định khi xử lý OCR.');

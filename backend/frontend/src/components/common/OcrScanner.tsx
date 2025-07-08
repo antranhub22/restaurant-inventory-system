@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import Button from './Button';
 import Card from './Card';
-import axios from 'axios';
+import api from '../../utils/api';
+import { AxiosError } from 'axios';
 
 export interface OcrResult {
   supplier: string;
@@ -102,14 +103,14 @@ const OcrScanner: React.FC<OcrScannerProps> = ({ onResult, onError, onCancel, cl
       const formData = new FormData();
       formData.append('image', blob, 'receipt.jpg');
 
-      const response = await axios.post<{ data: OcrResult }>('/api/ocr/process-receipt', formData, {
+      const response = await api.post<{ data: OcrResult }>('/ocr/process-receipt', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       onResult(response.data.data);
     } catch (err) {
       let errorMsg = 'Lỗi không xác định khi xử lý OCR.';
-      if (axios.isAxiosError(err)) {
+      if (err instanceof AxiosError) {
         errorMsg = err.response?.data?.error?.message || 'Lỗi khi xử lý OCR.';
       }
       setError(errorMsg);

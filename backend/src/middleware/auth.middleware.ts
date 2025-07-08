@@ -1,30 +1,98 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { Role } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 
-export const authenticate = (req: Request, res: Response, next: NextFunction) => {
+const prisma = new PrismaClient();
+
+export interface AuthRequest extends Request {
+  user?: {
+    id: number;
+    username: string;
+    role: Role;
+    permissions?: string[];
+  };
+}
+
+interface JwtPayload {
+  userId: number;
+}
+
+export const authMiddleware = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Không tìm thấy token xác thực' });
+    // 1. Lấy token từ header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Không tìm thấy token xác thực'
+      });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as {
-      id: number;
-      username: string;
-      role: Role;
-      permissions?: string[];
-    };
-    
-    req.user = decoded;
-    next();
+    const token = authHeader.split(' ')[1];
+
+    // 2. Verify token
+    const decodedToken = jwt.verify(
+      token,
+      process.env.JWT_SECRET || 'your-secret-key'
+    );
+
+    // Type guard để kiểm tra decoded token
+    if (
+      typeof decodedToken === 'object' &&
+      decodedToken !== null &&
+      'userId' in decodedToken
+    ) {
+      const decoded = decodedToken as JwtPayload;
+
+      // 3. Lấy thông tin user
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          permissions: true,
+          isActive: true
+        }
+      });
+
+      if (!user || !user.isActive) {
+        return res.status(401).json({
+          success: false,
+          message: 'User không tồn tại hoặc đã bị vô hiệu hóa'
+        });
+      }
+
+      // 4. Gắn thông tin user vào request
+      req.user = {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        permissions: user.permissions as string[]
+      };
+
+      next();
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Token không hợp lệ'
+      });
+    }
   } catch (error) {
-    return res.status(401).json({ message: 'Token không hợp lệ' });
+    console.error('Auth middleware error:', error);
+    return res.status(401).json({
+      success: false,
+      message: 'Token không hợp lệ'
+    });
   }
 };
 
-export const authorize = (allowedRoles: Role[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+export const authorize = (allowedRoles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: 'Chưa xác thực người dùng' });

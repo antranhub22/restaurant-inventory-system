@@ -16,6 +16,7 @@ import importRoutes from './routes/import.routes';
 import exportRoutes from './routes/export.routes';
 import returnRoutes from './routes/return.routes';
 import wasteRoutes from './routes/waste.routes';
+import ocrFormRoutes from './routes/ocr-form.routes';
 
 // Load environment variables
 dotenv.config();
@@ -110,6 +111,7 @@ app.use('/api/imports', importRoutes);
 app.use('/api/exports', exportRoutes);
 app.use('/api/returns', returnRoutes);
 app.use('/api/wastes', wasteRoutes);
+app.use('/api/ocr-forms', ocrFormRoutes);
 
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {

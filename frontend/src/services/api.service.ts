@@ -1,5 +1,9 @@
+/// <reference types="vite/client" />
 // API Base URL
-const API_BASE_URL = 'https://restaurant-inventory-backend.onrender.com';
+let API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+if (!API_BASE_URL.endsWith('/api')) {
+  API_BASE_URL = API_BASE_URL.replace(/\/$/, '') + '/api';
+}
 
 // API Response interface
 interface ApiResponse<T = any> {

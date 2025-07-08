@@ -166,7 +166,7 @@ const OCRStatusPanel: React.FC<OCRStatusPanelProps> = ({
         <div className="mt-4 flex space-x-2">
           {!status.backend.success && (
             <button
-              onClick={() => window.open('http://localhost:3000/api/health', '_blank')}
+              onClick={() => window.open('https://restaurant-inventory-backend.onrender.com/api/health', '_blank')}
               className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
             >
               Kiểm tra Backend

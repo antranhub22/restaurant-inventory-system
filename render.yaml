@@ -44,7 +44,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://restaurant-inventory-backend.onrender.com/api
+        value: https://restaurant-inventory-backend.onrender.com
       - key: VITE_ENV
         value: production
     autoDeploy: true

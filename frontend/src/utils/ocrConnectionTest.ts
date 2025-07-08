@@ -35,7 +35,9 @@ export const testOCRConnection = async (): Promise<OCRConnectionTestResult> => {
 
   // Test 1: Backend connectivity
   try {
-    const response = await fetch('http://localhost:3000/api/health', {
+    // Use API service base URL for consistency
+    const apiUrl = 'https://restaurant-inventory-backend.onrender.com';
+    const response = await fetch(`${apiUrl}/api/health`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -65,7 +67,8 @@ export const testOCRConnection = async (): Promise<OCRConnectionTestResult> => {
 
   // Test 2: OCR endpoint availability
   try {
-    const response = await fetch('http://localhost:3000/api/ocr-forms/process', {
+    const apiUrl = 'https://restaurant-inventory-backend.onrender.com';
+    const response = await fetch(`${apiUrl}/api/ocr-forms/process`, {
       method: 'GET',
     });
     
@@ -95,7 +98,8 @@ export const testOCRConnection = async (): Promise<OCRConnectionTestResult> => {
     const token = localStorage.getItem('token');
     if (token) {
       // Test if token is valid
-      const response = await fetch('http://localhost:3000/api/auth/verify', {
+      const apiUrl = 'https://restaurant-inventory-backend.onrender.com';
+      const response = await fetch(`${apiUrl}/api/auth/verify`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

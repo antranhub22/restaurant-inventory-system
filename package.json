@@ -4,8 +4,8 @@
   "description": "Hệ thống quản lý kho nhà hàng",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.ts",
+    "build": "tsc && cp -r src/types dist/",
+    "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:seed": "ts-node prisma/seed.ts",

@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-import { EventEmitter } from 'events';
-import { FormType, FormTemplate } from '../types/form-template';
 import { Redis } from 'ioredis';
+import { EventEmitter } from 'events';
+import type { FormType, FormTemplate, FormConfig, CustomField, FormTemplateWithHistory, FormUpdate } from '../types/form-template';
 
 class FormRegistry {
   private prisma: PrismaClient;
@@ -12,7 +12,7 @@ class FormRegistry {
 
   private constructor() {
     this.prisma = new PrismaClient();
-    this.redis = new Redis(process.env.REDIS_URL);
+    this.redis = new Redis(process.env.REDIS_URL || '');
     this.eventEmitter = new EventEmitter();
     this.cache = new Map();
 
@@ -35,14 +35,16 @@ class FormRegistry {
     try {
       // Lấy tất cả form template từ database
       const templates = await this.prisma.formTemplate.findMany({
-        where: { isActive: true }
+        where: { isActive: true },
+        include: { history: true }
       });
 
       // Cập nhật cache và Redis
       for (const template of templates) {
         const key = this.getCacheKey(template.type, template.id);
-        await this.redis.set(key, JSON.stringify(template));
-        this.cache.set(key, template as unknown as FormTemplate);
+        const formTemplate = this.mapPrismaToFormTemplate(template);
+        await this.redis.set(key, JSON.stringify(formTemplate));
+        this.cache.set(key, formTemplate);
       }
     } catch (error) {
       console.error('Failed to initialize form registry cache:', error);
@@ -51,6 +53,20 @@ class FormRegistry {
 
   private getCacheKey(type: string, id?: string): string {
     return id ? `form:${type}:${id}` : `form:${type}:default`;
+  }
+
+  private mapPrismaToFormTemplate(prismaTemplate: FormTemplateWithHistory): FormTemplate {
+    return {
+      id: prismaTemplate.id,
+      name: prismaTemplate.name,
+      type: prismaTemplate.type as FormType,
+      sections: prismaTemplate.sections,
+      isDefault: prismaTemplate.isDefault,
+      version: prismaTemplate.version || undefined,
+      description: prismaTemplate.description || undefined,
+      createdAt: prismaTemplate.createdAt,
+      updatedAt: prismaTemplate.updatedAt
+    };
   }
 
   private async handleFormUpdate(template: FormTemplate): Promise<void> {
@@ -95,7 +111,6 @@ class FormRegistry {
     }
   }
 
-  // API để lấy form template
   public async getTemplate(type: FormType, id?: string): Promise<FormTemplate | null> {
     try {
       const key = this.getCacheKey(type, id);
@@ -108,7 +123,7 @@ class FormRegistry {
         const redisTemplate = await this.redis.get(key);
         if (redisTemplate) {
           template = JSON.parse(redisTemplate);
-          this.cache.set(key, template);
+          this.cache.set(key, template as FormTemplate);
         } else {
           // Lấy từ database
           const dbTemplate = await this.prisma.formTemplate.findFirst({
@@ -116,11 +131,12 @@ class FormRegistry {
               type,
               id: id || undefined,
               isActive: true
-            }
+            },
+            include: { history: true }
           });
           
           if (dbTemplate) {
-            template = dbTemplate as unknown as FormTemplate;
+            template = this.mapPrismaToFormTemplate(dbTemplate as FormTemplateWithHistory);
             // Cập nhật cả Redis và local cache
             await this.redis.set(key, JSON.stringify(template));
             this.cache.set(key, template);
@@ -135,7 +151,6 @@ class FormRegistry {
     }
   }
 
-  // API để cập nhật form template
   public async updateTemplate(template: FormTemplate): Promise<FormTemplate> {
     try {
       // Cập nhật trong database
@@ -148,20 +163,22 @@ class FormRegistry {
           version: template.version,
           description: template.description,
           updatedAt: new Date()
-        }
+        },
+        include: { history: true }
       });
 
-      // Emit sự kiện cập nhật
-      this.eventEmitter.emit('formUpdated', updated);
+      const formTemplate = this.mapPrismaToFormTemplate(updated);
 
-      return updated as unknown as FormTemplate;
+      // Emit sự kiện cập nhật
+      this.eventEmitter.emit('formUpdated', formTemplate);
+
+      return formTemplate;
     } catch (error) {
       console.error('Failed to update form template:', error);
       throw error;
     }
   }
 
-  // API để xóa form template
   public async deleteTemplate(type: FormType, id: string): Promise<void> {
     try {
       // Soft delete trong database
@@ -178,45 +195,68 @@ class FormRegistry {
     }
   }
 
-  // API để validate form data
-  public async validateFormData(type: FormType, data: any): Promise<boolean> {
+  public async getFormConfig(type: FormType): Promise<FormConfig | null> {
     try {
-      const template = await this.getTemplate(type);
-      if (!template) return false;
-
-      // Implement validation logic here
-      return true;
+      const config = await this.prisma.formConfig.findUnique({
+        where: { type }
+      });
+      return config as FormConfig | null;
     } catch (error) {
-      console.error('Failed to validate form data:', error);
-      return false;
+      console.error('Failed to get form config:', error);
+      return null;
     }
   }
 
-  // API để lấy form history
-  public async getTemplateHistory(id: string): Promise<any[]> {
+  public async updateFormConfig(type: FormType, config: Partial<FormConfig>): Promise<FormConfig> {
     try {
-      return await this.prisma.formTemplateHistory.findMany({
-        where: { formTemplateId: id },
-        orderBy: { createdAt: 'desc' }
+      const updated = await this.prisma.formConfig.upsert({
+        where: { type },
+        update: { config: config.config },
+        create: {
+          type,
+          config: config.config || {}
+        }
       });
+      return updated as FormConfig;
     } catch (error) {
-      console.error('Failed to get form template history:', error);
+      console.error('Failed to update form config:', error);
+      throw error;
+    }
+  }
+
+  public async getCustomFields(): Promise<CustomField[]> {
+    try {
+      const fields = await this.prisma.customField.findMany();
+      return fields as CustomField[];
+    } catch (error) {
+      console.error('Failed to get custom fields:', error);
       return [];
     }
   }
 
-  // API để subscribe các thay đổi form
-  public subscribeToUpdates(callback: (update: any) => void): void {
-    const subscriber = new Redis(process.env.REDIS_URL);
+  public async addCustomField(field: Omit<CustomField, 'id'>): Promise<CustomField> {
+    try {
+      const created = await this.prisma.customField.create({
+        data: field
+      });
+      return created as CustomField;
+    } catch (error) {
+      console.error('Failed to add custom field:', error);
+      throw error;
+    }
+  }
+
+  public subscribeToUpdates(callback: (update: FormUpdate) => void): void {
+    const subscriber = new Redis(process.env.REDIS_URL || '');
     
-    subscriber.subscribe('form-updates', (err) => {
+    subscriber.subscribe('form-updates', (err: Error | null) => {
       if (err) {
         console.error('Failed to subscribe to form updates:', err);
         return;
       }
     });
 
-    subscriber.on('message', (channel, message) => {
+    subscriber.on('message', (channel: string, message: string) => {
       if (channel === 'form-updates') {
         callback(JSON.parse(message));
       }

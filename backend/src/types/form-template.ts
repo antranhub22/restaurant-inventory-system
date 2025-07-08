@@ -1,8 +1,11 @@
-export enum FormType {
-  IMPORT = 'IMPORT',
-  EXPORT = 'EXPORT',
-  RETURN = 'RETURN',
-  ADJUSTMENT = 'ADJUSTMENT'
+import type { Prisma } from '@prisma/client';
+
+export type FormType = 'IMPORT' | 'EXPORT' | 'RETURN' | 'ADJUSTMENT';
+
+export interface FormUpdate {
+  type: 'UPDATE' | 'DELETE';
+  formType: string;
+  formId: string;
 }
 
 export interface FormFieldOption {
@@ -36,33 +39,44 @@ export interface FormSection {
 }
 
 export interface FormTemplate {
-  id?: string;
+  id: string;
   name: string;
   type: FormType;
-  sections: FormSection[];
-  isDefault?: boolean;
+  sections: Record<string, any>;
+  isDefault: boolean;
   version?: string;
   description?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface FormConfig {
-  id?: string;
+  id: string;
   type: string;
-  config: {
-    requireAttachments?: boolean;
-    requireApproval?: boolean;
-    autoNumbering?: boolean;
-    numberingPrefix?: string;
-    [key: string]: any;
-  };
+  config: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface CustomField {
-  id?: string;
+  id: string;
   name: string;
   label: string;
   type: string;
-  options?: FormFieldOption[];
-  validation?: FormFieldValidation;
+  options?: Record<string, any>;
+  validation?: Record<string, any>;
   isRequired: boolean;
-} 
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type FormTemplateWithHistory = FormTemplate & {
+  history: Array<{
+    id: string;
+    formTemplateId: string;
+    structure: Record<string, any>;
+    changedBy?: string;
+    changeNote?: string;
+    createdAt: Date;
+  }>;
+}; 

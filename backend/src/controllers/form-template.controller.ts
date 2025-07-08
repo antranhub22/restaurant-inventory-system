@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import formTemplateService, { FormType } from '../services/form-template.service';
+import formTemplateService from '../services/form-template.service';
+import type { FormType } from '../types/form-template';
 
 class FormTemplateController {
   // Lấy form mẫu mặc định

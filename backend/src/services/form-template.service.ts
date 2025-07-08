@@ -1,53 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '.prisma/client';
+import type { FormType, FormTemplate, FormConfig, CustomField } from '../types/form-template';
 
 const prisma = new PrismaClient();
-
-export enum FormType {
-  IMPORT = 'IMPORT',
-  EXPORT = 'EXPORT',
-  RETURN = 'RETURN',
-  ADJUSTMENT = 'ADJUSTMENT'
-}
-
-export interface FormFieldOption {
-  value: string;
-  label: string;
-}
-
-export interface FormFieldValidation {
-  required?: boolean;
-  min?: number;
-  max?: number;
-  pattern?: string;
-  message?: string;
-}
-
-export interface FormField {
-  name: string;
-  label: string;
-  type: string;
-  required: boolean;
-  options?: FormFieldOption[];
-  validation?: FormFieldValidation;
-  defaultValue?: any;
-  readOnly?: boolean;
-  subFields?: FormField[]; // For array/object type fields
-}
-
-export interface FormSection {
-  title: string;
-  fields: FormField[];
-}
-
-export interface FormTemplate {
-  id?: string;
-  name: string;
-  type: FormType;
-  sections: FormSection[];
-  isDefault?: boolean;
-  version?: string;
-  description?: string;
-}
 
 class FormTemplateService {
   // Lấy form mẫu mặc định theo loại
@@ -59,7 +13,11 @@ class FormTemplateService {
         isActive: true
       }
     });
-    return template ? { ...template, sections: template.structure as FormSection[] } : null;
+    return template ? { 
+      ...template, 
+      sections: template.structure as Record<string, any>,
+      type: template.type as FormType
+    } : null;
   }
 
   // Lấy tất cả form mẫu theo loại
@@ -70,11 +28,15 @@ class FormTemplateService {
         isActive: true
       }
     });
-    return templates.map(t => ({ ...t, sections: t.structure as FormSection[] }));
+    return templates.map((template: any) => ({ 
+      ...template, 
+      sections: template.structure as Record<string, any>,
+      type: template.type as FormType
+    }));
   }
 
   // Tạo form mẫu mới
-  async createTemplate(template: FormTemplate): Promise<FormTemplate> {
+  async createTemplate(template: Omit<FormTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<FormTemplate> {
     // Nếu là form mặc định, hủy form mặc định cũ
     if (template.isDefault) {
       await prisma.formTemplate.updateMany({
@@ -93,18 +55,22 @@ class FormTemplateService {
         name: template.name,
         type: template.type,
         structure: template.sections,
-        isDefault: template.isDefault || false,
+        isDefault: template.isDefault,
         version: template.version,
         description: template.description,
         isActive: true
       }
     });
 
-    return { ...created, sections: created.structure as FormSection[] };
+    return { 
+      ...created, 
+      sections: created.structure as Record<string, any>,
+      type: created.type as FormType
+    };
   }
 
   // Cập nhật form mẫu
-  async updateTemplate(id: string, template: Partial<FormTemplate>): Promise<FormTemplate> {
+  async updateTemplate(id: string, template: Partial<Omit<FormTemplate, 'id' | 'createdAt' | 'updatedAt'>>): Promise<FormTemplate> {
     // Lưu lịch sử trước khi cập nhật
     const current = await prisma.formTemplate.findUnique({ where: { id } });
     if (current) {
@@ -129,7 +95,11 @@ class FormTemplateService {
       }
     });
 
-    return { ...updated, sections: updated.structure as FormSection[] };
+    return { 
+      ...updated, 
+      sections: updated.structure as Record<string, any>,
+      type: updated.type as FormType
+    };
   }
 
   // Xóa form mẫu (soft delete)
@@ -141,39 +111,42 @@ class FormTemplateService {
   }
 
   // Lấy cấu hình validation của form
-  async getFormConfig(type: FormType): Promise<any> {
+  async getFormConfig(type: FormType): Promise<FormConfig | null> {
     const config = await prisma.formConfig.findFirst({
       where: { type }
     });
-    return config?.config;
+    return config as FormConfig | null;
   }
 
   // Cập nhật cấu hình validation
-  async updateFormConfig(type: FormType, config: any): Promise<void> {
-    await prisma.formConfig.upsert({
+  async updateFormConfig(type: FormType, config: Partial<FormConfig>): Promise<FormConfig> {
+    const updated = await prisma.formConfig.upsert({
       where: {
         type
       },
       update: {
-        config
+        config: config.config
       },
       create: {
         type,
-        config
+        config: config.config || {}
       }
     });
+    return updated as FormConfig;
   }
 
   // Lấy danh sách trường tùy chỉnh
-  async getCustomFields(): Promise<any[]> {
-    return prisma.customField.findMany();
+  async getCustomFields(): Promise<CustomField[]> {
+    const fields = await prisma.customField.findMany();
+    return fields as CustomField[];
   }
 
   // Thêm trường tùy chỉnh mới
-  async addCustomField(field: any): Promise<any> {
-    return prisma.customField.create({
+  async addCustomField(field: Omit<CustomField, 'id' | 'createdAt' | 'updatedAt'>): Promise<CustomField> {
+    const created = await prisma.customField.create({
       data: field
     });
+    return created as CustomField;
   }
 }
 

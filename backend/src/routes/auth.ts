@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient, Role } from '@prisma/client';
 
 interface LoginRequest {
-  email: string;
+  email: string; // Có thể là email hoặc username
   password: string;
 }
 
@@ -15,6 +15,7 @@ interface RegisterRequest extends LoginRequest {
 
 interface UserResponse {
   id: number;
+  username: string;
   email: string;
   fullName: string;
   role: Role;
@@ -38,7 +39,7 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response<A
       where: {
         OR: [
           { email: email },
-          { email: email.toLowerCase() } // Hỗ trợ cả lowercase
+          { username: email }
         ]
       }
     });
@@ -64,6 +65,7 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response<A
       token,
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         fullName: user.fullName,
         role: user.role
@@ -80,8 +82,13 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
   try {
     const { email, password, fullName, role = 'staff' } = req.body;
     
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { username: email }
+        ]
+      }
     });
 
     if (existingUser) {
@@ -91,8 +98,11 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
 
     const hashedPassword = await bcrypt.hash(password, 10);
     
+    const username = email.split('@')[0]; // Tạo username từ phần đầu của email
+    
     const user = await prisma.user.create({
       data: {
+        username,
         email,
         passwordHash: hashedPassword,
         fullName,
@@ -110,6 +120,7 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
       token,
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         fullName: user.fullName,
         role: user.role

@@ -15,13 +15,15 @@ async function main() {
   const users = await prisma.user.createMany({
     data: [
       {
-        email: 'owner',
+        username: 'owner',
+        email: 'owner@restaurant.com',
         passwordHash: ownerPasswordHash,
         fullName: 'Nguyễn Văn An',
         role: 'owner',
         isActive: true
       },
       {
+        username: 'manager',
         email: 'manager@restaurant.com',
         passwordHash: defaultPasswordHash,
         fullName: 'Trần Thị Bình',
@@ -29,6 +31,7 @@ async function main() {
         isActive: true
       },
       {
+        username: 'kitchen',
         email: 'kitchen@restaurant.com',
         passwordHash: defaultPasswordHash,
         fullName: 'Lê Văn Cường',
@@ -36,6 +39,7 @@ async function main() {
         isActive: true
       },
       {
+        username: 'staff1',
         email: 'staff1@restaurant.com',
         passwordHash: defaultPasswordHash,
         fullName: 'Hoàng Văn Em',

@@ -3,37 +3,41 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Hash mật khẩu mặc định
+  // Hash mật khẩu cho user owner
+  const ownerPassword = '1234';
+  const ownerPasswordHash = await bcrypt.hash(ownerPassword, 10);
+
+  // Hash mật khẩu mặc định cho các user khác
   const defaultPassword = 'password123';
-  const passwordHash = await bcrypt.hash(defaultPassword, 10);
+  const defaultPasswordHash = await bcrypt.hash(defaultPassword, 10);
 
   // Seed users
   const users = await prisma.user.createMany({
     data: [
       {
-        email: 'owner@restaurant.com',
-        passwordHash,
+        email: 'owner',
+        passwordHash: ownerPasswordHash,
         fullName: 'Nguyễn Văn An',
         role: 'owner',
         isActive: true
       },
       {
         email: 'manager@restaurant.com',
-        passwordHash,
+        passwordHash: defaultPasswordHash,
         fullName: 'Trần Thị Bình',
         role: 'manager',
         isActive: true
       },
       {
         email: 'kitchen@restaurant.com',
-        passwordHash,
+        passwordHash: defaultPasswordHash,
         fullName: 'Lê Văn Cường',
         role: 'supervisor',
         isActive: true
       },
       {
         email: 'staff1@restaurant.com',
-        passwordHash,
+        passwordHash: defaultPasswordHash,
         fullName: 'Hoàng Văn Em',
         role: 'staff',
         isActive: true
@@ -84,7 +88,10 @@ async function main() {
   });
 
   console.log('🌱 Seeding completed!');
-  console.log('📝 Default users created with password:', defaultPassword);
+  console.log('👤 Owner account created:');
+  console.log('   Username: owner');
+  console.log('   Password: 1234');
+  console.log('📝 Other users created with default password:', defaultPassword);
 }
 
 main()

@@ -42,13 +42,13 @@ class OcrService {
       console.log('📊 Kích thước ảnh:', imageBuffer.length, 'bytes');
 
       // Khởi tạo worker với cấu hình cơ bản
-      const worker = await createWorker({} as any);
-
+      const worker = await createWorker();
+      
       // Load ngôn ngữ tiếng Việt
       console.log('📚 Đang tải dữ liệu ngôn ngữ tiếng Việt...');
-      await (worker as any).load();
-      await (worker as any).loadLanguage('vie');
-      await (worker as any).initialize('vie');
+      const w = worker as any;
+      await w.loadLanguage('vie+eng');
+      await w.initialize('vie+eng');
 
       // Nhận dạng text
       console.log('🔍 Đang xử lý OCR...');

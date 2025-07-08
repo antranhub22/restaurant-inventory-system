@@ -1,17 +1,6 @@
 import { createWorker } from 'tesseract.js';
 import { OcrResult, ExtractedContent } from '../types/ocr';
 
-interface TesseractWord {
-  text: string;
-  confidence: number;
-  bbox: {
-    x0: number;
-    y0: number;
-    x1: number;
-    y1: number;
-  };
-}
-
 class OcrService {
   private async extractTextFromImage(imageBuffer: Buffer): Promise<{
     text: string;
@@ -26,13 +15,7 @@ class OcrService {
 
       // Khởi tạo worker với Tesseract.js
       console.log('📚 Đang khởi tạo Tesseract worker...');
-      const worker = await createWorker('vie+eng', 1, {
-        logger: (m: any) => {
-          if (m.status) {
-            console.log(`Tesseract: ${m.status}${m.progress ? ` (${Math.round(m.progress * 100)}%)` : ''}`);
-          }
-        }
-      });
+      const worker = await createWorker('vie+eng');
 
       // Nhận dạng text
       console.log('🔍 Đang xử lý OCR...');
@@ -41,18 +24,27 @@ class OcrService {
       await worker.terminate();
 
       // Phân tích kết quả thành các content có cấu trúc
-      const words = (result.data as any).words as TesseractWord[];
-      const contents: ExtractedContent[] = words.map(word => ({
-        text: word.text,
-        type: this.detectContentType(word.text),
-        confidence: word.confidence / 100,
-        position: {
-          top: word.bbox.y0,
-          left: word.bbox.x0,
-          width: word.bbox.x1 - word.bbox.x0,
-          height: word.bbox.y1 - word.bbox.y0
-        }
-      }));
+      const contents: ExtractedContent[] = [];
+      
+      // Get text blocks from the result
+      if (result.data.text) {
+        // Split text into blocks by newlines and spaces
+        const blocks = result.data.text.split(/[\n\s]+/).filter(Boolean);
+        
+        blocks.forEach((text, index) => {
+          contents.push({
+            text: text.trim(),
+            type: this.detectContentType(text),
+            confidence: result.data.confidence / 100,
+            position: {
+              top: index * 20, // Approximate positioning
+              left: 0,
+              width: text.length * 10, // Approximate width based on text length
+              height: 20 // Fixed height
+            }
+          });
+        });
+      }
 
       const processingTime = Date.now() - startTime;
 

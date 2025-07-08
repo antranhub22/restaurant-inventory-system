@@ -6,6 +6,7 @@ import api from '../utils/api';
 import { AxiosError } from 'axios';
 import sampleData from '../data/sample_data.json';
 import { SampleData, Receipt } from '../types/sample_data';
+import { useAuthStore } from '../store';
 
 const data = sampleData as SampleData;
 const sampleReceipts = data.sample_receipts;
@@ -131,14 +132,33 @@ const OcrReceiptFlow: React.FC = () => {
         return;
       }
 
+      const token = useAuthStore.getState().token;
+      if (!token) {
+        setError('Vui lòng đăng nhập để sử dụng tính năng này.');
+        setLoading(false);
+        return;
+      }
+
       const response = await api.post<{ data: OcrResult }>('/ocr/process-receipt', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
       });
 
-      setResult(response.data.data);
+      if (response.data.data) {
+        setResult(response.data.data);
+      } else {
+        throw new Error('Không nhận được kết quả OCR');
+      }
     } catch (err) {
       if (err instanceof AxiosError) {
-        setError(err.response?.data?.error?.message || 'Lỗi khi gửi ảnh lên OCR.');
+        const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Lỗi khi gửi ảnh lên OCR.';
+        setError(errorMsg);
+        if (err.response?.status === 401) {
+          // Redirect to login if unauthorized
+          window.location.href = '/login';
+        }
       } else {
         setError('Lỗi không xác định khi xử lý OCR.');
       }

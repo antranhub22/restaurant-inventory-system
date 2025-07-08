@@ -3,6 +3,7 @@ import Button from './Button';
 import Card from './Card';
 import api from '../../utils/api';
 import { AxiosError } from 'axios';
+import { useAuthStore } from '../../store';
 
 export interface OcrResult {
   supplier: string;
@@ -103,15 +104,33 @@ const OcrScanner: React.FC<OcrScannerProps> = ({ onResult, onError, onCancel, cl
       const formData = new FormData();
       formData.append('image', blob, 'receipt.jpg');
 
+      const token = useAuthStore.getState().token;
+      if (!token) {
+        const errorMsg = 'Vui lòng đăng nhập để sử dụng tính năng này.';
+        setError(errorMsg);
+        onError?.(errorMsg);
+        return;
+      }
+
       const response = await api.post<{ data: OcrResult }>('/ocr/process-receipt', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
       });
 
-      onResult(response.data.data);
+      if (response.data.data) {
+        onResult(response.data.data);
+      } else {
+        throw new Error('Không nhận được kết quả OCR');
+      }
     } catch (err) {
       let errorMsg = 'Lỗi không xác định khi xử lý OCR.';
       if (err instanceof AxiosError) {
-        errorMsg = err.response?.data?.error?.message || 'Lỗi khi xử lý OCR.';
+        errorMsg = err.response?.data?.error || err.response?.data?.message || 'Lỗi khi xử lý OCR.';
+        if (err.response?.status === 401) {
+          window.location.href = '/login';
+        }
       }
       setError(errorMsg);
       onError?.(errorMsg);

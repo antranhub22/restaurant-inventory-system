@@ -5,19 +5,43 @@ import ocrLearningService from './ocr.learning.service';
 
 const prisma = new PrismaClient();
 
+interface TesseractWord {
+  text: string;
+  confidence: number;
+  bbox: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  };
+}
+
+interface TesseractLine {
+  text: string;
+  words: TesseractWord[];
+  bbox: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  };
+}
+
+interface TesseractParagraph {
+  text: string;
+  lines: TesseractLine[];
+  bbox: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  };
+}
+
 interface TesseractResult {
   text: string;
   confidence: number;
-  words: Array<{
-    text: string;
-    confidence: number;
-    bbox: {
-      x0: number;
-      y0: number;
-      x1: number;
-      y1: number;
-    };
-  }>;
+  paragraphs: TesseractParagraph[];
 }
 
 export interface OcrResult {
@@ -59,26 +83,33 @@ class OcrService {
       const worker = await createWorker('vie');
       
       const result = await worker.recognize(imageBuffer);
-      const data = result.data as unknown as TesseractResult;
+      console.log('Raw result:', JSON.stringify(result.data, null, 2));
       
-      console.log('✅ Nhận được kết quả từ Tesseract');
-      console.log('📝 Độ tin cậy:', data.confidence);
+      const textBlocks: TextBlock[] = [];
       
-      const textBlocks: TextBlock[] = data.words.map(word => ({
-        text: word.text,
-        confidence: word.confidence / 100, // Tesseract returns confidence as percentage
-        boundingBox: {
-          left: word.bbox.x0,
-          top: word.bbox.y0,
-          right: word.bbox.x1,
-          bottom: word.bbox.y1
+      // Xử lý từng dòng text
+      const lines = result.data.text.split('\n');
+      const avgConfidence = result.data.confidence || 0;
+      
+      lines.forEach((line, index) => {
+        if (line.trim()) {
+          textBlocks.push({
+            text: line.trim(),
+            confidence: avgConfidence / 100,
+            boundingBox: {
+              left: 0,
+              top: index * 20, // Giả lập vị trí dựa vào thứ tự dòng
+              right: 1000,
+              bottom: (index + 1) * 20
+            }
+          });
         }
-      })).filter(block => block.confidence >= OcrService.MIN_CONFIDENCE_SCORE);
+      });
 
       await worker.terminate();
       
       console.log(`\n✨ Tổng số blocks đạt yêu cầu: ${textBlocks.length}`);
-      return textBlocks;
+      return textBlocks.filter(block => block.confidence >= OcrService.MIN_CONFIDENCE_SCORE);
     } catch (error) {
       console.error('❌ Lỗi trong quá trình xử lý OCR:', error);
       throw new Error('Lỗi khi xử lý OCR');

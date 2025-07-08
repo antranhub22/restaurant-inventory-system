@@ -1,16 +1,9 @@
-import { createWorker, createScheduler } from 'tesseract.js';
+import { createWorker } from 'tesseract.js';
 import { PrismaClient } from '@prisma/client';
 import vietnameseService from './vietnamese.service';
 import ocrLearningService from './ocr.learning.service';
 
 const prisma = new PrismaClient();
-
-interface TesseractWorker {
-  loadLanguage: (lang: string) => Promise<void>;
-  initialize: (lang: string) => Promise<void>;
-  recognize: (image: Buffer) => Promise<any>;
-  terminate: () => Promise<void>;
-}
 
 export interface OcrResult {
   supplier: string;
@@ -48,12 +41,17 @@ class OcrService {
       console.log('🔍 Bắt đầu xử lý OCR với Tesseract...');
       console.log('📊 Kích thước ảnh:', imageBuffer.length, 'bytes');
 
-      // Khởi tạo worker
-      const worker = await createWorker() as unknown as TesseractWorker;
-      await worker.loadLanguage('vie');
-      await worker.initialize('vie');
+      // Khởi tạo worker với cấu hình cơ bản
+      const worker = await createWorker({} as any);
+
+      // Load ngôn ngữ tiếng Việt
+      console.log('📚 Đang tải dữ liệu ngôn ngữ tiếng Việt...');
+      await (worker as any).load();
+      await (worker as any).loadLanguage('vie');
+      await (worker as any).initialize('vie');
 
       // Nhận dạng text
+      console.log('🔍 Đang xử lý OCR...');
       const { data } = await worker.recognize(imageBuffer);
       console.log('Raw OCR result:', data);
       

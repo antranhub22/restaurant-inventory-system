@@ -1,4 +1,4 @@
-import { createWorker } from 'tesseract.js';
+import { createWorker, RecognizeResult } from 'tesseract.js';
 import { PrismaClient } from '@prisma/client';
 import vietnameseService from './vietnamese.service';
 
@@ -58,28 +58,39 @@ class OcrService {
 
       // Nhận dạng text với thông tin vị trí
       console.log('🔍 Đang xử lý OCR...');
-      const { data } = await worker.recognize(imageBuffer, {
-        pageseg_mode: '1',
-        preserve_interword_spaces: '1'
-      });
+      const { data } = await worker.recognize(imageBuffer, {}, { blocks: true });
       
-      if (!data || !data.words) {
-        console.error('❌ Không nhận được kết quả từ Tesseract');
-        await worker.terminate();
-        return { elements: [], width: 0, height: 0 };
-      }
-
-      // Trích xuất thông tin vị trí của từng từ
-      const elements: TextElement[] = data.words.map(word => ({
-        text: word.text,
-        confidence: word.confidence / 100,
-        position: {
-          x: word.bbox.x0,
-          y: word.bbox.y0,
-          width: word.bbox.x1 - word.bbox.x0,
-          height: word.bbox.y1 - word.bbox.y0
+      const elements: TextElement[] = [];
+      
+      // Process blocks from Tesseract.js v6 output
+      if (data.blocks) {
+        for (const block of data.blocks) {
+          if (block.paragraphs) {
+            for (const paragraph of block.paragraphs) {
+              if (paragraph.lines) {
+                for (const line of paragraph.lines) {
+                  if (line.words) {
+                    for (const word of line.words) {
+                      if (word.text && word.confidence && word.bbox) {
+                        elements.push({
+                          text: word.text,
+                          confidence: word.confidence / 100,
+                          position: {
+                            x: word.bbox.x0,
+                            y: word.bbox.y0,
+                            width: word.bbox.x1 - word.bbox.x0,
+                            height: word.bbox.y1 - word.bbox.y0
+                          }
+                        });
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
-      }));
+      }
 
       await worker.terminate();
 
@@ -178,7 +189,7 @@ class OcrService {
       total,
       items,
       confidence: avgConfidence,
-      needsReview: avgConfidence < this.REVIEW_THRESHOLD
+      needsReview: avgConfidence < OcrService.REVIEW_THRESHOLD
     };
   }
 

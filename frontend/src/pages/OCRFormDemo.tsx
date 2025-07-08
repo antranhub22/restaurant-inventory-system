@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { FormType } from '../types/form-template';
 import OCRFormConfirmation from '../components/forms/OCRFormConfirmation';
 import OCRProcessingModal from '../components/common/OCRProcessingModal';
+import OCRStatusPanel from '../components/common/OCRStatusPanel';
 import ImagePreview from '../components/common/ImagePreview';
 import useOCRForm from '../hooks/useOCRForm';
-import { testBackendConnection, testOCRFormEndpoint } from '../utils/testConnection';
+import { OCRConnectionTestResult } from '../utils/ocrConnectionTest';
 
 const OCRFormDemo: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -12,31 +13,13 @@ const OCRFormDemo: React.FC = () => {
   const [ocrResult, setOcrResult] = useState<any>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
-  const [connectionStatus, setConnectionStatus] = useState<{
-    backend: boolean;
-    ocr: boolean;
-    message: string;
-  } | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<OCRConnectionTestResult | null>(null);
   
   const { processOCRForm, confirmOCRForm, isLoading, error, clearError } = useOCRForm();
 
-  // Test connection on component mount
-  useEffect(() => {
-    const testConnections = async () => {
-      const backendTest = await testBackendConnection();
-      const ocrTest = await testOCRFormEndpoint();
-      
-      setConnectionStatus({
-        backend: backendTest.success,
-        ocr: ocrTest.success,
-        message: backendTest.success 
-          ? (ocrTest.success ? 'Tất cả kết nối OK' : ocrTest.message)
-          : backendTest.message
-      });
-    };
-
-    testConnections();
-  }, []);
+  const handleStatusChange = (status: OCRConnectionTestResult) => {
+    setConnectionStatus(status);
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -61,8 +44,8 @@ const OCRFormDemo: React.FC = () => {
       return;
     }
 
-    if (!connectionStatus?.backend) {
-      alert('Không thể kết nối đến backend. Vui lòng kiểm tra lại.');
+    if (!connectionStatus?.overall.success) {
+      alert('Không thể kết nối đến OCR service. Vui lòng kiểm tra lại.');
       return;
     }
 
@@ -133,28 +116,10 @@ const OCRFormDemo: React.FC = () => {
           </h1>
 
           {/* Connection Status */}
-          {connectionStatus && (
-            <div className={`mb-6 p-4 rounded-md ${
-              connectionStatus.backend && connectionStatus.ocr 
-                ? 'bg-green-50 border border-green-200' 
-                : 'bg-red-50 border border-red-200'
-            }`}>
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${
-                  connectionStatus.backend && connectionStatus.ocr ? 'bg-green-500' : 'bg-red-500'
-                }`}></div>
-                <span className={`text-sm font-medium ${
-                  connectionStatus.backend && connectionStatus.ocr ? 'text-green-800' : 'text-red-800'
-                }`}>
-                  {connectionStatus.message}
-                </span>
-              </div>
-              <div className="mt-2 text-xs text-gray-600">
-                Backend: {connectionStatus.backend ? '✅' : '❌'} | 
-                OCR API: {connectionStatus.ocr ? '✅' : '❌'}
-              </div>
-            </div>
-          )}
+          <OCRStatusPanel 
+            onStatusChange={handleStatusChange}
+            showDetails={true}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Column - Upload and Settings */}
@@ -201,7 +166,7 @@ const OCRFormDemo: React.FC = () => {
               <div className="text-center">
                 <button
                   onClick={handleProcessOCR}
-                  disabled={!selectedFile || isLoading || !connectionStatus?.backend}
+                  disabled={!selectedFile || isLoading || !connectionStatus?.overall.success}
                   className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Đang xử lý...' : 'Xử lý OCR'}

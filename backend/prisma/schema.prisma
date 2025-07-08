@@ -38,7 +38,7 @@ model User {
   updatedAt         DateTime @updatedAt
   // Relations
   transactions      Transaction[]
-  approvedReconciliations DepartmentReconciliation[] @relation("ApprovedBy")
+  approvedDepartmentReconciliations DepartmentReconciliation[] @relation("ApprovedBy")
   processedImports    Import[]  @relation("ProcessedBy")
   approvedImports     Import[]  @relation("ApprovedBy")
   rejectedImports     Import[]  @relation("RejectedBy")

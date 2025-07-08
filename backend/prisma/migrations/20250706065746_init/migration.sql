@@ -14,7 +14,7 @@ CREATE TYPE "TransactionType" AS ENUM ('IN', 'OUT', 'RETURN', 'ADJUSTMENT', 'TRA
 CREATE TYPE "TransactionStatus" AS ENUM ('pending', 'approved', 'rejected', 'cancelled');
 
 -- CreateEnum
-CREATE TYPE "ShiftType" AS ENUM ('morning', 'afternoon', 'evening', 'night');
+CREATE TYPE "ShiftType" AS ENUM ('morning', 'afternoon', 'evening', 'full_day');
 
 -- CreateEnum
 CREATE TYPE "ReconciliationStatus" AS ENUM ('pending', 'acceptable', 'warning', 'investigation', 'critical', 'resolved');

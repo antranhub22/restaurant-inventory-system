@@ -1,9 +1,3 @@
--- CreateEnum
-CREATE TYPE "ShiftType" AS ENUM ('morning', 'afternoon', 'evening', 'full_day');
-
--- CreateEnum
-CREATE TYPE "ReconciliationStatus" AS ENUM ('draft', 'pending', 'approved', 'rejected', 'cancelled');
-
 -- CreateTable
 CREATE TABLE "Reconciliation" (
     "id" SERIAL NOT NULL,

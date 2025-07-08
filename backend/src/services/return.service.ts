@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { ReturnData, ReturnItem, ReturnStatus, ReturnValidationError, ItemCondition } from '../types/return';
 import { Redis } from 'ioredis';
+import fs from 'fs';
+import path from 'path';
 
 class ReturnService {
   private prisma: PrismaClient;
@@ -9,6 +11,60 @@ class ReturnService {
   constructor() {
     this.prisma = new PrismaClient();
     this.redis = new Redis(process.env.REDIS_URL || '');
+  }
+
+  async addAttachment(id: number, file: Express.Multer.File) {
+    const returnData = await this.prisma.return.findUnique({
+      where: { id }
+    });
+
+    if (!returnData) {
+      // Xóa file tạm nếu có lỗi
+      fs.unlinkSync(file.path);
+      throw new Error('Phiếu hoàn trả không tồn tại');
+    }
+
+    if (returnData.status !== ReturnStatus.PENDING) {
+      // Xóa file tạm nếu có lỗi
+      fs.unlinkSync(file.path);
+      throw new Error('Chỉ có thể thêm file đính kèm cho phiếu đang chờ duyệt');
+    }
+
+    // Di chuyển file từ thư mục tạm sang thư mục lưu trữ
+    const fileName = path.basename(file.path);
+    const storagePath = path.join('uploads', 'returns', fileName);
+
+    try {
+      // Tạo thư mục nếu chưa tồn tại
+      const dir = path.dirname(storagePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Di chuyển file
+      fs.renameSync(file.path, storagePath);
+
+      // Cập nhật danh sách file đính kèm trong database
+      const updated = await this.prisma.return.update({
+        where: { id },
+        data: {
+          attachments: {
+            push: fileName
+          }
+        }
+      });
+
+      // Xóa cache
+      await this.redis.del(`return:${id}`);
+
+      return updated;
+    } catch (error) {
+      // Xóa file tạm nếu có lỗi
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      throw error;
+    }
   }
 
   async validateReturn(data: ReturnData): Promise<ReturnValidationError[]> {

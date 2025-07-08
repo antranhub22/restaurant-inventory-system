@@ -1,64 +1,42 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
-interface JwtPayload {
-  userId: number;
-  email: string;
-  role: Role;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: JwtPayload;
-    }
-  }
-}
-
-export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const authenticate = (req: Request, res: Response, next: NextFunction) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
-    
     if (!token) {
-      res.status(401).json({ error: 'No token provided' });
-      return;
+      return res.status(401).json({ message: 'Không tìm thấy token xác thực' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as JwtPayload;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as {
+      id: number;
+      username: string;
+      role: Role;
+      permissions?: string[];
+    };
     
-    // Verify user still exists and is active
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId }
-    });
-
-    if (!user || !user.isActive) {
-      res.status(401).json({ error: 'Invalid token' });
-      return;
-    }
-
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
-    return;
+    return res.status(401).json({ message: 'Token không hợp lệ' });
   }
 };
 
-export const authorize = (...roles: Role[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+export const authorize = (allowedRoles: Role[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Chưa xác thực người dùng' });
+      }
 
-    if (!roles.includes(req.user.role)) {
-      res.status(403).json({ error: 'Forbidden' });
-      return;
-    }
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: 'Không có quyền thực hiện thao tác này' });
+      }
 
-    next();
+      next();
+    } catch (error) {
+      return res.status(403).json({ message: 'Lỗi kiểm tra quyền' });
+    }
   };
 };

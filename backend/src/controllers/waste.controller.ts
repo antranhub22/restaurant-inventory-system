@@ -46,15 +46,15 @@ class WasteController {
   async getWasteById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const waste_data = await wasteService.getWasteById(Number(id));
+      const waste = await wasteService.getWasteById(Number(id));
       
-      if (!waste_data) {
+      if (!waste) {
         return res.status(404).json({
           error: 'Không tìm thấy báo cáo hao hụt'
         });
       }
 
-      res.json(waste_data);
+      res.json(waste);
     } catch (error) {
       console.error('Get waste error:', error);
       res.status(500).json({
@@ -66,15 +66,7 @@ class WasteController {
   async approveWaste(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const approvedById = req.user?.id;
-
-      if (!approvedById) {
-        return res.status(401).json({
-          error: 'Unauthorized'
-        });
-      }
-
-      const result = await wasteService.approveWaste(Number(id), approvedById);
+      const result = await wasteService.approveWaste(Number(id), req.user?.id || 0);
       res.json(result);
     } catch (error) {
       console.error('Approve waste error:', error);
@@ -88,21 +80,14 @@ class WasteController {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const rejectedById = req.user?.id;
-
-      if (!rejectedById) {
-        return res.status(401).json({
-          error: 'Unauthorized'
-        });
-      }
-
+      
       if (!reason) {
         return res.status(400).json({
           error: 'Vui lòng cung cấp lý do từ chối'
         });
       }
 
-      const result = await wasteService.rejectWaste(Number(id), rejectedById, reason);
+      const result = await wasteService.rejectWaste(Number(id), req.user?.id || 0, reason);
       res.json(result);
     } catch (error) {
       console.error('Reject waste error:', error);
@@ -112,29 +97,23 @@ class WasteController {
     }
   }
 
-  async generateReport(req: Request, res: Response) {
+  async uploadAttachment(req: Request, res: Response) {
     try {
-      const { startDate, endDate, departmentId, wasteType } = req.query;
+      const { id } = req.params;
+      const file = req.file;
 
-      if (!startDate || !endDate) {
+      if (!file) {
         return res.status(400).json({
-          error: 'Vui lòng cung cấp khoảng thời gian báo cáo'
+          error: 'Không tìm thấy file'
         });
       }
 
-      const filters = {
-        startDate: new Date(startDate as string),
-        endDate: new Date(endDate as string),
-        departmentId: departmentId ? Number(departmentId) : undefined,
-        wasteType: wasteType as string
-      };
-
-      const report = await wasteService.generateWasteReport(filters);
-      res.json(report);
+      const result = await wasteService.addAttachment(Number(id), file);
+      res.json(result);
     } catch (error) {
-      console.error('Generate report error:', error);
-      res.status(500).json({
-        error: 'Lỗi khi tạo báo cáo thống kê hao hụt'
+      console.error('Upload attachment error:', error);
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'Lỗi khi upload file đính kèm'
       });
     }
   }

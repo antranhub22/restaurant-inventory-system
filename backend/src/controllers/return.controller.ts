@@ -45,15 +45,15 @@ class ReturnController {
   async getReturnById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const return_data = await returnService.getReturnById(Number(id));
+      const returnData = await returnService.getReturnById(Number(id));
       
-      if (!return_data) {
+      if (!returnData) {
         return res.status(404).json({
           error: 'Không tìm thấy phiếu hoàn trả'
         });
       }
 
-      res.json(return_data);
+      res.json(returnData);
     } catch (error) {
       console.error('Get return error:', error);
       res.status(500).json({
@@ -65,15 +65,7 @@ class ReturnController {
   async approveReturn(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const approvedById = req.user?.id;
-
-      if (!approvedById) {
-        return res.status(401).json({
-          error: 'Unauthorized'
-        });
-      }
-
-      const result = await returnService.approveReturn(Number(id), approvedById);
+      const result = await returnService.approveReturn(Number(id), req.user?.id || 0);
       res.json(result);
     } catch (error) {
       console.error('Approve return error:', error);
@@ -87,26 +79,40 @@ class ReturnController {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const rejectedById = req.user?.id;
-
-      if (!rejectedById) {
-        return res.status(401).json({
-          error: 'Unauthorized'
-        });
-      }
-
+      
       if (!reason) {
         return res.status(400).json({
           error: 'Vui lòng cung cấp lý do từ chối'
         });
       }
 
-      const result = await returnService.rejectReturn(Number(id), rejectedById, reason);
+      const result = await returnService.rejectReturn(Number(id), req.user?.id || 0, reason);
       res.json(result);
     } catch (error) {
       console.error('Reject return error:', error);
       res.status(400).json({
         error: error instanceof Error ? error.message : 'Lỗi khi từ chối phiếu hoàn trả'
+      });
+    }
+  }
+
+  async uploadAttachment(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({
+          error: 'Không tìm thấy file'
+        });
+      }
+
+      const result = await returnService.addAttachment(Number(id), file);
+      res.json(result);
+    } catch (error) {
+      console.error('Upload attachment error:', error);
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'Lỗi khi upload file đính kèm'
       });
     }
   }

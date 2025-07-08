@@ -21,11 +21,11 @@ export interface ReconciliationItem {
 export interface ReconciliationData {
   date: Date;
   departmentId: number;
-  shiftType: ShiftType;
+  shiftType: string;
   processedById: number;
   items: ReconciliationItem[];
   notes?: string;
-  status: ReconciliationStatus;
+  status?: string;
 }
 
 export interface ReconciliationWithRelations extends ReconciliationData {
@@ -59,41 +59,30 @@ export interface ReconciliationReport {
   startDate: Date;
   endDate: Date;
   departmentId?: number;
-  shiftType?: ShiftType;
-  totalDiscrepancyValue: number;
+  shiftType?: string;
+  totalValue: number;
   items: {
     itemId: number;
     itemName: string;
-    totalDiscrepancy: number;
-    totalDiscrepancyValue: number;
-    averageDiscrepancyRate: number;
-    shifts: {
-      date: Date;
-      shiftType: ShiftType;
-      discrepancy: number;
-      discrepancyRate: number;
-      discrepancyValue: number;
+    totalQuantity: number;
+    totalValue: number;
+    reasons: {
+      type: string;
+      quantity: number;
+      value: number;
     }[];
   }[];
   summary: {
-    byShift: {
-      shiftType: ShiftType;
+    byType: {
+      type: string;
       count: number;
-      totalDiscrepancyValue: number;
-      averageDiscrepancyRate: number;
+      totalValue: number;
     }[];
     byDepartment?: {
       departmentId: number;
       departmentName: string;
       count: number;
-      totalDiscrepancyValue: number;
-      averageDiscrepancyRate: number;
-    }[];
-    byDate: {
-      date: Date;
-      count: number;
-      totalDiscrepancyValue: number;
-      averageDiscrepancyRate: number;
+      totalValue: number;
     }[];
   };
 } 

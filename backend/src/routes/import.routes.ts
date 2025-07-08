@@ -1,10 +1,10 @@
-import express from 'express';
-import multer from 'multer';
-import importController from '../controllers/import.controller';
+import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 import { Role } from '@prisma/client';
+import importController from '../controllers/import.controller';
+import multer from 'multer';
 
-const router = express.Router();
+const router = Router();
 
 // Cấu hình multer cho upload file
 const storage = multer.diskStorage({
@@ -35,7 +35,7 @@ const upload = multer({
 // Routes
 router.post('/',
   authenticate,
-  authorize(Role.MANAGER, Role.OWNER),
+  authorize([Role.manager, Role.owner]),
   importController.createImport
 );
 
@@ -51,18 +51,19 @@ router.get('/:id',
 
 router.post('/:id/approve',
   authenticate,
-  authorize(Role.MANAGER, Role.OWNER),
+  authorize([Role.manager, Role.owner]),
   importController.approveImport
 );
 
 router.post('/:id/reject',
   authenticate,
-  authorize(Role.MANAGER, Role.OWNER),
+  authorize([Role.manager, Role.owner]),
   importController.rejectImport
 );
 
 router.post('/:id/attachments',
   authenticate,
+  authorize([Role.manager, Role.owner]),
   upload.single('file'),
   importController.uploadAttachment
 );

@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { ImportData, ImportItem, ImportStatus, ImportValidationError } from '../types/import';
 import { Redis } from 'ioredis';
+import fs from 'fs';
+import path from 'path';
 
 class ImportService {
   private prisma: PrismaClient;
@@ -183,6 +185,103 @@ class ImportService {
         items: importItems
       };
     });
+  }
+
+  async getImports(filters: {
+    status?: ImportStatus;
+    supplierId?: number;
+    startDate?: Date;
+    endDate?: Date;
+  }) {
+    const where: any = {};
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    if (filters.supplierId) {
+      where.supplierId = filters.supplierId;
+    }
+
+    if (filters.startDate || filters.endDate) {
+      where.date = {};
+      if (filters.startDate) {
+        where.date.gte = filters.startDate;
+      }
+      if (filters.endDate) {
+        where.date.lte = filters.endDate;
+      }
+    }
+
+    return this.prisma.import.findMany({
+      where,
+      include: {
+        items: {
+          include: {
+            item: true
+          }
+        },
+        supplier: true,
+        processedBy: true
+      },
+      orderBy: {
+        date: 'desc'
+      }
+    });
+  }
+
+  async addAttachment(id: number, file: Express.Multer.File) {
+    const importData = await this.prisma.import.findUnique({
+      where: { id }
+    });
+
+    if (!importData) {
+      // Xóa file tạm nếu có lỗi
+      fs.unlinkSync(file.path);
+      throw new Error('Phiếu nhập kho không tồn tại');
+    }
+
+    if (importData.status !== ImportStatus.PENDING) {
+      // Xóa file tạm nếu có lỗi
+      fs.unlinkSync(file.path);
+      throw new Error('Chỉ có thể thêm file đính kèm cho phiếu đang chờ duyệt');
+    }
+
+    // Di chuyển file từ thư mục tạm sang thư mục lưu trữ
+    const fileName = path.basename(file.path);
+    const storagePath = path.join('uploads', 'imports', fileName);
+
+    try {
+      // Tạo thư mục nếu chưa tồn tại
+      const dir = path.dirname(storagePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Di chuyển file
+      fs.renameSync(file.path, storagePath);
+
+      // Cập nhật danh sách file đính kèm trong database
+      const updated = await this.prisma.import.update({
+        where: { id },
+        data: {
+          attachments: {
+            push: fileName
+          }
+        }
+      });
+
+      // Xóa cache
+      await this.redis.del(`import:${id}`);
+
+      return updated;
+    } catch (error) {
+      // Xóa file tạm nếu có lỗi
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      throw error;
+    }
   }
 
   private async updateCache(importId: number) {

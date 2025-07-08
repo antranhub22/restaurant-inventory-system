@@ -1,10 +1,10 @@
-import express from 'express';
-import multer from 'multer';
-import wasteController from '../controllers/waste.controller';
+import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 import { Role } from '@prisma/client';
+import wasteController from '../controllers/waste.controller';
+import multer from 'multer';
 
-const router = express.Router();
+const router = Router();
 
 // Cấu hình multer cho upload file
 const storage = multer.diskStorage({
@@ -23,11 +23,11 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB
   },
   fileFilter: (req, file, cb) => {
-    // Chỉ cho phép upload ảnh
-    if (file.mimetype.startsWith('image/')) {
+    // Chỉ cho phép upload ảnh và PDF
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new Error('Chỉ chấp nhận file ảnh'));
+      cb(new Error('Chỉ chấp nhận file ảnh hoặc PDF'));
     }
   }
 });
@@ -35,20 +35,13 @@ const upload = multer({
 // Routes
 router.post('/',
   authenticate,
-  authorize(Role.MANAGER, Role.OWNER, Role.SUPERVISOR),
-  upload.array('evidencePhotos', 5), // Tối đa 5 ảnh
+  authorize([Role.manager, Role.owner, Role.supervisor]),
   wasteController.createWaste
 );
 
 router.get('/',
   authenticate,
   wasteController.getWastes
-);
-
-router.get('/report',
-  authenticate,
-  authorize(Role.MANAGER, Role.OWNER),
-  wasteController.generateReport
 );
 
 router.get('/:id',
@@ -58,14 +51,21 @@ router.get('/:id',
 
 router.post('/:id/approve',
   authenticate,
-  authorize(Role.MANAGER, Role.OWNER),
+  authorize([Role.manager, Role.owner]),
   wasteController.approveWaste
 );
 
 router.post('/:id/reject',
   authenticate,
-  authorize(Role.MANAGER, Role.OWNER),
+  authorize([Role.manager, Role.owner]),
   wasteController.rejectWaste
+);
+
+router.post('/:id/attachments',
+  authenticate,
+  authorize([Role.manager, Role.owner, Role.supervisor]),
+  upload.single('file'),
+  wasteController.uploadAttachment
 );
 
 export default router; 

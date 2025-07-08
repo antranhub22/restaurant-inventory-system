@@ -1,14 +1,14 @@
-import express from 'express';
-import exportController from '../controllers/export.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { Router } from 'express';
+import { authenticate } from '../middleware/auth.middleware';
+import { authorize } from '../middleware/auth.middleware';
 import { Role } from '@prisma/client';
+import exportController from '../controllers/export.controller';
 
-const router = express.Router();
+const router = Router();
 
-// Routes
 router.post('/',
   authenticate,
-  authorize(Role.MANAGER, Role.OWNER, Role.SUPERVISOR),
+  authorize([Role.manager, Role.owner]),
   exportController.createExport
 );
 
@@ -24,13 +24,13 @@ router.get('/:id',
 
 router.post('/:id/approve',
   authenticate,
-  authorize(Role.MANAGER, Role.OWNER),
+  authorize([Role.owner]),
   exportController.approveExport
 );
 
 router.post('/:id/reject',
   authenticate,
-  authorize(Role.MANAGER, Role.OWNER),
+  authorize([Role.owner, Role.manager]),
   exportController.rejectExport
 );
 

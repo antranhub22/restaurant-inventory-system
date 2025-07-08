@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { WasteData, WasteItem, WasteStatus, WasteValidationError, WasteReport } from '../types/waste';
 import { Redis } from 'ioredis';
+import fs from 'fs';
+import path from 'path';
 
 class WasteService {
   private prisma: PrismaClient;
@@ -181,7 +183,7 @@ class WasteService {
         // Tạo transaction log
         await tx.transaction.create({
           data: {
-            type: 'OUT',
+            type: 'WASTE',
             itemId: item.itemId,
             quantity: item.quantity,
             processedById: approvedById,
@@ -237,6 +239,60 @@ class WasteService {
 
       return updated;
     });
+  }
+
+  async addAttachment(id: number, file: Express.Multer.File) {
+    const waste = await this.prisma.waste.findUnique({
+      where: { id }
+    });
+
+    if (!waste) {
+      // Xóa file tạm nếu có lỗi
+      fs.unlinkSync(file.path);
+      throw new Error('Báo cáo hao hụt không tồn tại');
+    }
+
+    if (waste.status !== WasteStatus.PENDING) {
+      // Xóa file tạm nếu có lỗi
+      fs.unlinkSync(file.path);
+      throw new Error('Chỉ có thể thêm file đính kèm cho báo cáo đang chờ duyệt');
+    }
+
+    // Di chuyển file từ thư mục tạm sang thư mục lưu trữ
+    const fileName = path.basename(file.path);
+    const storagePath = path.join('uploads', 'wastes', fileName);
+
+    try {
+      // Tạo thư mục nếu chưa tồn tại
+      const dir = path.dirname(storagePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Di chuyển file
+      fs.renameSync(file.path, storagePath);
+
+      // Cập nhật danh sách file đính kèm trong database
+      const updated = await this.prisma.waste.update({
+        where: { id },
+        data: {
+          evidencePhotos: {
+            push: fileName
+          }
+        }
+      });
+
+      // Xóa cache
+      await this.redis.del(`waste:${id}`);
+
+      return updated;
+    } catch (error) {
+      // Xóa file tạm nếu có lỗi
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      throw error;
+    }
   }
 
   private async updateCache(wasteId: number) {

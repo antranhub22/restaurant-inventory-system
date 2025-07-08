@@ -17,20 +17,20 @@ class ImportController {
     } catch (error) {
       console.error('Create import error:', error);
       res.status(400).json({
-        error: error instanceof Error ? error.message : 'Lỗi khi tạo phiếu nhập'
+        error: error instanceof Error ? error.message : 'Lỗi khi tạo phiếu nhập kho'
       });
     }
   }
 
   async getImports(req: Request, res: Response) {
     try {
-      const { status, startDate, endDate, supplierId } = req.query;
+      const { status, supplierId, startDate, endDate } = req.query;
       
       const filters = {
         status: status as ImportStatus,
+        supplierId: supplierId ? Number(supplierId) : undefined,
         startDate: startDate ? new Date(startDate as string) : undefined,
-        endDate: endDate ? new Date(endDate as string) : undefined,
-        supplierId: supplierId ? Number(supplierId) : undefined
+        endDate: endDate ? new Date(endDate as string) : undefined
       };
 
       const imports = await importService.getImports(filters);
@@ -38,7 +38,7 @@ class ImportController {
     } catch (error) {
       console.error('Get imports error:', error);
       res.status(500).json({
-        error: 'Lỗi khi lấy danh sách phiếu nhập'
+        error: 'Lỗi khi lấy danh sách phiếu nhập kho'
       });
     }
   }
@@ -46,19 +46,19 @@ class ImportController {
   async getImportById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const import_data = await importService.getImportById(Number(id));
+      const importData = await importService.getImportById(Number(id));
       
-      if (!import_data) {
+      if (!importData) {
         return res.status(404).json({
-          error: 'Không tìm thấy phiếu nhập'
+          error: 'Không tìm thấy phiếu nhập kho'
         });
       }
 
-      res.json(import_data);
+      res.json(importData);
     } catch (error) {
       console.error('Get import error:', error);
       res.status(500).json({
-        error: 'Lỗi khi lấy thông tin phiếu nhập'
+        error: 'Lỗi khi lấy thông tin phiếu nhập kho'
       });
     }
   }
@@ -66,20 +66,12 @@ class ImportController {
   async approveImport(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const approvedById = req.user?.id;
-
-      if (!approvedById) {
-        return res.status(401).json({
-          error: 'Unauthorized'
-        });
-      }
-
-      const result = await importService.approveImport(Number(id), approvedById);
+      const result = await importService.approveImport(Number(id), req.user?.id || 0);
       res.json(result);
     } catch (error) {
       console.error('Approve import error:', error);
       res.status(400).json({
-        error: error instanceof Error ? error.message : 'Lỗi khi duyệt phiếu nhập'
+        error: error instanceof Error ? error.message : 'Lỗi khi duyệt phiếu nhập kho'
       });
     }
   }
@@ -88,26 +80,19 @@ class ImportController {
     try {
       const { id } = req.params;
       const { reason } = req.body;
-      const rejectedById = req.user?.id;
-
-      if (!rejectedById) {
-        return res.status(401).json({
-          error: 'Unauthorized'
-        });
-      }
-
+      
       if (!reason) {
         return res.status(400).json({
           error: 'Vui lòng cung cấp lý do từ chối'
         });
       }
 
-      const result = await importService.rejectImport(Number(id), rejectedById, reason);
+      const result = await importService.rejectImport(Number(id), req.user?.id || 0, reason);
       res.json(result);
     } catch (error) {
       console.error('Reject import error:', error);
       res.status(400).json({
-        error: error instanceof Error ? error.message : 'Lỗi khi từ chối phiếu nhập'
+        error: error instanceof Error ? error.message : 'Lỗi khi từ chối phiếu nhập kho'
       });
     }
   }
@@ -128,7 +113,7 @@ class ImportController {
     } catch (error) {
       console.error('Upload attachment error:', error);
       res.status(400).json({
-        error: error instanceof Error ? error.message : 'Lỗi khi tải lên file đính kèm'
+        error: error instanceof Error ? error.message : 'Lỗi khi upload file đính kèm'
       });
     }
   }

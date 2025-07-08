@@ -55,13 +55,6 @@ const OCRFormConfirmation: React.FC<OCRFormConfirmationProps> = ({
     }).format(value);
   };
 
-  const formatDate = (date: string | Date) => {
-    if (typeof date === 'string') {
-      return new Date(date).toLocaleDateString('vi-VN');
-    }
-    return date.toLocaleDateString('vi-VN');
-  };
-
   const getFormTypeLabel = (type: FormType) => {
     const labels = {
       IMPORT: 'Nhập kho',

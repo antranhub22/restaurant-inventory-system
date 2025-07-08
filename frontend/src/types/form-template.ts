@@ -1,4 +1,10 @@
-export type FormType = 'IMPORT' | 'EXPORT' | 'RETURN' | 'ADJUSTMENT' | 'WASTE';
+export enum FormType {
+  IMPORT = 'IMPORT',
+  EXPORT = 'EXPORT',
+  RETURN = 'RETURN',
+  ADJUSTMENT = 'ADJUSTMENT',
+  WASTE = 'WASTE',
+}
 
 export interface FormField {
   name: string;

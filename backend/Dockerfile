@@ -1,17 +1,33 @@
-# Dockerfile cho backend Node.js/Express (TypeScript)
-FROM node:18-alpine AS builder
+# Use Node.js 18 as base image
+FROM node:18-slim
+
+# Install dependencies for Tesseract
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-vie \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
-RUN npm install --production=false
+
+# Install app dependencies
+RUN npm install
+
+# Copy app source
 COPY . .
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Build TypeScript
 RUN npm run build
 
-FROM node:18-alpine AS runner
-WORKDIR /app
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
-ENV NODE_ENV=production
+# Expose port
 EXPOSE 4000
-CMD ["node", "dist/app.js"] 
+
+# Start command
+CMD ["npm", "run", "start"] 

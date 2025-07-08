@@ -40,6 +40,11 @@ const Layout: React.FC<LayoutProps> = ({ children, onLogout }) => {
               📈 Reports
             </Link>
           </li>
+          <li>
+            <Link to="/ocr-demo" className={isActive('/ocr-demo') ? 'active' : ''}>
+              🧾 Xử lý hóa đơn OCR
+            </Link>
+          </li>
           <li className="nav-divider">Admin</li>
           <li>
             <Link to="/admin/form-templates" className={isActive('/admin/form-templates') ? 'active' : ''}>

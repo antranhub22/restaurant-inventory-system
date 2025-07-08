@@ -36,7 +36,7 @@ Repository đã được kiểm tra và cập nhật để đảm bảo đồng 
    # Chỉnh sửa các giá trị thực tế
    
    # Frontend
-   cp backend/frontend/.env.example backend/frontend/.env
+   cp frontend/.env.example frontend/.env
    ```
 
 2. **Database Migration:**
@@ -53,7 +53,7 @@ Repository đã được kiểm tra và cập nhật để đảm bảo đồng 
    npm install
    
    # Frontend
-   cd backend/frontend
+   cd frontend
    npm install
    ```
 
@@ -68,7 +68,7 @@ Repository đã được kiểm tra và cập nhật để đảm bảo đồng 
 - `/prisma` - Database schema và migrations
 - `/dist` - Compiled JavaScript (sau build)
 
-### Frontend (`/backend/frontend`):
+### Frontend (`/frontend`):
 - `/src` - React TypeScript code
   - `/components` - Reusable components
   - `/pages` - Page components
@@ -92,7 +92,7 @@ cd backend
 npm run dev
 
 # Terminal 2 - Frontend  
-cd backend/frontend
+cd frontend
 npm run dev
 ```
 
@@ -104,9 +104,8 @@ npm run dev
 
 ## ⚠️ Lưu ý quan trọng
 
-1. **Dual Frontend Folders**: Có 2 thư mục frontend:
-   - `/frontend` - Có thể xóa, không sử dụng
-   - `/backend/frontend` - Frontend chính thức
+1. **Frontend Location**: Frontend đã được di chuyển ra thư mục gốc:
+   - `/frontend` - Frontend chính thức
 
 2. **TypeScript Imports**: Backend sử dụng Node16 module resolution
 

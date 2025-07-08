@@ -34,8 +34,8 @@ fi
 echo "✅ Backend Dockerfile tồn tại"
 
 # Kiểm tra frontend build script
-if [ ! -f "backend/frontend/render-build.sh" ]; then
-    echo "❌ File backend/frontend/render-build.sh không tồn tại"
+if [ ! -f "frontend/render-build.sh" ]; then
+    echo "❌ File frontend/render-build.sh không tồn tại"
     exit 1
 fi
 
@@ -86,10 +86,10 @@ echo "   - VITE_ENV=production"
 echo ""
 echo "5. Build Commands:"
 echo "   Backend: (auto-detect Dockerfile)"
-echo "   Frontend: cd backend/frontend && ./render-build.sh"
+echo "   Frontend: cd frontend && ./render-build.sh"
 echo ""
 echo "6. Publish Directory (Frontend):"
-echo "   ./backend/frontend/dist"
+echo "   ./frontend/dist"
 echo ""
 echo "🌐 URLs sau khi deploy:"
 echo "   Backend: https://restaurant-inventory-backend.onrender.com"

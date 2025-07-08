@@ -64,8 +64,8 @@ VITE_ENV=production
 ```
 
 #### Build Settings
-- **Build Command**: `cd backend/frontend && ./render-build.sh`
-- **Publish Directory**: `./backend/frontend/dist`
+- **Build Command**: `cd frontend && ./render-build.sh`
+- **Publish Directory**: `./frontend/dist`
 
 ## 🔍 Kiểm tra sau deploy
 

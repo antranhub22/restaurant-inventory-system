@@ -7,56 +7,53 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Mô hình form mẫu chung
+// Thêm vào file schema.prisma
 model FormTemplate {
   id          String   @id @default(cuid())
-  name        String   // Tên form mẫu
-  type        String   // Loại form: IMPORT, EXPORT, RETURN, ADJUSTMENT
+  name        String
+  type        String   // IMPORT, EXPORT, RETURN, ADJUSTMENT
   structure   Json     // Cấu trúc form dạng JSON
-  isDefault   Boolean  @default(false) // Form mẫu mặc định
-  isActive    Boolean  @default(true)  // Form còn được sử dụng
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  version     String?
+  description String?
+  createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  history     FormTemplateHistory[]
 
-  // Các trường meta
-  version     String?  // Phiên bản form
-  description String?  // Mô tả
-  createdBy   String?  // Người tạo
-  
   @@map("form_templates")
 }
 
-// Cấu hình form mẫu theo từng loại
-model FormConfig {
-  id          String   @id @default(cuid())
-  type        String   // Loại form
-  config      Json     // Cấu hình form (validation rules, required fields, etc)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("form_configs") 
-}
-
-// Lịch sử thay đổi form mẫu
 model FormTemplateHistory {
-  id            String   @id @default(cuid())
-  formTemplateId String  // ID của form mẫu
-  structure     Json     // Cấu trúc form tại thời điểm thay đổi
-  changedBy     String?  // Người thay đổi
-  changeNote    String?  // Ghi chú về thay đổi
-  createdAt     DateTime @default(now())
+  id            String      @id @default(cuid())
+  formTemplate  FormTemplate @relation(fields: [formTemplateId], references: [id])
+  formTemplateId String
+  structure     Json
+  changedBy     String?
+  changeNote    String?
+  createdAt     DateTime    @default(now())
 
   @@map("form_template_history")
 }
 
-// Các trường tùy chỉnh của form
+model FormConfig {
+  id        String   @id @default(cuid())
+  type      String   @unique
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("form_configs")
+}
+
 model CustomField {
   id          String   @id @default(cuid())
-  name        String   // Tên trường
-  label       String   // Nhãn hiển thị
-  type        String   // Loại trường (text, number, date, etc)
-  options     Json?    // Tùy chọn cho select/radio/checkbox
-  validation  Json?    // Quy tắc validation
+  name        String
+  label       String
+  type        String
+  options     Json?
+  validation  Json?
   isRequired  Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

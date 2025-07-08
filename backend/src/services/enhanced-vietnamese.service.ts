@@ -191,7 +191,10 @@ export class EnhancedVietnameseTextService {
 
     // Thử fuzzy matching
     const fuzzyResults = this.fuzzyMatcher.search(normalized);
-    return fuzzyResults.length > 0 && fuzzyResults[0].score && fuzzyResults[0].score < 0.3;
+    if (fuzzyResults.length === 0) return false;
+    
+    const bestMatch = fuzzyResults[0];
+    return bestMatch.score !== undefined && bestMatch.score < 0.3;
   }
 
   public getUnitSuggestions(text: string): string[] {
@@ -199,8 +202,11 @@ export class EnhancedVietnameseTextService {
     const fuzzyResults = this.fuzzyMatcher.search(normalized);
     
     return fuzzyResults
-      .filter((result: FuseResult) => typeof result.score === 'number' && result.score < 0.4)
-      .map((result: FuseResult) => result.item);
+      .filter((result) => {
+        const score = result.score;
+        return typeof score === 'number' && score < 0.4;
+      })
+      .map(result => result.item);
   }
 }
 

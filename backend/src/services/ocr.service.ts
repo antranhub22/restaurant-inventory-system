@@ -1,16 +1,22 @@
 import { createWorker } from 'tesseract.js';
+import { OcrResult, ExtractedContent } from '../types/ocr';
 
-export interface OcrResult {
-  rawText: string;           // Toàn bộ text trích xuất được
-  confidence: number;        // Độ tin cậy trung bình
-  wordCount: number;         // Số từ đã trích xuất
-  processingTime: number;    // Thời gian xử lý (ms)
+interface TesseractWord {
+  text: string;
+  confidence: number;
+  bbox: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  };
 }
 
 class OcrService {
   private async extractTextFromImage(imageBuffer: Buffer): Promise<{
     text: string;
     confidence: number;
+    contents: ExtractedContent[];
   }> {
     const startTime = Date.now();
     
@@ -30,20 +36,35 @@ class OcrService {
 
       // Nhận dạng text
       console.log('🔍 Đang xử lý OCR...');
-      const { data } = await worker.recognize(imageBuffer);
+      const result = await worker.recognize(imageBuffer);
       
       await worker.terminate();
+
+      // Phân tích kết quả thành các content có cấu trúc
+      const words = (result.data as any).words as TesseractWord[];
+      const contents: ExtractedContent[] = words.map(word => ({
+        text: word.text,
+        type: this.detectContentType(word.text),
+        confidence: word.confidence / 100,
+        position: {
+          top: word.bbox.y0,
+          left: word.bbox.x0,
+          width: word.bbox.x1 - word.bbox.x0,
+          height: word.bbox.y1 - word.bbox.y0
+        }
+      }));
 
       const processingTime = Date.now() - startTime;
 
       console.log(`\n✨ Hoàn thành OCR:`);
-      console.log(`- Text trích xuất: ${data.text.substring(0, 100)}...`);
-      console.log(`- Độ tin cậy: ${data.confidence}%`);
+      console.log(`- Text trích xuất: ${result.data.text.substring(0, 100)}...`);
+      console.log(`- Độ tin cậy: ${result.data.confidence}%`);
       console.log(`- Thời gian xử lý: ${processingTime}ms`);
       
       return {
-        text: data.text,
-        confidence: data.confidence / 100
+        text: result.data.text,
+        confidence: result.data.confidence / 100,
+        contents
       };
     } catch (error: any) {
       console.error('❌ Lỗi trong quá trình xử lý OCR:', error);
@@ -51,17 +72,34 @@ class OcrService {
     }
   }
 
+  private detectContentType(text: string): string {
+    // Kiểm tra nếu là số
+    if (/^\d+([,.]\d+)?$/.test(text)) {
+      return 'number';
+    }
+
+    // Kiểm tra nếu là tiền tệ
+    if (/^\d+([,.]\d+)?\s*(đ|vnd|vnđ|₫)$/i.test(text)) {
+      return 'currency';
+    }
+
+    // Kiểm tra nếu là ngày tháng
+    if (/^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(text)) {
+      return 'date';
+    }
+
+    // Mặc định là text
+    return 'text';
+  }
+
   public async processReceipt(imageBuffer: Buffer): Promise<OcrResult> {
     const startTime = Date.now();
-    const { text, confidence } = await this.extractTextFromImage(imageBuffer);
-    
-    // Đếm số từ
-    const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+    const { text, confidence, contents } = await this.extractTextFromImage(imageBuffer);
     
     return {
       rawText: text,
       confidence,
-      wordCount,
+      contents,
       processingTime: Date.now() - startTime
     };
   }

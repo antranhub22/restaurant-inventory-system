@@ -3,6 +3,7 @@ import { FormType } from '../types/form-template';
 import ocrService from '../services/ocr.service';
 import formContentMatcherService from '../services/form-content-matcher.service';
 import { uploadToStorage } from '../utils/storage';
+import { ExtractedContent } from '../types/ocr';
 
 class OcrFormController {
   /**
@@ -32,7 +33,7 @@ class OcrFormController {
 
       // 2. Map vào form
       const processedForm = await formContentMatcherService.processOcrContent(
-        ocrResult.contents,
+        ocrResult.contents as ExtractedContent[],
         formType
       );
 

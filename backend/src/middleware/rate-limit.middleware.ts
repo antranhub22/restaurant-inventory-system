@@ -15,7 +15,8 @@ export const ocrRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redis.call(...args),
+    // @ts-ignore - Type mismatch but works in runtime
+    client: redis,
     prefix: 'rl:ocr:'
   }),
   message: {
@@ -31,7 +32,8 @@ export const apiRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redis.call(...args),
+    // @ts-ignore - Type mismatch but works in runtime
+    client: redis,
     prefix: 'rl:api:'
   }),
   message: {

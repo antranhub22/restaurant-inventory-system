@@ -35,22 +35,20 @@ export const authMiddleware = async (
     const token = authHeader.split(' ')[1];
 
     // 2. Verify token
-    const decodedToken = jwt.verify(
+    const payload = jwt.verify(
       token,
       process.env.JWT_SECRET || 'your-secret-key'
     );
 
-    // Type guard để kiểm tra decoded token
+    // Type guard cho payload
     if (
-      typeof decodedToken === 'object' &&
-      decodedToken !== null &&
-      'userId' in decodedToken
+      typeof payload === 'object' &&
+      payload !== null &&
+      'userId' in payload
     ) {
-      const decoded = decodedToken as JwtPayload;
-
       // 3. Lấy thông tin user
       const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
+        where: { id: payload.userId },
         select: {
           id: true,
           username: true,

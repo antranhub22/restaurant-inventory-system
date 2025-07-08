@@ -1,113 +1,64 @@
 import { Request, Response } from 'express';
-import exportService from '../services/export.service';
-import { ExportData, ExportStatus } from '../types/export';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 class ExportController {
   async createExport(req: Request, res: Response) {
     try {
-      const exportData: ExportData = {
-        ...req.body,
-        processedById: req.user?.id,
-        status: ExportStatus.PENDING
-      };
-
-      const result = await exportService.createExport(exportData);
-      res.status(201).json(result);
-    } catch (error) {
-      console.error('Create export error:', error);
-      res.status(400).json({
-        error: error instanceof Error ? error.message : 'Lỗi khi tạo phiếu xuất'
+      const export_ = await prisma.export.create({
+        data: req.body
       });
+      res.json(export_);
+    } catch (error) {
+      res.status(500).json({ error: 'Could not create export' });
     }
   }
 
   async getExports(req: Request, res: Response) {
     try {
-      const { status, departmentId, startDate, endDate } = req.query;
-      
-      const filters = {
-        status: status as ExportStatus,
-        departmentId: departmentId ? Number(departmentId) : undefined,
-        startDate: startDate ? new Date(startDate as string) : undefined,
-        endDate: endDate ? new Date(endDate as string) : undefined
-      };
-
-      const exports = await exportService.getExports(filters);
+      const exports = await prisma.export.findMany();
       res.json(exports);
     } catch (error) {
-      console.error('Get exports error:', error);
-      res.status(500).json({
-        error: 'Lỗi khi lấy danh sách phiếu xuất'
-      });
+      res.status(500).json({ error: 'Could not get exports' });
     }
   }
 
   async getExportById(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const export_data = await exportService.getExportById(Number(id));
-      
-      if (!export_data) {
-        return res.status(404).json({
-          error: 'Không tìm thấy phiếu xuất'
-        });
-      }
-
-      res.json(export_data);
-    } catch (error) {
-      console.error('Get export error:', error);
-      res.status(500).json({
-        error: 'Lỗi khi lấy thông tin phiếu xuất'
+      const export_ = await prisma.export.findUnique({
+        where: { id: parseInt(req.params.id) }
       });
+      if (export_) {
+        res.json(export_);
+      } else {
+        res.status(404).json({ error: 'Export not found' });
+      }
+    } catch (error) {
+      res.status(500).json({ error: 'Could not get export' });
     }
   }
 
-  async approveExport(req: Request, res: Response) {
+  async updateExport(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const approvedById = req.user?.id;
-
-      if (!approvedById) {
-        return res.status(401).json({
-          error: 'Unauthorized'
-        });
-      }
-
-      const result = await exportService.approveExport(Number(id), approvedById);
-      res.json(result);
-    } catch (error) {
-      console.error('Approve export error:', error);
-      res.status(400).json({
-        error: error instanceof Error ? error.message : 'Lỗi khi duyệt phiếu xuất'
+      const export_ = await prisma.export.update({
+        where: { id: parseInt(req.params.id) },
+        data: req.body
       });
+      res.json(export_);
+    } catch (error) {
+      res.status(500).json({ error: 'Could not update export' });
     }
   }
 
-  async rejectExport(req: Request, res: Response) {
+  async deleteExport(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-      const { reason } = req.body;
-      const rejectedById = req.user?.id;
-
-      if (!rejectedById) {
-        return res.status(401).json({
-          error: 'Unauthorized'
-        });
-      }
-
-      if (!reason) {
-        return res.status(400).json({
-          error: 'Vui lòng cung cấp lý do từ chối'
-        });
-      }
-
-      const result = await exportService.rejectExport(Number(id), rejectedById, reason);
-      res.json(result);
-    } catch (error) {
-      console.error('Reject export error:', error);
-      res.status(400).json({
-        error: error instanceof Error ? error.message : 'Lỗi khi từ chối phiếu xuất'
+      await prisma.export.delete({
+        where: { id: parseInt(req.params.id) }
       });
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: 'Could not delete export' });
     }
   }
 }

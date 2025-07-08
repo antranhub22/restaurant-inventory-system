@@ -15,4 +15,12 @@ export interface OcrResult {
   rawText: string;
   confidence: number;
   processingTime: number;
+  metadata?: {
+    imageSize?: {
+      width: number;
+      height: number;
+    };
+    format?: string;
+    dpi?: number;
+  };
 } 

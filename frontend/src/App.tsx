@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/common/Layout';
 import Login from './components/Login';
-// import Dashboard from './pages/Dashboard';
 import FormTemplatesPage from './pages/admin/FormTemplates';
 import OCRFormDemo from './pages/OCRFormDemo';
+// import Dashboard from './pages/Dashboard';
 import { apiService } from './services/api.service';
 import './styles/Layout.css';
 
@@ -63,6 +63,12 @@ const App: React.FC = () => {
               <OCRFormDemo />
             </ProtectedRoute>
           } />
+          {/* Nếu muốn có dashboard, chỉ render khi truy cập đúng /dashboard */}
+          {/* <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } /> */}
           <Route path="/admin/form-templates" element={
             <ProtectedRoute>
               <FormTemplatesPage />

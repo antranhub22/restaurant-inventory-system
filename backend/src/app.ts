@@ -11,27 +11,45 @@ dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 4000;
 
-// Middleware
+// Request logging middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`\n📨 [${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  console.log('Query:', req.query);
+  
+  // Log response
+  const oldSend = res.send;
+  res.send = function (data: any): Response {
+    console.log('\n📤 Response:', data);
+    return oldSend.apply(res, arguments as any);
+  };
+  
+  next();
+});
+
+// Security middleware
 app.use(helmet());
+
+// Compression middleware
 app.use(compression());
+
+// CORS middleware
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 }));
-app.use(morgan('combined'));
+
+// Logging middleware
+app.use(morgan('dev'));
+
+// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-interface HealthResponse {
-  status: string;
-  timestamp: string;
-  environment: string;
-}
-
 // Health check endpoint
-app.get('/api/health', (_req: Request, res: Response<HealthResponse>) => {
+app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
@@ -53,14 +71,9 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ocr', ocrRoutes);
 
-interface ErrorResponse {
-  error: string;
-  message?: string;
-}
-
 // Error handling middleware
-app.use((err: Error, _req: Request, res: Response<ErrorResponse>, next: NextFunction) => {
-  console.error(err.stack);
+app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {
+  console.error('❌ Error:', err);
   res.status(500).json({ 
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
@@ -68,27 +81,8 @@ app.use((err: Error, _req: Request, res: Response<ErrorResponse>, next: NextFunc
 });
 
 // 404 handler
-app.use('*', (_req: Request, res: Response<ErrorResponse>) => {
+app.use('*', (_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  await prisma.$disconnect();
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down gracefully');
-  await prisma.$disconnect();
-  process.exit(0);
 });
 
 export default app; 

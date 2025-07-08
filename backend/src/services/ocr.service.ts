@@ -1,47 +1,15 @@
-import { createWorker, createScheduler, WorkerParams, Worker, PSM } from 'tesseract.js';
+import { createWorker, createScheduler } from 'tesseract.js';
 import { PrismaClient } from '@prisma/client';
 import vietnameseService from './vietnamese.service';
 import ocrLearningService from './ocr.learning.service';
 
 const prisma = new PrismaClient();
 
-interface TesseractWord {
-  text: string;
-  confidence: number;
-  bbox: {
-    x0: number;
-    y0: number;
-    x1: number;
-    y1: number;
-  };
-}
-
-interface TesseractLine {
-  text: string;
-  words: TesseractWord[];
-  bbox: {
-    x0: number;
-    y0: number;
-    x1: number;
-    y1: number;
-  };
-}
-
-interface TesseractParagraph {
-  text: string;
-  lines: TesseractLine[];
-  bbox: {
-    x0: number;
-    y0: number;
-    x1: number;
-    y1: number;
-  };
-}
-
-interface TesseractResult {
-  text: string;
-  confidence: number;
-  paragraphs: TesseractParagraph[];
+interface TesseractWorker {
+  loadLanguage: (lang: string) => Promise<void>;
+  initialize: (lang: string) => Promise<void>;
+  recognize: (image: Buffer) => Promise<any>;
+  terminate: () => Promise<void>;
 }
 
 export interface OcrResult {
@@ -80,26 +48,12 @@ class OcrService {
       console.log('🔍 Bắt đầu xử lý OCR với Tesseract...');
       console.log('📊 Kích thước ảnh:', imageBuffer.length, 'bytes');
 
-      // Tạo scheduler để quản lý worker
-      const scheduler = createScheduler();
-      const worker = await createWorker({
-        logger: (m: any) => console.log(m),
-        errorHandler: (e: Error) => console.error('Tesseract Error:', e)
-      });
+      // Khởi tạo worker
+      const worker = await createWorker() as unknown as TesseractWorker;
+      await worker.loadLanguage('vie');
+      await worker.initialize('vie');
 
-      // Cấu hình worker
-      await (worker as any).loadLanguage('vie');
-      await (worker as any).initialize('vie');
-      await worker.setParameters({
-        tessedit_char_whitelist: 'aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ0123456789,./\-:$%',
-        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-        tessedit_ocr_engine_mode: 2,
-        textord_heavy_nr: 1,
-        textord_min_linesize: 2.5
-      } as WorkerParams);
-
-      scheduler.addWorker(worker);
-      
+      // Nhận dạng text
       const { data } = await worker.recognize(imageBuffer);
       console.log('Raw OCR result:', data);
       
@@ -109,7 +63,7 @@ class OcrService {
       const lines = data.text.split('\n');
       const avgConfidence = data.confidence || 0;
       
-      lines.forEach((line, index) => {
+      lines.forEach((line: string, index: number) => {
         const trimmedLine = line.trim();
         if (trimmedLine) {
           // Tính confidence cho từng dòng dựa vào độ dài và các ký tự đặc biệt
@@ -129,7 +83,6 @@ class OcrService {
       });
 
       await worker.terminate();
-      await scheduler.terminate();
       
       const filteredBlocks = textBlocks.filter(block => 
         block.confidence >= OcrService.MIN_CONFIDENCE_SCORE

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { FormTemplate, FormType } from '../../types/form-template';
 import { useForm } from '../../contexts/FormContext';
+import { useFormValidation, ValidationError } from '../../hooks/useFormValidation';
+import FormError from '../common/FormError';
 
 interface BaseFormProps {
   type: FormType;
@@ -20,6 +22,16 @@ const BaseForm: React.FC<BaseFormProps> = ({
   const [formData, setFormData] = useState<any>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<ValidationError[]>([]);
+  
+  const {
+    validateForm,
+    validateField,
+    handleBlur,
+    shouldShowError,
+    resetValidation,
+    setShowRealTimeValidation
+  } = useFormValidation(type);
 
   useEffect(() => {
     loadTemplate();
@@ -30,6 +42,10 @@ const BaseForm: React.FC<BaseFormProps> = ({
         loadTemplate();
       }
     });
+
+    return () => {
+      resetValidation();
+    };
   }, [type, formId]);
 
   const loadTemplate = async () => {
@@ -56,6 +72,39 @@ const BaseForm: React.FC<BaseFormProps> = ({
 
     // Handle special cases (e.g., auto-calculations)
     handleSpecialCases(field, value);
+
+    // Validate field on change
+    if (template) {
+      const fieldDef = findField(template.sections, field);
+      if (fieldDef) {
+        const errors = validateField(fieldDef, value);
+        setFormErrors(prev => {
+          const filtered = prev.filter(e => e.field !== field);
+          return [...filtered, ...errors];
+        });
+      }
+    }
+  };
+
+  const findField = (sections: any[], fieldPath: string) => {
+    for (const section of sections) {
+      for (const field of section.fields) {
+        if (field.name === fieldPath) {
+          return field;
+        }
+        if (field.type === 'array' && field.subFields) {
+          const match = fieldPath.match(/(\w+)\[(\d+)\]\.(\w+)/);
+          if (match && match[1] === field.name) {
+            const subFieldName = match[3];
+            const subField = field.subFields.find(sf => sf.name === subFieldName);
+            if (subField) {
+              return subField;
+            }
+          }
+        }
+      }
+    }
+    return null;
   };
 
   const handleSpecialCases = (field: string, value: any) => {
@@ -70,59 +119,81 @@ const BaseForm: React.FC<BaseFormProps> = ({
     }
   };
 
+  const handleFieldBlur = (fieldName: string) => {
+    handleBlur(fieldName);
+  };
+
   const renderField = (field: any) => {
+    const fieldErrors = formErrors.filter(e => e.field === field.name);
+    const showErrors = fieldErrors.some(e => shouldShowError(e));
+
+    const commonProps = {
+      id: `${type.toLowerCase()}-${field.name}`,
+      name: field.name,
+      value: formData[field.name] || '',
+      onChange: (e: any) => handleInputChange(field.name, e.target.value),
+      onBlur: () => handleFieldBlur(field.name),
+      required: field.required,
+      className: `form-control ${showErrors ? 'border-red-500' : ''}`
+    };
+
+    const renderErrors = () => (
+      showErrors && fieldErrors.map((error, index) => (
+        <FormError key={index} error={error} />
+      ))
+    );
+
     switch (field.type) {
       case 'date':
         return (
-          <input
-            type="date"
-            id={`${type.toLowerCase()}-${field.name}`}
-            value={formData[field.name] || ''}
-            onChange={e => handleInputChange(field.name, e.target.value)}
-            required={field.required}
-            className="form-control"
-          />
+          <>
+            <input
+              type="date"
+              {...commonProps}
+            />
+            {renderErrors()}
+          </>
         );
+
       case 'select':
         return (
-          <select
-            id={`${type.toLowerCase()}-${field.name}`}
-            value={formData[field.name] || ''}
-            onChange={e => handleInputChange(field.name, e.target.value)}
-            required={field.required}
-            className="form-control"
-          >
-            <option value="">Chọn {field.label.toLowerCase()}</option>
-            {field.options?.map((opt: any) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <>
+            <select {...commonProps}>
+              <option value="">Chọn {field.label.toLowerCase()}</option>
+              {field.options?.map((opt: any) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            {renderErrors()}
+          </>
         );
+
       case 'number':
         return (
-          <input
-            type="number"
-            id={`${type.toLowerCase()}-${field.name}`}
-            value={formData[field.name] || ''}
-            onChange={e => handleInputChange(field.name, parseFloat(e.target.value))}
-            required={field.required}
-            readOnly={field.readOnly}
-            className="form-control"
-          />
+          <>
+            <input
+              type="number"
+              {...commonProps}
+              onChange={e => handleInputChange(field.name, parseFloat(e.target.value))}
+              readOnly={field.readOnly}
+            />
+            {renderErrors()}
+          </>
         );
+
       case 'textarea':
         return (
-          <textarea
-            id={`${type.toLowerCase()}-${field.name}`}
-            value={formData[field.name] || ''}
-            onChange={e => handleInputChange(field.name, e.target.value)}
-            required={field.required}
-            rows={3}
-            className="form-control"
-          />
+          <>
+            <textarea
+              {...commonProps}
+              rows={3}
+            />
+            {renderErrors()}
+          </>
         );
+
       case 'array':
         return (
           <div className="array-field">
@@ -164,24 +235,38 @@ const BaseForm: React.FC<BaseFormProps> = ({
             </button>
           </div>
         );
+
       default:
         return (
-          <input
-            type="text"
-            id={`${type.toLowerCase()}-${field.name}`}
-            value={formData[field.name] || ''}
-            onChange={e => handleInputChange(field.name, e.target.value)}
-            required={field.required}
-            readOnly={field.readOnly}
-            className="form-control"
-          />
+          <>
+            <input
+              type="text"
+              {...commonProps}
+              readOnly={field.readOnly}
+            />
+            {renderErrors()}
+          </>
         );
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    setShowRealTimeValidation(true);
+
+    if (template) {
+      const { isValid, errors } = validateForm(formData, template.sections.flatMap(s => s.fields));
+      setFormErrors(errors);
+
+      if (isValid) {
+        onSubmit(formData);
+      } else {
+        // Scroll to first error
+        const firstError = errors[0];
+        const element = document.getElementById(`${type.toLowerCase()}-${firstError.field}`);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
   };
 
   if (isLoading) {
@@ -196,8 +281,19 @@ const BaseForm: React.FC<BaseFormProps> = ({
     return <div className="error">Form template not found</div>;
   }
 
+  // Render banner errors
+  const bannerErrors = formErrors.filter(e => e.display === 'banner' && shouldShowError(e));
+
   return (
     <form onSubmit={handleSubmit} className={`base-form ${className}`}>
+      {bannerErrors.length > 0 && (
+        <div className="mb-4">
+          {bannerErrors.map((error, index) => (
+            <FormError key={index} error={error} className="mb-2" />
+          ))}
+        </div>
+      )}
+
       {template.sections.map(section => (
         <div key={section.title} className="form-section">
           <h3>{section.title}</h3>
@@ -214,6 +310,7 @@ const BaseForm: React.FC<BaseFormProps> = ({
           </div>
         </div>
       ))}
+
       <div className="form-actions">
         <button type="submit" className="btn btn-primary">
           Lưu {template.name.toLowerCase()}
@@ -221,7 +318,10 @@ const BaseForm: React.FC<BaseFormProps> = ({
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={() => setFormData({})}
+          onClick={() => {
+            setFormData({});
+            resetValidation();
+          }}
         >
           Xóa form
         </button>

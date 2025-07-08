@@ -1,18 +1,18 @@
 import { PrismaClient } from '@prisma/client';
-import { Redis } from 'ioredis';
+import RedisService from './redis.service';
 import { EventEmitter } from 'events';
 import type { FormType, FormTemplate, FormConfig, CustomField, FormTemplateWithHistory, FormUpdate } from '../types/form-template';
 
 class FormRegistry {
   private prisma: PrismaClient;
-  private redis: Redis;
+  private redis: RedisService;
   private eventEmitter: EventEmitter;
   private cache: Map<string, FormTemplate>;
   private static instance: FormRegistry;
 
   private constructor() {
     this.prisma = new PrismaClient();
-    this.redis = new Redis(process.env.REDIS_URL || '');
+    this.redis = RedisService.getInstance();
     this.eventEmitter = new EventEmitter();
     this.cache = new Map();
 
@@ -247,7 +247,12 @@ class FormRegistry {
   }
 
   public subscribeToUpdates(callback: (update: FormUpdate) => void): void {
-    const subscriber = new Redis(process.env.REDIS_URL || '');
+    const subscriber = this.redis.createSubscriber();
+    
+    if (!subscriber) {
+      console.warn('Redis not available, cannot subscribe to form updates');
+      return;
+    }
     
     subscriber.subscribe('form-updates', (err: Error | null) => {
       if (err) {

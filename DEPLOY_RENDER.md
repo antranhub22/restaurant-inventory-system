@@ -1,157 +1,176 @@
-# 🚀 Hướng dẫn Deploy trên Render
+# Deploy Restaurant Inventory System to Render
 
-## 📋 Chuẩn bị trước khi deploy
+## Prerequisites
+- GitHub account
+- Render account (free tier is fine)
+- Neon.tech account for PostgreSQL database (free tier)
 
-### 1. Setup Database với Neon.tech (Khuyến nghị)
-1. Tạo tài khoản tại [neon.tech](https://neon.tech)
-2. Tạo project mới (free tier có 1 database)
-3. Copy `DATABASE_URL` từ dashboard
-   - Format: `postgresql://user:password@host/database?sslmode=require`
+## Step 1: Database Setup (Neon.tech)
 
-### 2. Setup Redis (Tùy chọn)
-Có thể sử dụng một trong các dịch vụ sau:
-- [Upstash](https://upstash.com) - Free 10,000 commands/day
-- [Redis Cloud](https://redis.com) - Free 30MB
-- Hoặc bỏ qua nếu không cần caching
+1. Sign up at [https://neon.tech](https://neon.tech)
+2. Create a new project
+3. Copy the DATABASE_URL (format: `postgresql://user:pass@host/database?sslmode=require`)
 
-### 3. OCR Services (Tùy chọn)
-Nếu cần OCR cho hóa đơn:
-- Google Cloud Vision API credentials
-- OpenAI API key
+## Step 2: Deploy to Render
 
-## 🔧 Deploy với Render
+### Option A: One-Click Deploy
+1. Fork this repository to your GitHub account
+2. Click the button below:
 
-### Cách 1: Deploy qua GitHub (Khuyến nghị)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/YOUR_USERNAME/restaurant-inventory-system)
 
-1. **Push code lên GitHub**
-   ```bash
-   git add .
-   git commit -m "Ready for deployment"
-   git push origin main
-   ```
+3. Fill in required environment variables:
+   - `DATABASE_URL`: Your Neon.tech connection string
+   - `JWT_SECRET`: Will be auto-generated
+   - `REDIS_URL`: (Optional) Redis connection string
 
-2. **Tạo services trên Render**
-   - Đăng nhập vào [render.com](https://render.com)
-   - Click "New +" → "Blueprint"
-   - Connect GitHub repo
-   - Render sẽ tự động đọc `render.yaml`
+### Option B: Manual Deploy
 
-3. **Cấu hình Environment Variables**
-   
-   **Backend Service:**
-   - `DATABASE_URL` - Paste từ Neon.tech
-   - `JWT_SECRET` - Để Render tự generate
-   - `REDIS_URL` - (Optional) từ Redis provider
-   - OCR keys nếu cần
+1. Push code to GitHub
+2. Sign in to [Render Dashboard](https://dashboard.render.com)
+3. Create services according to `render.yaml`
 
-   **Frontend Service:**
-   - `VITE_API_URL` sẽ tự động set sau khi backend deploy xong
+## Step 3: Environment Variables
 
-### Cách 2: Deploy thủ công
+### Backend (Required)
+- `DATABASE_URL`: PostgreSQL connection string from Neon.tech
+- `JWT_SECRET`: Auto-generated or custom secret
+- `NODE_ENV`: `production`
+- `PORT`: `4000` (auto-set by Render)
+- `FRONTEND_URL`: Your frontend URL
 
-#### Deploy Backend:
-1. Tạo "New Web Service"
-2. Connect GitHub repo
-3. Cấu hình:
-   - **Name**: restaurant-inventory-backend
-   - **Runtime**: Node
-   - **Build Command**: `cd backend && ./render-build.sh`
-   - **Start Command**: `cd backend && ./render-start.sh`
-   - **Region**: Singapore
-   - **Plan**: Free hoặc Starter
+### Backend (Optional)
+- `REDIS_URL`: Redis connection string (see Redis Setup below)
+- `GOOGLE_VISION_API_KEY`: For OCR features
+- `OPENAI_API_KEY`: For smart matching
 
-4. Add Environment Variables (như trên)
+### Frontend
+- `VITE_API_URL`: Your backend URL (e.g., https://your-backend.onrender.com/api)
+- `VITE_ENV`: `production`
 
-#### Deploy Frontend:
-1. Tạo "New Static Site"
-2. Connect GitHub repo
-3. Cấu hình:
-   - **Name**: restaurant-inventory-frontend
-   - **Build Command**: `cd backend/frontend && ./render-build.sh`
-   - **Publish Directory**: `backend/frontend/dist`
-   - **Region**: Singapore
+## Redis Setup (Optional but Recommended)
 
-4. Add Environment Variable:
-   - `VITE_API_URL`: `https://[backend-url].onrender.com/api`
+The application works without Redis, but having Redis improves performance by caching frequently accessed data.
 
-## 📝 Post-deployment
+### Without Redis
+- The app will show warnings in logs: "ECONNREFUSED 127.0.0.1:6379"
+- These can be safely ignored
+- All features work normally, just slightly slower
 
-### 1. Cập nhật CORS
-Sau khi có URL của frontend, update backend environment:
-- `FRONTEND_URL`: `https://[frontend-url].onrender.com`
+### With Redis (Recommended)
+1. **Redis Cloud (Free tier available)**
+   - Sign up at [https://redis.com](https://redis.com)
+   - Create a free database
+   - Copy the connection string
+   - Add as `REDIS_URL` in Render
 
-### 2. Test endpoints
+2. **Upstash (Serverless Redis)**
+   - Sign up at [https://upstash.com](https://upstash.com)
+   - Create a Redis database
+   - Use the Redis connection string
+   - Add as `REDIS_URL` in Render
+
+## Step 4: Deploy
+
+1. Connect GitHub repository to Render
+2. Render will auto-deploy on push to main branch
+3. Initial deploy takes 10-15 minutes
+4. Check logs for any errors
+
+## Step 5: Post-Deploy
+
+1. Run database migrations:
 ```bash
-# Health check
-curl https://[backend-url].onrender.com/api/health
-
-# Test auth
-curl -X POST https://[backend-url].onrender.com/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"Test123!","fullName":"Test User"}'
+# SSH into your Render service or run locally with production DATABASE_URL
+npx prisma migrate deploy
+npx prisma db seed
 ```
 
-### 3. Seed data (optional)
+2. Access your app:
+- Backend: `https://your-backend-name.onrender.com`
+- Frontend: `https://your-frontend-name.onrender.com`
+
+3. Default login:
+- Username: `admin`
+- Password: `admin123`
+
+## Monitoring
+
+### Check Deployment Status
+Run the included script:
 ```bash
-# SSH vào backend service hoặc run từ local với production DATABASE_URL
-cd backend
-DATABASE_URL=your-prod-url npm run prisma:seed
+chmod +x check-deployment.sh
+./check-deployment.sh
 ```
 
-## ⚠️ Lưu ý quan trọng
+### View Logs
+- In Render Dashboard → Service → Logs
+- Common log messages:
+  - ✅ "Redis connected successfully" - Redis is working
+  - ⚠️ "Redis URL not configured" - Running without cache (OK)
+  - ❌ "ECONNREFUSED 127.0.0.1:6379" - Redis connection failed (can ignore if no Redis)
 
-1. **Free tier limitations:**
-   - Services sleep sau 15 phút không hoạt động
-   - Cold start có thể mất 30-60 giây
-   - Giới hạn 750 hours/month
+## Troubleshooting
 
-2. **Production considerations:**
-   - Enable auto-deploy từ main branch
-   - Setup monitoring và alerts
-   - Configure custom domain nếu có
+### Redis Connection Errors
+```
+Error: connect ECONNREFUSED 127.0.0.1:6379
+```
+**Solution**: This is normal if Redis is not configured. The app works fine without it.
 
-3. **Troubleshooting:**
-   - Check logs trong Render dashboard
-   - Verify DATABASE_URL format
-   - Ensure Prisma migrations ran successfully
+### Database Connection Failed
+```
+Error: Can't reach database server
+```
+**Solution**: 
+- Verify DATABASE_URL includes `?sslmode=require`
+- Check Neon.tech dashboard for connection limits
+- Ensure database is active (may sleep on free tier)
 
-## 🔐 Security Checklist
+### CORS Errors
+```
+Access to fetch at 'backend-url' from origin 'frontend-url' has been blocked by CORS
+```
+**Solution**:
+- Update `FRONTEND_URL` in backend environment
+- Update `VITE_API_URL` in frontend environment
+- Redeploy both services
 
-- [ ] Đổi JWT_SECRET thành value strong
-- [ ] Enable HTTPS (Render tự động)
-- [ ] Restrict CORS cho production domain
-- [ ] Disable debug logs trong production
-- [ ] Setup rate limiting nếu cần
+### Build Failures
+- Check Node version (requires 18+)
+- Verify all dependencies in package.json
+- Check build logs in Render dashboard
 
-## 📊 Monitoring
+## Performance Tips
 
-Render cung cấp:
-- Logs viewer
-- Metrics (CPU, Memory, Disk)
-- Health check monitoring
-- Deploy notifications
+1. **Enable Redis** for better performance (optional)
+2. **Use CDN** for static assets
+3. **Enable auto-scaling** (paid feature)
+4. **Monitor usage** in Render dashboard
 
-## 💡 Tips
+## Security Checklist
 
-1. **Optimize build time:**
-   - Sử dụng `npm ci` thay vì `npm install`
-   - Cache dependencies nếu có thể
+- [ ] Change default admin password
+- [ ] Set strong JWT_SECRET
+- [ ] Enable HTTPS (automatic on Render)
+- [ ] Configure CORS properly
+- [ ] Review environment variables
+- [ ] Enable rate limiting
 
-2. **Database performance:**
-   - Neon.tech có connection pooling built-in
-   - Monitor slow queries
+## Costs
 
-3. **Cost optimization:**
-   - Frontend static site là free
-   - Backend có thể dùng free tier cho MVP
-   - Upgrade khi cần scale
+### Free Tier Limits
+- **Render**: 750 hours/month, auto-sleep after 15 min
+- **Neon.tech**: 3GB storage, auto-pause
+- **Redis Cloud**: 30MB RAM (optional)
 
-## 🆘 Support
+### Recommended Paid Setup
+- Render Starter: $7/month per service (no sleep)
+- Neon Pro: $19/month (better performance)
+- Redis Cloud: $5/month (more memory)
 
-- Render Docs: https://render.com/docs
-- Neon Docs: https://neon.tech/docs
-- Project Issues: GitHub repo
+## Support
 
----
-
-**Happy Deploying! 🎉**
+- Render Docs: [https://render.com/docs](https://render.com/docs)
+- Neon Docs: [https://neon.tech/docs](https://neon.tech/docs)
+- Project Issues: [GitHub Issues](https://github.com/YOUR_USERNAME/restaurant-inventory-system/issues)

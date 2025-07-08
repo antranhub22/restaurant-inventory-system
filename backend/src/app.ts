@@ -62,13 +62,32 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Static files
 app.use('/uploads', express.static('uploads'));
 
-// Health check endpoint
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
+// Health check endpoint - không cần auth
+app.get('/api/health', async (req: Request, res: Response) => {
+  try {
+    // Kiểm tra database
+    const dbStatus = await prisma.$queryRaw`SELECT 1`;
+    
+    // Kiểm tra Redis (không bắt buộc)
+    const redisService = (await import('./services/redis.service')).default.getInstance();
+    const redisStatus = redisService.isAvailable();
+    
+    res.json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      services: {
+        database: dbStatus ? 'connected' : 'disconnected',
+        redis: redisStatus ? 'connected' : 'not configured'
+      }
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: 'Service unavailable'
+    });
+  }
 });
 
 // Root route handler

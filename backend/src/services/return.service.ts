@@ -1,16 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import { ReturnData, ReturnItem, ReturnStatus, ReturnValidationError, ItemCondition } from '../types/return';
-import { Redis } from 'ioredis';
+import RedisService from './redis.service';
 import fs from 'fs';
 import path from 'path';
 
 class ReturnService {
   private prisma: PrismaClient;
-  private redis: Redis;
+  private redis: RedisService;
 
   constructor() {
     this.prisma = new PrismaClient();
-    this.redis = new Redis(process.env.REDIS_URL || '');
+    this.redis = RedisService.getInstance();
   }
 
   async addAttachment(id: number, file: Express.Multer.File) {
@@ -321,7 +321,7 @@ class ReturnService {
     });
 
     if (return_data) {
-      await this.redis.set(cacheKey, JSON.stringify(return_data), 'EX', 3600); // Cache 1 giờ
+      await this.redis.set(cacheKey, JSON.stringify(return_data), 3600); // Cache 1 giờ
     }
   }
 
@@ -350,7 +350,7 @@ class ReturnService {
 
     if (return_data) {
       // Cập nhật cache
-      await this.redis.set(cacheKey, JSON.stringify(return_data), 'EX', 3600);
+      await this.redis.set(cacheKey, JSON.stringify(return_data), 3600);
     }
 
     return return_data;

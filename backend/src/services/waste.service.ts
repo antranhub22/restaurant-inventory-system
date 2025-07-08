@@ -1,16 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import { WasteData, WasteItem, WasteStatus, WasteValidationError, WasteReport } from '../types/waste';
-import { Redis } from 'ioredis';
+import RedisService from './redis.service';
 import fs from 'fs';
 import path from 'path';
 
 class WasteService {
   private prisma: PrismaClient;
-  private redis: Redis;
+  private redis: RedisService;
 
   constructor() {
     this.prisma = new PrismaClient();
-    this.redis = new Redis(process.env.REDIS_URL || '');
+    this.redis = RedisService.getInstance();
   }
 
   async validateWaste(data: WasteData): Promise<WasteValidationError[]> {
@@ -311,7 +311,7 @@ class WasteService {
     });
 
     if (waste_data) {
-      await this.redis.set(cacheKey, JSON.stringify(waste_data), 'EX', 3600); // Cache 1 giờ
+      await this.redis.set(cacheKey, JSON.stringify(waste_data), 3600); // Cache 1 giờ
     }
   }
 
@@ -339,7 +339,7 @@ class WasteService {
 
     if (waste_data) {
       // Cập nhật cache
-      await this.redis.set(cacheKey, JSON.stringify(waste_data), 'EX', 3600);
+      await this.redis.set(cacheKey, JSON.stringify(waste_data), 3600);
     }
 
     return waste_data;

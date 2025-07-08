@@ -1,16 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import { ImportData, ImportItem, ImportStatus, ImportValidationError } from '../types/import';
-import { Redis } from 'ioredis';
+import RedisService from './redis.service';
 import fs from 'fs';
 import path from 'path';
 
 class ImportService {
   private prisma: PrismaClient;
-  private redis: Redis;
+  private redis: RedisService;
 
   constructor() {
     this.prisma = new PrismaClient();
-    this.redis = new Redis(process.env.REDIS_URL || '');
+    this.redis = RedisService.getInstance();
   }
 
   async validateImport(data: ImportData): Promise<ImportValidationError[]> {
@@ -299,7 +299,7 @@ class ImportService {
     });
 
     if (import_data) {
-      await this.redis.set(cacheKey, JSON.stringify(import_data), 'EX', 3600); // Cache 1 giờ
+      await this.redis.set(cacheKey, JSON.stringify(import_data), 3600); // Cache 1 giờ
     }
   }
 
@@ -326,7 +326,7 @@ class ImportService {
 
     if (import_data) {
       // Cập nhật cache
-      await this.redis.set(cacheKey, JSON.stringify(import_data), 'EX', 3600);
+      await this.redis.set(cacheKey, JSON.stringify(import_data), 3600);
     }
 
     return import_data;

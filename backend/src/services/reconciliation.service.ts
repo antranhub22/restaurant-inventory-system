@@ -1,14 +1,14 @@
 import { PrismaClient, ShiftType, ReconciliationStatus, Prisma } from '@prisma/client';
 import { ReconciliationData, ReconciliationItem, ReconciliationReport } from '../types/reconciliation';
-import { Redis } from 'ioredis';
+import RedisService from './redis.service';
 
 class ReconciliationService {
   private prisma: PrismaClient;
-  private redis: Redis;
+  private redis: RedisService;
 
   constructor() {
     this.prisma = new PrismaClient();
-    this.redis = new Redis(process.env.REDIS_URL || '');
+    this.redis = RedisService.getInstance();
   }
 
   async validateReconciliation(data: ReconciliationData): Promise<string[]> {
@@ -294,7 +294,7 @@ class ReconciliationService {
     });
 
     if (reconciliation) {
-      await this.redis.set(cacheKey, JSON.stringify(reconciliation), 'EX', 3600); // Cache 1 giờ
+      await this.redis.set(cacheKey, JSON.stringify(reconciliation), 3600); // Cache 1 giờ
     }
   }
 }

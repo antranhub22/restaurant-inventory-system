@@ -1,14 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import { ExportData, ExportItem, ExportStatus, ExportValidationError } from '../types/export';
-import { Redis } from 'ioredis';
+import RedisService from './redis.service';
 
 class ExportService {
   private prisma: PrismaClient;
-  private redis: Redis;
+  private redis: RedisService;
 
   constructor() {
     this.prisma = new PrismaClient();
-    this.redis = new Redis(process.env.REDIS_URL || '');
+    this.redis = RedisService.getInstance();
   }
 
   async validateExport(data: ExportData): Promise<ExportValidationError[]> {
@@ -241,7 +241,7 @@ class ExportService {
     });
 
     if (export_data) {
-      await this.redis.set(cacheKey, JSON.stringify(export_data), 'EX', 3600); // Cache 1 giờ
+      await this.redis.set(cacheKey, JSON.stringify(export_data), 3600); // Cache 1 giờ
     }
   }
 
@@ -269,7 +269,7 @@ class ExportService {
 
     if (export_data) {
       // Cập nhật cache
-      await this.redis.set(cacheKey, JSON.stringify(export_data), 'EX', 3600);
+      await this.redis.set(cacheKey, JSON.stringify(export_data), 3600);
     }
 
     return export_data;

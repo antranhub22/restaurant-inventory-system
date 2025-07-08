@@ -1,4 +1,4 @@
-import { createWorker } from 'tesseract.js';
+import { createWorker, createScheduler, WorkerParams, Worker, PSM } from 'tesseract.js';
 import { PrismaClient } from '@prisma/client';
 import vietnameseService from './vietnamese.service';
 import ocrLearningService from './ocr.learning.service';
@@ -80,25 +80,47 @@ class OcrService {
       console.log('🔍 Bắt đầu xử lý OCR với Tesseract...');
       console.log('📊 Kích thước ảnh:', imageBuffer.length, 'bytes');
 
-      const worker = await createWorker('vie');
+      // Tạo scheduler để quản lý worker
+      const scheduler = createScheduler();
+      const worker = await createWorker({
+        logger: (m: any) => console.log(m),
+        errorHandler: (e: Error) => console.error('Tesseract Error:', e)
+      });
+
+      // Cấu hình worker
+      await (worker as any).loadLanguage('vie');
+      await (worker as any).initialize('vie');
+      await worker.setParameters({
+        tessedit_char_whitelist: 'aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ0123456789,./\-:$%',
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+        tessedit_ocr_engine_mode: 2,
+        textord_heavy_nr: 1,
+        textord_min_linesize: 2.5
+      } as WorkerParams);
+
+      scheduler.addWorker(worker);
       
-      const result = await worker.recognize(imageBuffer);
-      console.log('Raw result:', JSON.stringify(result.data, null, 2));
+      const { data } = await worker.recognize(imageBuffer);
+      console.log('Raw OCR result:', data);
       
       const textBlocks: TextBlock[] = [];
       
       // Xử lý từng dòng text
-      const lines = result.data.text.split('\n');
-      const avgConfidence = result.data.confidence || 0;
+      const lines = data.text.split('\n');
+      const avgConfidence = data.confidence || 0;
       
       lines.forEach((line, index) => {
-        if (line.trim()) {
+        const trimmedLine = line.trim();
+        if (trimmedLine) {
+          // Tính confidence cho từng dòng dựa vào độ dài và các ký tự đặc biệt
+          const lineConfidence = this.calculateLineConfidence(trimmedLine, avgConfidence);
+          
           textBlocks.push({
-            text: line.trim(),
-            confidence: avgConfidence / 100,
+            text: trimmedLine,
+            confidence: lineConfidence,
             boundingBox: {
               left: 0,
-              top: index * 20, // Giả lập vị trí dựa vào thứ tự dòng
+              top: index * 20,
               right: 1000,
               bottom: (index + 1) * 20
             }
@@ -107,13 +129,51 @@ class OcrService {
       });
 
       await worker.terminate();
+      await scheduler.terminate();
       
-      console.log(`\n✨ Tổng số blocks đạt yêu cầu: ${textBlocks.length}`);
-      return textBlocks.filter(block => block.confidence >= OcrService.MIN_CONFIDENCE_SCORE);
+      const filteredBlocks = textBlocks.filter(block => 
+        block.confidence >= OcrService.MIN_CONFIDENCE_SCORE
+      );
+      
+      console.log(`\n✨ Kết quả OCR:`);
+      filteredBlocks.forEach(block => {
+        console.log(`- "${block.text}" (${(block.confidence * 100).toFixed(1)}%)`);
+      });
+      
+      return filteredBlocks;
     } catch (error) {
       console.error('❌ Lỗi trong quá trình xử lý OCR:', error);
       throw new Error('Lỗi khi xử lý OCR');
     }
+  }
+
+  private calculateLineConfidence(text: string, baseConfidence: number): number {
+    // Các pattern để kiểm tra tính hợp lệ của dòng
+    const patterns = {
+      date: /\d{1,2}\/\d{1,2}\/\d{4}/,
+      money: /\d+(\.\d{3})*(\s*(VND|đ|₫|vnd))?/i,
+      quantity: /x\s*\d+|\d+\s*x/i,
+      supplier: /(cty|công\s*ty|cửa\s*hàng|ch|siêu\s*thị|st)/i
+    };
+
+    let patternMatches = 0;
+    for (const pattern of Object.values(patterns)) {
+      if (pattern.test(text)) {
+        patternMatches++;
+      }
+    }
+
+    // Tăng confidence nếu dòng chứa các pattern mong muốn
+    const patternBonus = patternMatches * 0.1;
+    
+    // Giảm confidence nếu dòng quá ngắn hoặc chứa nhiều ký tự đặc biệt
+    const lengthPenalty = text.length < 5 ? 0.2 : 0;
+    const specialCharPenalty = (text.match(/[^a-zA-Z0-9\s\u00C0-\u1EF9]/g) || []).length * 0.05;
+
+    let confidence = baseConfidence / 100 + patternBonus - lengthPenalty - specialCharPenalty;
+    
+    // Giới hạn confidence trong khoảng [0, 1]
+    return Math.max(0, Math.min(1, confidence));
   }
 
   private async findSupplier(textBlocks: TextBlock[]): Promise<{ text: string; confidence: number }> {

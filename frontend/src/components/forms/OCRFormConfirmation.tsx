@@ -34,6 +34,8 @@ interface Correction {
   confidence: number;
 }
 
+const BACKEND_BASE_URL = (import.meta as any).env.VITE_BACKEND_URL || 'https://restaurant-inventory-backend.onrender.com';
+
 const OCRFormConfirmation: React.FC<OCRFormConfirmationProps> = ({
   formId,
   formType,
@@ -290,7 +292,7 @@ const OCRFormConfirmation: React.FC<OCRFormConfirmationProps> = ({
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="text-sm font-semibold mb-2">Ảnh gốc</h4>
               <img 
-                src={originalImage} 
+                src={`${BACKEND_BASE_URL}/uploads/${originalImage}`} 
                 alt="Receipt" 
                 className="w-full rounded border"
               />

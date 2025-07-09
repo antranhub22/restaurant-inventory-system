@@ -28,21 +28,21 @@ router.post(
   ocrRateLimit, // Rate limit riêng cho OCR
   upload.single('image'),
   validateRequest(processFormSchema),
-  ocrFormController.processForm
+  ocrFormController.processForm.bind(ocrFormController)
 );
 
 // Route xác nhận kết quả OCR
 router.post(
   '/confirm',
   validateRequest(confirmFormSchema),
-  ocrFormController.confirmFormContent
+  ocrFormController.confirmFormContent.bind(ocrFormController)
 );
 
 // Route lấy danh sách forms đang chờ xử lý
 router.get(
   '/pending',
   validateRequest(getPendingFormsSchema),
-  ocrFormController.getPendingForms
+  ocrFormController.getPendingForms.bind(ocrFormController)
 );
 
 export default router; 

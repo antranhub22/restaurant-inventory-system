@@ -30,6 +30,19 @@ export interface OcrResult {
       format: string;
       compressionRatio: number;
     };
+    imageQuality?: {
+      quality: 'excellent' | 'good' | 'poor' | 'very_poor';
+      recommendedEnhancement: 'none' | 'basic' | 'aggressive' | 'maximum';
+      issues: string[];
+      score: number;
+    };
+    aiCorrections?: Array<{
+      original: string;
+      corrected: string;
+      confidence?: number;
+      reason?: string;
+    }>;
+    enhancementLevel?: 'none' | 'basic' | 'aggressive' | 'maximum';
     qualityIssues?: string[];
     qualityRecommendations?: string[];
   };

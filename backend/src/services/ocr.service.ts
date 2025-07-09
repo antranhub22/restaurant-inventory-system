@@ -5,6 +5,8 @@ import logger from './logger.service';
 import imageOptimizer from './image-optimizer.service';
 import vietnameseOptimizer from './vietnamese-ocr-optimizer.service';
 import tableEnhancer from './table-ocr-enhancer.service';
+import advancedImageEnhancer from './advanced-image-enhancer.service';
+import aiOcrCorrector from './ai-ocr-corrector.service';
 import axios from 'axios';
 import FormData from 'form-data';
 
@@ -45,31 +47,65 @@ class OcrService {
       logger.info('🔍 Bắt đầu xử lý OCR...');
       logger.info(`📊 Kích thước ảnh: ${imageBuffer.length} bytes`);
 
-      // 1. Tối ưu hóa ảnh trước khi OCR
-      logger.info('🖼️ Tối ưu hóa ảnh cho OCR...');
-      const optimizationResult = await imageOptimizer.optimizeForOCR(imageBuffer);
+      // 1. Phân tích chất lượng ảnh và xác định mức độ enhancement cần thiết
+      logger.info('📊 Phân tích chất lượng ảnh...');
+      const qualityAnalysis = await advancedImageEnhancer.analyzeImageQuality(imageBuffer);
+      logger.info(`📊 Chất lượng ảnh: ${qualityAnalysis.quality} (score: ${qualityAnalysis.score})`);
       
-      // 2. Kiểm tra chất lượng ảnh
-      const qualityCheck = await imageOptimizer.validateImageQuality(imageBuffer);
+      // 2. Apply advanced enhancement dựa trên quality analysis
+      let enhancedBuffer = imageBuffer;
+      if (qualityAnalysis.recommendedEnhancement !== 'none') {
+        logger.info(`🚀 Áp dụng enhancement level: ${qualityAnalysis.recommendedEnhancement}`);
+        
+        let enhancementResult;
+        switch (qualityAnalysis.recommendedEnhancement) {
+          case 'maximum':
+            enhancementResult = await advancedImageEnhancer.maximumEnhancement(imageBuffer);
+            break;
+          case 'aggressive':
+            enhancementResult = await advancedImageEnhancer.aggressiveEnhancement(imageBuffer);
+            break;
+          default:
+            // 'basic' - fall back to original optimizer
+            const basicOptimization = await imageOptimizer.optimizeForOCR(imageBuffer);
+            enhancedBuffer = basicOptimization.optimizedBuffer;
+            enhancementResult = {
+              enhancedImage: enhancedBuffer,
+              metadata: {
+                originalSize: imageBuffer.length,
+                enhancedSize: enhancedBuffer.length,
+                enhancements: ['Basic optimization'],
+                estimatedQualityGain: 0.3
+              }
+            };
+        }
+        
+        enhancedBuffer = enhancementResult.enhancedImage;
+        logger.info(`✅ Enhancement completed: ${enhancementResult.metadata.enhancements.join(', ')}`);
+        logger.info(`📈 Estimated quality gain: ${(enhancementResult.metadata.estimatedQualityGain * 100).toFixed(1)}%`);
+      }
+      
+      // 3. Kiểm tra chất lượng ảnh cơ bản (compatibility)
+      const qualityCheck = await imageOptimizer.validateImageQuality(enhancedBuffer);
       if (!qualityCheck.isSuitable) {
-        logger.warn('⚠️ Ảnh có vấn đề về chất lượng:', qualityCheck.issues);
+        logger.warn('⚠️ Enhanced image vẫn có vấn đề:', qualityCheck.issues);
         logger.info('💡 Khuyến nghị:', qualityCheck.recommendations);
       }
 
-      // 3. Fallback chain: Vision API → Tesseract → PaddleOCR
+      // 4. Fallback chain: Vision API → Tesseract → PaddleOCR
       let result: VisionOCRResult | TesseractOCRResult | PaddleOCRResult;
       try {
-        result = await this.processWithVisionAPI(optimizationResult.optimizedBuffer);
+        result = await this.processWithVisionAPI(enhancedBuffer);
         logger.info(`✅ Google Vision API thành công - Confidence: ${result.confidence}`);
       } catch (visionError) {
         logger.warn(`⚠️ Google Vision API thất bại, chuyển sang Tesseract: ${visionError}`);
         try {
-          result = await this.processWithTesseract(optimizationResult.optimizedBuffer);
+          result = await this.processWithTesseract(enhancedBuffer);
           logger.info(`✅ Tesseract thành công - Confidence: ${result.confidence}`);
         } catch (tesseractError) {
           logger.warn(`⚠️ Tesseract thất bại, chuyển sang PaddleOCR: ${tesseractError}`);
           try {
-            result = await this.processWithPaddleOCR(optimizationResult.optimizedBuffer);
+            result = await this.processWithPaddleOCR(enhancedBuffer);
             logger.info(`✅ PaddleOCR thành công - Confidence: ${result.confidence}`);
           } catch (paddleError) {
             logger.error(`❌ Tất cả OCR engines đều thất bại. Sử dụng Mock data.`);
@@ -88,23 +124,66 @@ class OcrService {
         }
       }
 
+      // 5. Post-process with AI correction if available
+      let finalText = result.text;
+      let aiCorrections: any[] = [];
+      
+      if (aiOcrCorrector.hasProvider()) {
+        try {
+          logger.info('🤖 Áp dụng AI OCR correction...');
+          const correctionResult = await aiOcrCorrector.correctOCRErrors(result.text, {
+            imageQuality: qualityAnalysis.quality,
+            detectedIssues: qualityAnalysis.issues
+          });
+          
+          finalText = correctionResult.correctedText;
+          aiCorrections = correctionResult.corrections;
+          result.confidence = Math.max(result.confidence, correctionResult.confidence);
+          
+          logger.info(`🎯 AI correction applied: ${aiCorrections.length} corrections, confidence: ${(correctionResult.confidence * 100).toFixed(1)}%`);
+          
+        } catch (aiError) {
+          logger.warn('⚠️ AI correction failed, using original OCR:', aiError);
+          // Apply quick corrections as fallback
+          const quickResult = aiOcrCorrector.applyQuickCorrections(result.text);
+          if (quickResult.corrections.length > 0) {
+            finalText = quickResult.correctedText;
+            aiCorrections = quickResult.corrections;
+            logger.info(`⚡ Quick corrections applied: ${quickResult.corrections.length} corrections`);
+          }
+        }
+      } else {
+        // Apply quick corrections even without AI provider
+        logger.info('⚡ Áp dụng quick Vietnamese corrections...');
+        const quickResult = aiOcrCorrector.applyQuickCorrections(result.text);
+        if (quickResult.corrections.length > 0) {
+          finalText = quickResult.correctedText;
+          aiCorrections = quickResult.corrections;
+          logger.info(`⚡ Quick corrections applied: ${quickResult.corrections.length} corrections`);
+        }
+      }
+
       const totalProcessingTime = Date.now() - startTime;
       
       logger.info(`\n✨ Hoàn thành OCR:`);
-      logger.info(`- Text trích xuất: ${result.text.substring(0, 100)}...`);
+      logger.info(`- Text gốc: ${result.text.substring(0, 50)}...`);
+      logger.info(`- Text đã sửa: ${finalText.substring(0, 50)}...`);
       logger.info(`- Độ tin cậy: ${(result.confidence * 100).toFixed(1)}%`);
       logger.info(`- Thời gian xử lý: ${totalProcessingTime}ms`);
-      logger.info(`- Tối ưu hóa ảnh: ${optimizationResult.metadata.compressionRatio.toFixed(1)}% giảm kích thước`);
+      logger.info(`- AI corrections: ${aiCorrections.length} corrections applied`);
+      logger.info(`- Image quality: ${qualityAnalysis.quality} (score: ${qualityAnalysis.score})`);
       
       return {
-        rawText: result.text,
+        rawText: finalText,
         confidence: result.confidence,
         contents: result.contents,
         processingTime: totalProcessingTime,
         metadata: {
-          imageOptimization: optimizationResult.metadata,
+          imageQuality: qualityAnalysis,
+          aiCorrections,
           qualityIssues: qualityCheck.issues,
-          qualityRecommendations: qualityCheck.recommendations
+          qualityRecommendations: qualityCheck.recommendations,
+          enhancementLevel: qualityAnalysis.recommendedEnhancement
         }
       };
     } catch (error: any) {

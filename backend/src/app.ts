@@ -26,6 +26,7 @@ const prisma = new PrismaClient();
 
 // Request logging middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.url === '/api/health') return next(); // Bỏ qua log health check
   console.log(`\n📨 [${new Date().toISOString()}] ${req.method} ${req.url}`);
   console.log('Headers:', req.headers);
   console.log('Body:', req.body);

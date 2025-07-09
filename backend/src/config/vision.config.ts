@@ -9,6 +9,12 @@ class MockVisionClient {
     console.log('Image size:', image.content.length, 'bytes');
     console.log('Language hints:', imageContext?.languageHints || []);
 
+    // Check if we should force fail to test fallback mechanism
+    if (process.env.FORCE_VISION_FAIL === 'true') {
+      console.log('🚫 Forcing Vision API failure to test fallback...');
+      throw new Error('Mock Vision API failure for testing fallback');
+    }
+
     // Return mock data that matches actual Vision API structure
     return [{
       fullTextAnnotation: {
@@ -40,6 +46,11 @@ class MockVisionClient {
 
   async textDetection({ image, imageContext }: any) {
     console.log('🔍 Mock Text Detection Service');
+    
+    if (process.env.FORCE_VISION_FAIL === 'true') {
+      throw new Error('Mock Vision API failure for testing fallback');
+    }
+    
     return [{
       textAnnotations: [{
         description: 'MOCK OCR RESULT',
@@ -94,6 +105,11 @@ if (process.env.NODE_ENV === 'production' && hasGoogleCloudCredentials()) {
     ? 'Missing Google Cloud credentials' 
     : 'Development mode';
   console.log(`⚠️ Using mock Vision client (${reason})`);
+  
+  if (process.env.FORCE_VISION_FAIL === 'true') {
+    console.log('🧪 Vision API will fail to test fallback mechanism');
+  }
+  
   visionClient = new MockVisionClient();
 }
 

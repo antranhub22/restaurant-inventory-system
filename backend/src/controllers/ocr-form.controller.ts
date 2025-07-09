@@ -94,9 +94,10 @@ class OcrFormController {
         ocrLogger.complete(imageId, ocrResult.processingTime, ocrResult.confidence);
         logger.info('Kết quả OCR', { imageId, ocrResult });
       } catch (ocrError) {
-        ocrLogger.error(imageId, ocrError, { userId, formType });
-        logger.error('Lỗi khi xử lý OCR', { error: ocrError, userId, formType });
-        throw ocrError;
+        const errorObj = ocrError instanceof Error ? ocrError : new Error(String(ocrError));
+        ocrLogger.error(imageId, errorObj, { userId, formType });
+        logger.error('Lỗi khi xử lý OCR', { error: errorObj, userId, formType });
+        throw errorObj;
       }
 
       // 2. Map vào form
@@ -108,8 +109,9 @@ class OcrFormController {
         );
         logger.info('Kết quả mapping OCR vào form', { processedForm });
       } catch (mapError) {
-        logger.error('Lỗi khi mapping OCR vào form', { error: mapError, userId, formType });
-        throw mapError;
+        const errorObj = mapError instanceof Error ? mapError : new Error(String(mapError));
+        logger.error('Lỗi khi mapping OCR vào form', { error: errorObj, userId, formType });
+        throw errorObj;
       }
 
       // 3. Upload ảnh gốc
@@ -118,7 +120,8 @@ class OcrFormController {
         imagePath = await uploadToStorage(imageBuffer, 'ocr-forms');
         logger.info('Ảnh đã upload', { imagePath });
       } catch (uploadError) {
-        logger.warn('Lỗi upload ảnh, tiếp tục không lưu ảnh', { error: uploadError });
+        const errorObj = uploadError instanceof Error ? uploadError : new Error(String(uploadError));
+        logger.warn('Lỗi upload ảnh, tiếp tục không lưu ảnh', { error: errorObj });
       }
 
       // 4. Lưu form draft vào DB
@@ -148,8 +151,9 @@ class OcrFormController {
           }
         });
       } catch (dbError: any) {
-        formLogger.error(draftId, dbError, { userId });
-        logger.error('Lỗi khi lưu draft vào database', { error: dbError, draftId });
+        const errorObj = dbError instanceof Error ? dbError : new Error(String(dbError));
+        formLogger.error(draftId, errorObj, { userId });
+        logger.error('Lỗi khi lưu draft vào database', { error: errorObj, draftId });
         // Trả về kết quả OCR mà không lưu database
         apiLogger.response(req, res, Date.now() - startTime);
         return res.json({
@@ -163,11 +167,12 @@ class OcrFormController {
         });
       }
     } catch (error: any) {
-      logger.error('Lỗi tổng thể xử lý OCR form', { error, userId: req.user?.id, formType: req.body.formType });
-      apiLogger.error(req, error);
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Lỗi tổng thể xử lý OCR form', { error: errorObj, userId: req.user?.id, formType: req.body.formType });
+      apiLogger.error(req, errorObj);
       return res.status(500).json({
         success: false,
-        message: error.message || 'Lỗi khi xử lý form'
+        message: errorObj.message || 'Lỗi khi xử lý form'
       });
     }
   }

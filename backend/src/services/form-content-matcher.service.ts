@@ -38,6 +38,15 @@ interface ProcessedForm {
   needsReview: boolean;
 }
 
+// Alias mapping cho các trường thông tin chung
+const FIELD_ALIASES: Record<string, string[]> = {
+  date: ['date', 'ngày', 'ngay', 'ngày nhập', 'ngày xuất', 'ngày hoàn', 'ngày điều chỉnh', 'ngày hóa đơn', 'invoice date', 'import date', 'export date', 'return date'],
+  supplierId: ['supplier', 'nhà cung cấp', 'nha cung cap', 'supplier id', 'supplier name'],
+  invoice_no: ['invoice_no', 'invoice-no', 'số hóa đơn', 'so hoa don', 'invoice number', 'ma hoa don'],
+  total: ['total', 'tổng tiền', 'tong tien', 'thành tiền', 'thanh tien', 'total amount', 'amount'],
+  notes: ['notes', 'ghi chú', 'ghi chu', 'note', 'remark', 'description', 'mô tả', 'mo ta']
+};
+
 export class FormContentMatcherService {
   private static instance: FormContentMatcherService;
   private prisma: PrismaClient;
@@ -209,6 +218,25 @@ export class FormContentMatcherService {
     field: any
   ): Promise<ExtractedContent & { confidence: number } | null> {
     try {
+      // 0. Nếu trường có alias, thử match alias trước
+      const aliases = FIELD_ALIASES[field.name] || [field.name];
+      // Tìm content có text match alias tốt nhất
+      let bestAliasMatch: { content: ExtractedContent; similarity: number } | null = null;
+      for (const content of contents) {
+        for (const alias of aliases) {
+          const match = await enhancedMatcherService.findBestMatch(content.text, [alias]);
+          if (!bestAliasMatch || match.similarity > bestAliasMatch.similarity) {
+            bestAliasMatch = { content, similarity: match.similarity };
+          }
+        }
+      }
+      if (bestAliasMatch && bestAliasMatch.similarity > 0.7) {
+        return {
+          ...bestAliasMatch.content,
+          confidence: bestAliasMatch.similarity
+        };
+      }
+
       // 1. Lọc contents theo type phù hợp với field
       let relevantContents = contents.filter(content => {
         switch (field.type) {

@@ -17,10 +17,13 @@ OPENAI_API_KEY="your-openai-api-key"
 DEEPSEEK_API_KEY="your-deepseek-api-key"
 ```
 
-### 2. Lựa chọn AI Provider
+### 2. Fallback Mechanism (Mới!)
 
-- **OpenAI**: Sử dụng model `gpt-4o-mini` - Độ chính xác cao, chi phí trung bình
-- **DeepSeek**: Sử dụng model `deepseek-chat` - Chi phí thấp hơn, hiệu quả tốt
+- **OpenAI** (Primary): Sử dụng model `gpt-4o-mini` - Độ chính xác cao
+- **DeepSeek** (Fallback): Sử dụng model `deepseek-chat` - Backup khi OpenAI lỗi
+- **Traditional Mapping** (Final): Rule-based matching khi cả 2 AI lỗi
+
+**Logic Fallback**: OpenAI → DeepSeek → Traditional → Error
 
 ## Tính năng
 
@@ -49,10 +52,10 @@ Nếu AI service không khả dụng:
 
 ## Cách hoạt động
 
-### 1. Flow xử lý
+### 1. Flow xử lý với Fallback
 
 ```
-OCR Extract → AI Analysis → Form Mapping → User Review → Confirm
+OCR Extract → Try OpenAI → (Fail?) → Try DeepSeek → (Fail?) → Traditional → Form Mapping → User Review → Confirm
 ```
 
 ### 2. AI Prompt Structure

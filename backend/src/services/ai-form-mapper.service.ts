@@ -274,21 +274,22 @@ Trả về kết quả dưới dạng JSON với format:
 
 class AIFormMapperService {
   private static instance: AIFormMapperService;
-  private provider: AIProvider | null = null;
+  private primaryProvider: AIProvider | null = null;
+  private fallbackProvider: AIProvider | null = null;
 
   private constructor() {
-    // Khởi tạo provider dựa trên config
-    const aiService = process.env.AI_SERVICE || 'openai';
-    
-    if (aiService === 'openai' && process.env.OPENAI_API_KEY) {
-      this.provider = new OpenAIProvider(process.env.OPENAI_API_KEY);
-      logger.info('Using OpenAI for form mapping');
-    } 
-    else if (aiService === 'deepseek' && process.env.DEEPSEEK_API_KEY) {
-      this.provider = new DeepseekProvider(process.env.DEEPSEEK_API_KEY);
-      logger.info('Using DeepSeek for form mapping');
+    // Thiết lập OpenAI là primary và DeepSeek là fallback
+    if (process.env.OPENAI_API_KEY) {
+      this.primaryProvider = new OpenAIProvider(process.env.OPENAI_API_KEY);
+      logger.info('Using OpenAI as primary AI provider for form mapping');
     }
-    else {
+    
+    if (process.env.DEEPSEEK_API_KEY) {
+      this.fallbackProvider = new DeepseekProvider(process.env.DEEPSEEK_API_KEY);
+      logger.info('Using DeepSeek as fallback AI provider for form mapping');
+    }
+
+    if (!this.primaryProvider && !this.fallbackProvider) {
       logger.warn('No AI service configured for form mapping');
     }
   }
@@ -308,15 +309,43 @@ class AIFormMapperService {
       logger.info('[AI Form Mapper] Bắt đầu xử lý với AI', { 
         formType, 
         extractedCount: extractedContents.length,
-        hasProvider: !!this.provider 
+        hasPrimary: !!this.primaryProvider,
+        hasFallback: !!this.fallbackProvider
       });
 
-      if (!this.provider) {
+      if (!this.primaryProvider && !this.fallbackProvider) {
         throw new Error('No AI provider configured');
       }
 
-      // Sử dụng AI để phân tích
-      const aiAnalysis = await this.provider.analyzeContent(extractedContents, formType);
+      let aiAnalysis: AIFormAnalysis;
+      
+      // Thử OpenAI trước (primary)
+      if (this.primaryProvider) {
+        try {
+          logger.info('[AI Form Mapper] Trying OpenAI (primary)...');
+          aiAnalysis = await this.primaryProvider.analyzeContent(extractedContents, formType);
+          logger.info('[AI Form Mapper] OpenAI analysis successful');
+        } catch (primaryError) {
+          logger.warn('[AI Form Mapper] OpenAI failed, trying DeepSeek fallback:', primaryError);
+          
+          // Fallback sang DeepSeek nếu OpenAI lỗi
+          if (this.fallbackProvider) {
+            try {
+              aiAnalysis = await this.fallbackProvider.analyzeContent(extractedContents, formType);
+              logger.info('[AI Form Mapper] DeepSeek fallback successful');
+            } catch (fallbackError) {
+              logger.error('[AI Form Mapper] Both OpenAI and DeepSeek failed:', { primaryError, fallbackError });
+              throw new Error('All AI providers failed');
+            }
+          } else {
+            throw primaryError;
+          }
+        }
+      } else {
+        // Chỉ có DeepSeek
+        logger.info('[AI Form Mapper] Using DeepSeek (only available provider)...');
+        aiAnalysis = await this.fallbackProvider!.analyzeContent(extractedContents, formType);
+      }
       
       logger.info('[AI Form Mapper] Kết quả phân tích AI', { 
         fieldsCount: aiAnalysis.fields.length,
@@ -332,8 +361,8 @@ class AIFormMapperService {
         fields: aiAnalysis.fields,
         items: aiAnalysis.items,
         needsReview: aiAnalysis.confidence < 0.85 || 
-                    aiAnalysis.fields.some(f => f.needsReview) ||
-                    aiAnalysis.items.some(i => i.needsReview)
+                    aiAnalysis.fields.some((f: FormField) => f.needsReview) ||
+                    aiAnalysis.items.some((i: any) => i.needsReview)
       };
 
       logger.info('[AI Form Mapper] Kết quả cuối cùng', { 
@@ -349,7 +378,7 @@ class AIFormMapperService {
   }
 
   public hasProvider(): boolean {
-    return this.provider !== null;
+    return this.primaryProvider !== null || this.fallbackProvider !== null;
   }
 }
 

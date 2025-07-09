@@ -17,11 +17,10 @@ async function testAIIntegration() {
     
     const hasOpenAI = process.env.OPENAI_API_KEY ? '✅' : '❌';
     const hasDeepseek = process.env.DEEPSEEK_API_KEY ? '✅' : '❌';
-    const aiService = process.env.AI_SERVICE || 'not set';
     
-    console.log(`   - OpenAI API Key: ${hasOpenAI}`);
-    console.log(`   - DeepSeek API Key: ${hasDeepseek}`);
-    console.log(`   - Selected AI Service: ${aiService}`);
+    console.log(`   - OpenAI API Key (Primary): ${hasOpenAI}`);
+    console.log(`   - DeepSeek API Key (Fallback): ${hasDeepseek}`);
+    console.log('   - ⚡ Fallback Logic: OpenAI → DeepSeek → Traditional Mapping');
     
     if (!process.env.OPENAI_API_KEY && !process.env.DEEPSEEK_API_KEY) {
       console.log('\n⚠️  No AI API keys found in environment');
@@ -31,8 +30,10 @@ async function testAIIntegration() {
     }
 
     // 2. Test AI API connectivity (if available)
-    if (process.env.OPENAI_API_KEY && aiService === 'openai') {
-      console.log('\n2️⃣ Testing OpenAI connectivity...');
+    console.log('\n2️⃣ Testing AI provider connectivity...');
+    
+    if (process.env.OPENAI_API_KEY) {
+      console.log('   Testing OpenAI (Primary)...');
       try {
         const response = await axios.get('https://api.openai.com/v1/models', {
           headers: {
@@ -43,12 +44,12 @@ async function testAIIntegration() {
         console.log('   ✅ OpenAI API connection successful');
       } catch (error) {
         console.log('   ❌ OpenAI API connection failed:', error.message);
-        return;
+        console.log('   📝 Will fallback to DeepSeek if available');
       }
     }
 
-    if (process.env.DEEPSEEK_API_KEY && aiService === 'deepseek') {
-      console.log('\n2️⃣ Testing DeepSeek connectivity...');
+    if (process.env.DEEPSEEK_API_KEY) {
+      console.log('   Testing DeepSeek (Fallback)...');
       try {
         const response = await axios.post('https://api.deepseek.com/v1/chat/completions', {
           model: 'deepseek-chat',
@@ -71,10 +72,12 @@ async function testAIIntegration() {
       }
     }
 
-    console.log('\n3️⃣ AI Form Mapping is ready to use!');
+    console.log('\n3️⃣ AI Form Mapping with Fallback is ready to use!');
     console.log('   When you upload an image for OCR processing:');
-    console.log('   - If AI service is available → AI will analyze and map intelligently');
-    console.log('   - If AI service is not available → System falls back to rule-based mapping');
+    console.log('   1️⃣ Try OpenAI first (if API key available)');
+    console.log('   2️⃣ If OpenAI fails → Fallback to DeepSeek');  
+    console.log('   3️⃣ If both AI fail → Use traditional rule-based mapping');
+    console.log('   🎯 This ensures maximum reliability and uptime!');
     
   } catch (error) {
     console.error('❌ Test failed:', error.message);
@@ -88,7 +91,6 @@ function checkEnvironment() {
   const requiredVars = [
     'DATABASE_URL',
     'JWT_SECRET',
-    'AI_SERVICE',
   ];
   
   const optionalVars = [

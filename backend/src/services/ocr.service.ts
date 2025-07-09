@@ -28,8 +28,8 @@ class OcrService {
       
       // Get text blocks from the result
       if (result.data.text) {
-        // Split text into blocks by newlines and spaces
-        const blocks = result.data.text.split(/[\n\s]+/).filter(Boolean);
+        // Sửa: chỉ tách theo xuống dòng, mỗi content là một dòng đầy đủ
+        const blocks = result.data.text.split('\n').map((line: string) => line.trim()).filter(Boolean);
         
         blocks.forEach((text, index) => {
           contents.push({
@@ -44,6 +44,8 @@ class OcrService {
             }
           });
         });
+        // Thêm log debug toàn bộ content
+        console.log('[DEBUG][OCR] Toàn bộ content sau khi tách dòng:', contents);
       }
 
       const processingTime = Date.now() - startTime;

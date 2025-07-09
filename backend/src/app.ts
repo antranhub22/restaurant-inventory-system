@@ -22,6 +22,7 @@ import ocrFormRoutes from './routes/ocr-form.routes';
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1); // Tin tưởng proxy để xác định đúng IP client
 const prisma = new PrismaClient();
 
 // Request logging middleware

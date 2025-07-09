@@ -4,6 +4,7 @@ import { OcrResult, ExtractedContent } from '../types/ocr';
 import logger from './logger.service';
 import imageOptimizer from './image-optimizer.service';
 import vietnameseOptimizer from './vietnamese-ocr-optimizer.service';
+import tableEnhancer from './table-ocr-enhancer.service';
 import axios from 'axios';
 import FormData from 'form-data';
 
@@ -183,6 +184,14 @@ class OcrService {
     try {
       logger.info('📚 Khởi tạo Tesseract worker...');
       
+      // 1. ENHANCEMENT: Table-specific image preprocessing
+      logger.info('🔧 Enhance ảnh cho table detection...');
+      const tableResult = await tableEnhancer.enhanceForTable(imageBuffer);
+      const enhancedImage = tableResult.enhancedImage;
+      const tableMetadata = tableResult.metadata;
+      
+      logger.info(`📊 Table detection: ${tableMetadata.tableDetected ? 'Có table' : 'Không có table'} - ${tableMetadata.lineCount} lines, ${tableMetadata.columnCount} columns`);
+      
       const worker = await Promise.race([
         createWorker('vie+eng', 1, {
           logger: (m: any) => logger.debug(`Tesseract: ${m.status} - ${m.progress * 100}%`)
@@ -192,40 +201,14 @@ class OcrService {
         )
       ]);
 
-      // Cấu hình tối ưu cho hóa đơn tiếng Việt
+      // 2. ENHANCEMENT: Dynamic config based on table detection
       logger.info('⚙️ Cấu hình Tesseract cho hóa đơn tiếng Việt...');
-      await worker.setParameters({
-        // Character whitelist for Vietnamese receipts
-        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠ-ỹ .,():/-×=',
-        
-        // Page segmentation mode - uniform block of text
-        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-        
-        // OCR Engine mode  
-        tessedit_ocr_engine_mode: 1, // Neural nets LSTM engine
-        
-        // Enable better character recognition
-        tessedit_enable_dict_correction: 1,
-        tessedit_enable_bigram_correction: 1,
-        
-        // Improve word finding
-        tessedit_make_box_file: 0,
-        textord_really_old_xheight: 1,
-        
-        // Vietnamese specific
-        load_freq_dawg: 1,
-        load_punc_dawg: 1,
-        load_system_dawg: 1,
-        load_unambig_dawg: 1,
-        
-        // Better handling of numbers and currency
-        numeric_punctuation: '.,',
-        classify_enable_learning: 1
-      });
+      const optimizedConfig = tableEnhancer.getTableOptimizedTesseractConfig(tableMetadata);
+      await worker.setParameters(optimizedConfig);
 
       logger.info('🔍 Đang xử lý OCR với Tesseract...');
       const result = await Promise.race([
-        worker.recognize(imageBuffer),
+        worker.recognize(enhancedImage), // Use enhanced image instead of original
         new Promise<never>((_, reject) => 
           setTimeout(() => reject(new Error('Tesseract processing timeout')), this.TESSERACT_TIMEOUT)
         )
@@ -235,14 +218,19 @@ class OcrService {
 
       const rawText = result.data.text;
       
-      // Tối ưu hóa kết quả cho tiếng Việt
-      const vietnameseResult = vietnameseOptimizer.enhanceVietnameseOCRResult(rawText);
+      // 3. ENHANCEMENT: Table-aware post-processing
+      const tableEnhancedResult = tableEnhancer.enhanceTableOCRResult(rawText, tableMetadata);
+      logger.info(`🔧 Table enhancements: ${tableEnhancedResult.improvements.join(', ')}`);
+      
+      // 4. Vietnamese optimization on enhanced text
+      const vietnameseResult = vietnameseOptimizer.enhanceVietnameseOCRResult(tableEnhancedResult.enhancedText);
       const contents = this.parseTesseractResult(result);
       const confidence = Math.max(result.data.confidence / 100, vietnameseResult.confidence);
       const processingTime = Date.now() - startTime;
 
       logger.info(`✅ Tesseract xử lý thành công trong ${processingTime}ms`);
       logger.info(`🇻🇳 Vietnamese optimization: ${vietnameseResult.detectedElements.receiptHeaders.length} headers, ${vietnameseResult.detectedElements.currencies.length} currencies`);
+      logger.info(`📋 Table structure: ${tableEnhancedResult.structuredData.length} structured lines detected`);
 
       return {
         text: vietnameseResult.enhancedText,

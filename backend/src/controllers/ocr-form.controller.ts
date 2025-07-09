@@ -15,10 +15,50 @@ const prisma = new PrismaClient();
 
 class OcrFormController {
   /**
+   * Kiểm tra và tạo bảng OCRFormDraft nếu chưa tồn tại
+   */
+  private async ensureOCRFormDraftTable() {
+    try {
+      // Thử query để kiểm tra bảng có tồn tại không
+      await prisma.$queryRaw`SELECT 1 FROM "OCRFormDraft" LIMIT 1`;
+    } catch (error: any) {
+      if (error.code === 'P2021' || error.message.includes('does not exist')) {
+        console.log('Creating OCRFormDraft table...');
+        try {
+          // Tạo bảng OCRFormDraft
+          await prisma.$executeRaw`
+            CREATE TABLE IF NOT EXISTS "OCRFormDraft" (
+              "id" TEXT NOT NULL,
+              "type" TEXT NOT NULL,
+              "fields" JSONB NOT NULL,
+              "items" JSONB NOT NULL,
+              "originalImage" TEXT,
+              "status" TEXT NOT NULL DEFAULT 'pending',
+              "createdBy" TEXT,
+              "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT "OCRFormDraft_pkey" PRIMARY KEY ("id")
+            );
+          `;
+          console.log('OCRFormDraft table created successfully');
+        } catch (createError) {
+          console.error('Failed to create OCRFormDraft table:', createError);
+          throw createError;
+        }
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
    * Xử lý OCR và map vào form
    */
   public async processForm(req: Request, res: Response) {
     try {
+      // Đảm bảo bảng OCRFormDraft tồn tại
+      await this.ensureOCRFormDraftTable();
+
       const formType = req.body.formType as FormType;
       const imageBuffer = req.file?.buffer;
       const userId = req.user && typeof req.user.id === 'string' ? req.user.id : (req.user && req.user.id ? String(req.user.id) : null);
@@ -47,28 +87,52 @@ class OcrFormController {
       );
 
       // 3. Upload ảnh gốc
-      const imagePath = await uploadToStorage(imageBuffer, 'ocr-forms');
+      let imagePath: string | null = null;
+      try {
+        imagePath = await uploadToStorage(imageBuffer, 'ocr-forms');
+      } catch (uploadError) {
+        console.warn('Failed to upload image, continuing without image:', uploadError);
+      }
 
       // 4. Lưu form draft vào DB
-      const draft = await prisma.oCRFormDraft.create({
-        data: {
-          type: formType,
-          fields: JSON.stringify(processedForm.fields),
-          items: JSON.stringify(processedForm.items),
-          originalImage: imagePath,
-          status: 'pending',
-          createdBy: userId
-        }
-      });
+      const draftId = `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      try {
+        const draft = await prisma.oCRFormDraft.create({
+          data: {
+            id: draftId,
+            type: formType,
+            fields: JSON.stringify(processedForm.fields),
+            items: JSON.stringify(processedForm.items),
+            originalImage: imagePath,
+            status: 'pending',
+            createdBy: userId,
+            updatedAt: new Date()
+          }
+        });
 
-      return res.json({
-        success: true,
-        data: {
-          formId: draft.id,
-          ...processedForm,
-          originalImage: imagePath
-        }
-      });
+        return res.json({
+          success: true,
+          data: {
+            formId: draft.id,
+            ...processedForm,
+            originalImage: imagePath
+          }
+        });
+      } catch (dbError: any) {
+        console.error('Failed to save draft to database:', dbError);
+        
+        // Trả về kết quả OCR mà không lưu database
+        return res.json({
+          success: true,
+          data: {
+            formId: draftId,
+            ...processedForm,
+            originalImage: imagePath,
+            warning: 'OCR processed successfully but could not save to database'
+          }
+        });
+      }
     } catch (error: any) {
       console.error('Error processing form:', error);
       return res.status(500).json({
@@ -83,6 +147,9 @@ class OcrFormController {
    */
   public async confirmFormContent(req: Request, res: Response) {
     try {
+      // Đảm bảo bảng OCRFormDraft tồn tại
+      await this.ensureOCRFormDraftTable();
+
       const { formId, corrections } = req.body;
       const userId = req.user && typeof req.user.id === 'string' ? req.user.id : (req.user && req.user.id ? String(req.user.id) : null);
 
@@ -94,7 +161,17 @@ class OcrFormController {
       }
 
       // 1. Lấy dữ liệu draft
-      const draft = await prisma.oCRFormDraft.findUnique({ where: { id: formId } });
+      let draft;
+      try {
+        draft = await prisma.oCRFormDraft.findUnique({ where: { id: formId } });
+      } catch (dbError) {
+        console.error('Database error when fetching draft:', dbError);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Lỗi database khi lấy thông tin form draft' 
+        });
+      }
+
       if (!draft) {
         return res.status(404).json({ success: false, message: 'Không tìm thấy form draft' });
       }
@@ -218,10 +295,18 @@ class OcrFormController {
       // TODO: Thêm mapping cho WASTE, ADJUSTMENT...
 
       // 5. Cập nhật trạng thái draft
-      await prisma.oCRFormDraft.update({
-        where: { id: formId },
-        data: { status: 'confirmed', updatedAt: new Date() }
-      });
+      try {
+        await prisma.oCRFormDraft.update({
+          where: { id: formId },
+          data: { status: 'confirmed', updatedAt: new Date() }
+        });
+      } catch (dbError) {
+        console.error('Database error when updating draft status:', dbError);
+        return res.status(500).json({
+          success: false,
+          message: 'Lỗi database khi cập nhật trạng thái form draft'
+        });
+      }
 
       // 6. Lưu corrections vào học máy
       if (Array.isArray(corrections)) {
@@ -241,7 +326,7 @@ class OcrFormController {
         data: createdRecord
       });
     } catch (error: any) {
-      console.error('Error confirming form:', error);
+      console.error('Error confirming form content:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi khi xác nhận form'

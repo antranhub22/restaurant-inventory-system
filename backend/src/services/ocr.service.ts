@@ -4,6 +4,8 @@ import { OcrResult, ExtractedContent } from '../types/ocr';
 import logger from './logger.service';
 import imageOptimizer from './image-optimizer.service';
 import vietnameseOptimizer from './vietnamese-ocr-optimizer.service';
+import axios from 'axios';
+import FormData from 'form-data';
 
 interface VisionOCRResult {
   text: string;
@@ -19,13 +21,21 @@ interface TesseractOCRResult {
   processingTime: number;
 }
 
+interface PaddleOCRResult {
+  text: string;
+  confidence: number;
+  contents: ExtractedContent[];
+  processingTime: number;
+}
+
 class OcrService {
   private readonly MIN_CONFIDENCE_THRESHOLD = 0.7;
   private readonly VISION_TIMEOUT = 30000; // 30 seconds
   private readonly TESSERACT_TIMEOUT = 60000; // 60 seconds
+  private readonly PADDLE_TIMEOUT = 30000; // 30 seconds
 
   /**
-   * Xử lý OCR với Google Cloud Vision API (chính) và Tesseract (fallback)
+   * Xử lý OCR với Google Cloud Vision API (chính), PaddleOCR (fallback 1), Tesseract (fallback 2)
    */
   public async processReceipt(imageBuffer: Buffer): Promise<OcrResult> {
     const startTime = Date.now();
@@ -46,20 +56,24 @@ class OcrService {
       }
 
       // 3. Thử Google Cloud Vision API trước
-      let result: VisionOCRResult | TesseractOCRResult;
-      
+      let result: VisionOCRResult | TesseractOCRResult | PaddleOCRResult;
       try {
         result = await this.processWithVisionAPI(optimizationResult.optimizedBuffer);
         logger.info(`✅ Google Vision API thành công - Confidence: ${result.confidence}`);
       } catch (visionError) {
-        logger.warn(`⚠️ Google Vision API thất bại, chuyển sang Tesseract: ${visionError}`);
-        
+        logger.warn(`⚠️ Google Vision API thất bại, chuyển sang PaddleOCR: ${visionError}`);
         try {
-          result = await this.processWithTesseract(optimizationResult.optimizedBuffer);
-          logger.info(`✅ Tesseract thành công - Confidence: ${result.confidence}`);
-        } catch (tesseractError) {
-          logger.error(`❌ Cả hai OCR engine đều thất bại: ${tesseractError}`);
-          throw new Error(`OCR processing failed: ${tesseractError}`);
+          result = await this.processWithPaddleOCR(optimizationResult.optimizedBuffer);
+          logger.info(`✅ PaddleOCR thành công - Confidence: ${result.confidence}`);
+        } catch (paddleError) {
+          logger.warn(`⚠️ PaddleOCR thất bại, chuyển sang Tesseract: ${paddleError}`);
+          try {
+            result = await this.processWithTesseract(optimizationResult.optimizedBuffer);
+            logger.info(`✅ Tesseract thành công - Confidence: ${result.confidence}`);
+          } catch (tesseractError) {
+            logger.error(`❌ Cả ba OCR engine đều thất bại: ${tesseractError}`);
+            throw new Error(`OCR processing failed: ${tesseractError}`);
+          }
         }
       }
 
@@ -200,6 +214,44 @@ class OcrService {
       };
     } catch (error: any) {
       logger.error('❌ Lỗi Tesseract:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Xử lý OCR với PaddleOCR (fallback)
+   */
+  private async processWithPaddleOCR(imageBuffer: Buffer): Promise<PaddleOCRResult> {
+    const startTime = Date.now();
+    try {
+      logger.info('🔍 Đang xử lý OCR với PaddleOCR...');
+      const formData = new FormData();
+      formData.append('image', imageBuffer, { filename: 'receipt.png', contentType: 'image/png' });
+      const response = await axios.post('http://localhost:5001/ocr', formData, {
+        headers: formData.getHeaders(),
+        timeout: this.PADDLE_TIMEOUT
+      });
+      const lines = response.data.lines || [];
+      const text = lines.map((l: any) => l.text).join('\n');
+      const confidence = lines.length > 0 ? lines.reduce((sum: number, l: any) => sum + l.confidence, 0) / lines.length : 0.7;
+      // Tối ưu hóa kết quả cho tiếng Việt
+      const vietnameseResult = vietnameseOptimizer.enhanceVietnameseOCRResult(text);
+      const contents = lines.map((l: any) => ({
+        text: l.text,
+        type: this.detectContentType(l.text),
+        confidence: l.confidence,
+        position: undefined // PaddleOCR không trả về vị trí
+      }));
+      const processingTime = Date.now() - startTime;
+      logger.info(`✅ PaddleOCR xử lý thành công trong ${processingTime}ms`);
+      return {
+        text: vietnameseResult.enhancedText,
+        confidence: Math.max(confidence, vietnameseResult.confidence),
+        contents,
+        processingTime
+      };
+    } catch (error: any) {
+      logger.error('❌ Lỗi PaddleOCR:', error);
       throw error;
     }
   }

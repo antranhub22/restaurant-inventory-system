@@ -280,9 +280,16 @@ class OcrFormController {
             });
           }
         }
+        // Kiểm tra supplierId hợp lệ
+        if (!supplierId || isNaN(Number(supplierId))) {
+          return res.status(400).json({
+            success: false,
+            message: 'Thiếu hoặc sai định dạng ID nhà cung cấp'
+          });
+        }
         const importData: any = {
           date: fields.find(f => f.name === 'date')?.value || new Date(),
-          supplierId,
+          supplierId: Number(supplierId),
           invoiceNumber: fields.find(f => f.name === 'invoice_no')?.value || '',
           processedById: userId,
           totalAmount: fields.find(f => f.name === 'total')?.value || 0,

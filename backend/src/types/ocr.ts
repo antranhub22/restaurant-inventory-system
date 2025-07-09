@@ -22,5 +22,15 @@ export interface OcrResult {
     };
     format?: string;
     dpi?: number;
+    imageOptimization?: {
+      originalSize: number;
+      optimizedSize: number;
+      width: number;
+      height: number;
+      format: string;
+      compressionRatio: number;
+    };
+    qualityIssues?: string[];
+    qualityRecommendations?: string[];
   };
 } 

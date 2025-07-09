@@ -33,6 +33,23 @@ class MockVisionClient {
       }
     }];
   }
+
+  async textDetection({ image, imageContext }: any) {
+    console.log('🔍 Mock Text Detection Service');
+    return [{
+      textAnnotations: [{
+        description: 'Test text',
+        boundingPoly: {
+          vertices: [
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+            { x: 100, y: 50 },
+            { x: 0, y: 50 }
+          ]
+        }
+      }]
+    }];
+  }
 }
 
 // Initialize the client
@@ -52,6 +69,16 @@ if (process.env.NODE_ENV === 'production') {
       private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     },
     projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    // Tối ưu hóa cấu hình cho OCR
+    apiEndpoint: 'vision.googleapis.com',
+    retry: {
+      retries: 3,
+      factor: 2,
+      minTimeout: 1000,
+      maxTimeout: 10000,
+    },
+    // Tăng timeout cho OCR processing
+    timeout: 60000, // 60 seconds
   });
 } else {
   // Development: Use mock client

@@ -1,101 +1,373 @@
 import { createWorker } from 'tesseract.js';
+import visionClient from '../config/vision.config';
 import { OcrResult, ExtractedContent } from '../types/ocr';
+import logger from './logger.service';
+import imageOptimizer from './image-optimizer.service';
+import vietnameseOptimizer from './vietnamese-ocr-optimizer.service';
+
+interface VisionOCRResult {
+  text: string;
+  confidence: number;
+  contents: ExtractedContent[];
+  processingTime: number;
+}
+
+interface TesseractOCRResult {
+  text: string;
+  confidence: number;
+  contents: ExtractedContent[];
+  processingTime: number;
+}
 
 class OcrService {
-  private async extractTextFromImage(imageBuffer: Buffer): Promise<{
-    text: string;
-    confidence: number;
-    contents: ExtractedContent[];
-  }> {
+  private readonly MIN_CONFIDENCE_THRESHOLD = 0.7;
+  private readonly VISION_TIMEOUT = 30000; // 30 seconds
+  private readonly TESSERACT_TIMEOUT = 60000; // 60 seconds
+
+  /**
+   * Xử lý OCR với Google Cloud Vision API (chính) và Tesseract (fallback)
+   */
+  public async processReceipt(imageBuffer: Buffer): Promise<OcrResult> {
     const startTime = Date.now();
     
     try {
-      console.log('🔍 Bắt đầu xử lý OCR với Tesseract...');
-      console.log('📊 Kích thước ảnh:', imageBuffer.length, 'bytes');
+      logger.info('🔍 Bắt đầu xử lý OCR với Google Cloud Vision API...');
+      logger.info(`📊 Kích thước ảnh: ${imageBuffer.length} bytes`);
 
-      // Khởi tạo worker với Tesseract.js
-      console.log('📚 Đang khởi tạo Tesseract worker...');
-      const worker = await createWorker('vie+eng');
-
-      // Nhận dạng text
-      console.log('🔍 Đang xử lý OCR...');
-      const result = await worker.recognize(imageBuffer);
+      // 1. Tối ưu hóa ảnh trước khi OCR
+      logger.info('🖼️ Tối ưu hóa ảnh cho OCR...');
+      const optimizationResult = await imageOptimizer.optimizeForOCR(imageBuffer);
       
+      // 2. Kiểm tra chất lượng ảnh
+      const qualityCheck = await imageOptimizer.validateImageQuality(imageBuffer);
+      if (!qualityCheck.isSuitable) {
+        logger.warn('⚠️ Ảnh có vấn đề về chất lượng:', qualityCheck.issues);
+        logger.info('💡 Khuyến nghị:', qualityCheck.recommendations);
+      }
+
+      // 3. Thử Google Cloud Vision API trước
+      let result: VisionOCRResult | TesseractOCRResult;
+      
+      try {
+        result = await this.processWithVisionAPI(optimizationResult.optimizedBuffer);
+        logger.info(`✅ Google Vision API thành công - Confidence: ${result.confidence}`);
+      } catch (visionError) {
+        logger.warn(`⚠️ Google Vision API thất bại, chuyển sang Tesseract: ${visionError}`);
+        
+        try {
+          result = await this.processWithTesseract(optimizationResult.optimizedBuffer);
+          logger.info(`✅ Tesseract thành công - Confidence: ${result.confidence}`);
+        } catch (tesseractError) {
+          logger.error(`❌ Cả hai OCR engine đều thất bại: ${tesseractError}`);
+          throw new Error(`OCR processing failed: ${tesseractError}`);
+        }
+      }
+
+      const totalProcessingTime = Date.now() - startTime;
+      
+      logger.info(`\n✨ Hoàn thành OCR:`);
+      logger.info(`- Text trích xuất: ${result.text.substring(0, 100)}...`);
+      logger.info(`- Độ tin cậy: ${(result.confidence * 100).toFixed(1)}%`);
+      logger.info(`- Thời gian xử lý: ${totalProcessingTime}ms`);
+      logger.info(`- Tối ưu hóa ảnh: ${optimizationResult.metadata.compressionRatio.toFixed(1)}% giảm kích thước`);
+      
+      return {
+        rawText: result.text,
+        confidence: result.confidence,
+        contents: result.contents,
+        processingTime: totalProcessingTime,
+        metadata: {
+          imageOptimization: optimizationResult.metadata,
+          qualityIssues: qualityCheck.issues,
+          qualityRecommendations: qualityCheck.recommendations
+        }
+      };
+    } catch (error: any) {
+      logger.error('❌ Lỗi trong quá trình xử lý OCR:', error);
+      throw new Error(`Lỗi khi xử lý OCR: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Xử lý OCR với Google Cloud Vision API
+   */
+  private async processWithVisionAPI(imageBuffer: Buffer): Promise<VisionOCRResult> {
+    const startTime = Date.now();
+    
+    try {
+      // Tối ưu hóa cho hóa đơn tiếng Việt
+      const visionConfig = vietnameseOptimizer.getOptimizedVisionConfig();
+      const request = {
+        image: {
+          content: imageBuffer.toString('base64')
+        },
+        imageContext: visionConfig,
+        features: [
+          {
+            type: 'DOCUMENT_TEXT_DETECTION' as const,
+            maxResults: 1
+          },
+          {
+            type: 'TEXT_DETECTION' as const,
+            maxResults: 1
+          }
+        ]
+      };
+
+      logger.info('🔍 Gọi Google Cloud Vision API...');
+      const [result] = await Promise.race([
+        visionClient.documentTextDetection(request),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Vision API timeout')), this.VISION_TIMEOUT)
+        )
+      ]);
+
+      if (!result.fullTextAnnotation) {
+        throw new Error('No text detected by Vision API');
+      }
+
+      const rawText = result.fullTextAnnotation.text || '';
+      
+      // Tối ưu hóa kết quả cho tiếng Việt
+      const vietnameseResult = vietnameseOptimizer.enhanceVietnameseOCRResult(rawText);
+      const contents = this.parseVisionAPIResult(result.fullTextAnnotation);
+      const confidence = Math.max(this.calculateVisionConfidence(result.fullTextAnnotation), vietnameseResult.confidence);
+      const processingTime = Date.now() - startTime;
+
+      logger.info(`✅ Vision API xử lý thành công trong ${processingTime}ms`);
+      logger.info(`🇻🇳 Vietnamese optimization: ${vietnameseResult.detectedElements.receiptHeaders.length} headers, ${vietnameseResult.detectedElements.currencies.length} currencies`);
+
+      return {
+        text: vietnameseResult.enhancedText,
+        confidence,
+        contents,
+        processingTime
+      };
+    } catch (error: any) {
+      logger.error('❌ Lỗi Vision API:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Xử lý OCR với Tesseract (fallback)
+   */
+  private async processWithTesseract(imageBuffer: Buffer): Promise<TesseractOCRResult> {
+    const startTime = Date.now();
+    
+    try {
+      logger.info('📚 Khởi tạo Tesseract worker...');
+      
+      const worker = await Promise.race([
+        createWorker('vie+eng', 1, {
+          logger: (m: any) => logger.debug(`Tesseract: ${m.status} - ${m.progress * 100}%`)
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Tesseract initialization timeout')), 30000)
+        )
+      ]);
+
+      // Cấu hình tối ưu cho hóa đơn tiếng Việt
+      const tesseractConfig = vietnameseOptimizer.getOptimizedTesseractConfig();
+      await worker.setParameters(tesseractConfig);
+
+      logger.info('🔍 Đang xử lý OCR với Tesseract...');
+      const result = await Promise.race([
+        worker.recognize(imageBuffer),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Tesseract processing timeout')), this.TESSERACT_TIMEOUT)
+        )
+      ]);
+
       await worker.terminate();
 
-      // Phân tích kết quả thành các content có cấu trúc
-      const contents: ExtractedContent[] = [];
+      const rawText = result.data.text;
       
-      // Get text blocks from the result
+      // Tối ưu hóa kết quả cho tiếng Việt
+      const vietnameseResult = vietnameseOptimizer.enhanceVietnameseOCRResult(rawText);
+      const contents = this.parseTesseractResult(result);
+      const confidence = Math.max(result.data.confidence / 100, vietnameseResult.confidence);
+      const processingTime = Date.now() - startTime;
+
+      logger.info(`✅ Tesseract xử lý thành công trong ${processingTime}ms`);
+      logger.info(`🇻🇳 Vietnamese optimization: ${vietnameseResult.detectedElements.receiptHeaders.length} headers, ${vietnameseResult.detectedElements.currencies.length} currencies`);
+
+      return {
+        text: vietnameseResult.enhancedText,
+        confidence,
+        contents,
+        processingTime
+      };
+    } catch (error: any) {
+      logger.error('❌ Lỗi Tesseract:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Parse kết quả từ Google Cloud Vision API
+   */
+  private parseVisionAPIResult(fullTextAnnotation: any): ExtractedContent[] {
+    const contents: ExtractedContent[] = [];
+    
+    try {
+      if (!fullTextAnnotation.pages) return contents;
+
+      fullTextAnnotation.pages.forEach((page: any, pageIndex: number) => {
+        page.blocks?.forEach((block: any, blockIndex: number) => {
+          const blockText = this.extractTextFromBlock(block);
+          if (blockText.trim()) {
+            contents.push({
+              text: blockText.trim(),
+              type: this.detectContentType(blockText),
+              confidence: block.confidence || 0.8,
+              position: this.calculateBlockPosition(block.boundingBox)
+            });
+          }
+        });
+      });
+
+      logger.info(`📝 Vision API trích xuất được ${contents.length} blocks`);
+    } catch (error) {
+      logger.error('❌ Lỗi parse Vision API result:', error);
+    }
+
+    return contents;
+  }
+
+  /**
+   * Parse kết quả từ Tesseract
+   */
+  private parseTesseractResult(result: any): ExtractedContent[] {
+    const contents: ExtractedContent[] = [];
+    
+    try {
       if (result.data.text) {
-        // Sửa: chỉ tách theo xuống dòng, mỗi content là một dòng đầy đủ
-        const blocks = result.data.text.split('\n').map((line: string) => line.trim()).filter(Boolean);
+        const lines = result.data.text.split('\n')
+          .map((line: string) => line.trim())
+          .filter(Boolean);
         
-        blocks.forEach((text, index) => {
+        lines.forEach((text: string, index: number) => {
           contents.push({
             text: text.trim(),
             type: this.detectContentType(text),
             confidence: result.data.confidence / 100,
             position: {
-              top: index * 20, // Approximate positioning
+              top: index * 20,
               left: 0,
-              width: text.length * 10, // Approximate width based on text length
-              height: 20 // Fixed height
+              width: text.length * 10,
+              height: 20
             }
           });
         });
-        // Thêm log debug toàn bộ content
-        console.log('[DEBUG][OCR] Toàn bộ content sau khi tách dòng:', contents);
       }
 
-      const processingTime = Date.now() - startTime;
-
-      console.log(`\n✨ Hoàn thành OCR:`);
-      console.log(`- Text trích xuất: ${result.data.text.substring(0, 100)}...`);
-      console.log(`- Độ tin cậy: ${result.data.confidence}%`);
-      console.log(`- Thời gian xử lý: ${processingTime}ms`);
-      
-      return {
-        text: result.data.text,
-        confidence: result.data.confidence / 100,
-        contents
-      };
-    } catch (error: any) {
-      console.error('❌ Lỗi trong quá trình xử lý OCR:', error);
-      throw new Error(`Lỗi khi xử lý OCR: ${error.message || 'Unknown error'}`);
+      logger.info(`📝 Tesseract trích xuất được ${contents.length} lines`);
+    } catch (error) {
+      logger.error('❌ Lỗi parse Tesseract result:', error);
     }
+
+    return contents;
   }
 
+  /**
+   * Trích xuất text từ block của Vision API
+   */
+  private extractTextFromBlock(block: any): string {
+    let text = '';
+    
+    block.paragraphs?.forEach((paragraph: any) => {
+      paragraph.words?.forEach((word: any) => {
+        const wordText = word.symbols?.map((symbol: any) => symbol.text).join('') || '';
+        text += wordText + ' ';
+      });
+      text += '\n';
+    });
+    
+    return text.trim();
+  }
+
+  /**
+   * Tính toán vị trí của block
+   */
+  private calculateBlockPosition(boundingBox: any): { top: number; left: number; width: number; height: number } {
+    if (!boundingBox?.vertices || boundingBox.vertices.length < 4) {
+      return { top: 0, left: 0, width: 0, height: 0 };
+    }
+
+    const vertices = boundingBox.vertices;
+    const minX = Math.min(...vertices.map((v: any) => v.x));
+    const maxX = Math.max(...vertices.map((v: any) => v.x));
+    const minY = Math.min(...vertices.map((v: any) => v.y));
+    const maxY = Math.max(...vertices.map((v: any) => v.y));
+
+    return {
+      top: minY,
+      left: minX,
+      width: maxX - minX,
+      height: maxY - minY
+    };
+  }
+
+  /**
+   * Tính toán độ tin cậy từ Vision API result
+   */
+  private calculateVisionConfidence(fullTextAnnotation: any): number {
+    let totalConfidence = 0;
+    let blockCount = 0;
+
+    fullTextAnnotation.pages?.forEach((page: any) => {
+      page.blocks?.forEach((block: any) => {
+        if (block.confidence) {
+          totalConfidence += block.confidence;
+          blockCount++;
+        }
+      });
+    });
+
+    return blockCount > 0 ? totalConfidence / blockCount : 0.8;
+  }
+
+  /**
+   * Phát hiện loại nội dung
+   */
   private detectContentType(text: string): string {
-    // Kiểm tra nếu là số
-    if (/^\d+([,.]\d+)?$/.test(text)) {
+    const cleanText = text.toLowerCase().trim();
+
+    // Kiểm tra số
+    if (/^\d+([,.]\d+)?$/.test(cleanText)) {
       return 'number';
     }
 
-    // Kiểm tra nếu là tiền tệ
-    if (/^\d+([,.]\d+)?\s*(đ|vnd|vnđ|₫)$/i.test(text)) {
+    // Kiểm tra tiền tệ VND
+    if (/^\d+([,.]\d+)?\s*(đ|vnd|vnđ|₫)$/i.test(cleanText)) {
       return 'currency';
     }
 
-    // Kiểm tra nếu là ngày tháng
-    if (/^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(text)) {
+    // Kiểm tra ngày tháng
+    if (/^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(cleanText)) {
       return 'date';
     }
 
-    // Mặc định là text
-    return 'text';
-  }
+    // Kiểm tra từ khóa hóa đơn
+    const receiptKeywords = ['hóa đơn', 'invoice', 'receipt', 'bill', 'tổng cộng', 'total'];
+    if (receiptKeywords.some(keyword => cleanText.includes(keyword))) {
+      return 'receipt_header';
+    }
 
-  public async processReceipt(imageBuffer: Buffer): Promise<OcrResult> {
-    const startTime = Date.now();
-    const { text, confidence, contents } = await this.extractTextFromImage(imageBuffer);
-    
-    return {
-      rawText: text,
-      confidence,
-      contents,
-      processingTime: Date.now() - startTime
-    };
+    // Kiểm tra từ khóa số lượng
+    const quantityKeywords = ['số lượng', 'quantity', 'qty', 'sl'];
+    if (quantityKeywords.some(keyword => cleanText.includes(keyword))) {
+      return 'quantity_label';
+    }
+
+    // Kiểm tra từ khóa đơn giá
+    const priceKeywords = ['đơn giá', 'unit price', 'price', 'giá'];
+    if (priceKeywords.some(keyword => cleanText.includes(keyword))) {
+      return 'price_label';
+    }
+
+    return 'text';
   }
 }
 

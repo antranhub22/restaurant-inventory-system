@@ -67,20 +67,25 @@ export class FormContentMatcherService {
     formType: FormType
   ): Promise<ProcessedForm> {
     try {
+      console.log('[DEBUG] Bắt đầu processOcrContent', { formType, extractedCount: extractedContents.length });
       // 1. Lấy form template cứng (hardcoded) thay vì từ database
       const template = this.getHardcodedTemplate(formType);
+      console.log('[DEBUG] Template sử dụng cho form', { template });
 
       // 2. Xử lý các trường thông tin chung
       const generalFields = await this.processGeneralFields(
         extractedContents,
         template
       );
+      console.log('[DEBUG] Kết quả processGeneralFields', { generalFields });
 
       // 3. Xử lý danh sách items
       const items = await this.processItems(extractedContents);
+      console.log('[DEBUG] Kết quả processItems', { items });
 
       // 4. Tính toán độ tin cậy tổng thể
       const confidence = this.calculateOverallConfidence(generalFields, items);
+      console.log('[DEBUG] Tổng độ tin cậy form', { confidence });
 
       return {
         type: formType,
@@ -158,7 +163,7 @@ export class FormContentMatcherService {
     template: any
   ): Promise<FormField[]> {
     const fields: FormField[] = [];
-
+    console.log('[DEBUG] Bắt đầu processGeneralFields', { templateFields: template.sections.map((s: any) => s.fields) });
     // Xử lý từng trường trong template
     for (const section of template.sections) {
       for (const field of section.fields) {
@@ -167,7 +172,7 @@ export class FormContentMatcherService {
             contents,
             field
           );
-
+          console.log('[DEBUG] Kết quả findBestContentMatch', { field, matchedContent });
           if (matchedContent) {
             fields.push({
               name: field.name,
@@ -179,7 +184,6 @@ export class FormContentMatcherService {
         }
       }
     }
-
     return fields;
   }
 
@@ -188,17 +192,16 @@ export class FormContentMatcherService {
   ): Promise<ProcessedForm['items']> {
     const items: ProcessedForm['items'] = [];
     const itemGroups = this.groupItemContents(contents);
-
+    console.log('[DEBUG] Nhóm itemGroups', { itemGroups });
     for (const group of itemGroups) {
       // Tìm tên sản phẩm
       const nameMatch = await enhancedMatcherService.findBestMatch(
         group.name,
         await this.getItemNames()
       );
-
+      console.log('[DEBUG] Kết quả findBestMatch cho item name', { groupName: group.name, nameMatch });
       // Xử lý số lượng và đơn vị
       const { quantity, unit } = this.extractQuantityAndUnit(group.quantity);
-
       items.push({
         name: nameMatch.text,
         quantity,
@@ -209,7 +212,6 @@ export class FormContentMatcherService {
         needsReview: nameMatch.confidence < 0.85
       });
     }
-
     return items;
   }
 

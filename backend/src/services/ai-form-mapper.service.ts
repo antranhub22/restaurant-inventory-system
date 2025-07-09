@@ -2,32 +2,8 @@ import OpenAI from 'openai';
 import axios from 'axios';
 import { ExtractedContent } from '../types/ocr';
 import { FormType } from '../types/form-template';
+import { FormField, ProcessedForm } from '../types/form-processing';
 import logger from './logger.service';
-
-// Import types từ form-content-matcher.service.ts
-interface FormField {
-  name: string;
-  value: string | number;
-  confidence: number;
-  needsReview: boolean;
-  alternatives?: string[];
-}
-
-interface ProcessedForm {
-  type: FormType;
-  confidence: number;
-  fields: FormField[];
-  items: Array<{
-    name: string;
-    quantity: number;
-    unit: string;
-    price?: number;
-    total?: number;
-    confidence: number;
-    needsReview: boolean;
-  }>;
-  needsReview: boolean;
-}
 
 interface AIProvider {
   analyzeContent(contents: ExtractedContent[], formType: FormType): Promise<AIFormAnalysis>;

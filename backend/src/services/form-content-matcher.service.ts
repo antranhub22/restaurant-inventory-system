@@ -337,7 +337,12 @@ export class FormContentMatcherService {
       case 'number':
         return parseFloat(value.replace(/[^0-9.-]/g, ''));
       case 'date':
-        return new Date(value).toISOString();
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          // Nếu không parse được ngày, trả về chuỗi gốc
+          return value;
+        }
+        return date.toISOString();
       default:
         return value;
     }

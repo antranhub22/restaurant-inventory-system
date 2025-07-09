@@ -15,17 +15,45 @@ def ocr_endpoint():
     if 'image' not in request.files:
         return jsonify({'error': 'No image uploaded'}), 400
     image = request.files['image']
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        image.save(tmp.name)
-        result = ocr.ocr(tmp.name, cls=True)
-        os.unlink(tmp.name)
-    # Chuyển kết quả về định dạng đơn giản
+    
+    # Create temporary file with proper extension
+    temp_path = None
+    try:
+        # Save to temporary file with .png extension
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
+            temp_path = tmp.name
+            image.save(temp_path)
+        
+        # Process OCR
+        result = ocr.predict(temp_path)
+        print(f"✅ OCR result: {result}")
+        
+    except Exception as e:
+        print(f"❌ OCR Error: {e}")
+        return jsonify({'error': f'OCR processing failed: {str(e)}'}), 500
+    finally:
+        # Clean up temporary file
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+    
+    # Parse new PaddleOCR result format
     lines = []
-    if result and result[0]:  # Check if result is not None and not empty
-        for line in result[0]:  # result[0] contains the OCR results
-            if len(line) >= 2:  # Ensure line has both box and text info
-                box, (text, conf) = line
-                lines.append({'text': text, 'confidence': float(conf)})
+    if result and len(result) > 0:
+        first_result = result[0]  # Get first page result
+        
+        # Extract texts and scores from new format
+        if 'rec_texts' in first_result and 'rec_scores' in first_result:
+            texts = first_result['rec_texts']
+            scores = first_result['rec_scores']
+            
+            for text, score in zip(texts, scores):
+                lines.append({
+                    'text': text,
+                    'confidence': float(score)
+                })
+        else:
+            print("⚠️ Unexpected result format")
+            
     return jsonify({'lines': lines})
 
 @app.route('/health', methods=['GET'])

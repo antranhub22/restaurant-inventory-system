@@ -15,30 +15,155 @@ class MockVisionClient {
       throw new Error('Mock Vision API failure for testing fallback');
     }
 
-    // Return mock data that matches actual Vision API structure
+    // Return realistic mock data that matches actual Vision API structure
     return [{
       fullTextAnnotation: {
-        text: 'MOCK OCR RESULT\nCỬA HÀNG THỰC PHẨM ABC\nHÓA ĐƠN BÁN HÀNG\n\nGạo tám xoan: 50,000đ\nDầu ăn: 25,000đ\nNước mắm: 15,000đ\n\nTổng cộng: 90,000đ\nTiền khách đưa: 100,000đ\nTiền thừa: 10,000đ\n\nCảm ơn quý khách!',
+        text: 'CỬA HÀNG THỰC PHẨM ABC\nHÓA ĐƠN NHẬP HÀNG\n\nNgày: 09/07/2025\nNhà cung cấp: CÔNG TY TNHH THỰC PHẨM SẠCH\nSố hóa đơn: HD2025070901\n\nGạo tám xoan: 2 bao × 25,000đ = 50,000đ\nDầu ăn Neptune: 1 thùng × 25,000đ = 25,000đ\nNước mắm Nam Ngư: 1 thùng × 15,000đ = 15,000đ\n\nTổng cộng: 90,000đ\nGhi chú: Hàng tươi, chất lượng tốt\n\nCảm ơn quý khách!',
         pages: [{
-          blocks: [{
-            boundingBox: {
-              vertices: [
-                { x: 10, y: 10 },
-                { x: 400, y: 10 },
-                { x: 400, y: 300 },
-                { x: 10, y: 300 }
-              ]
-            },
-            paragraphs: [{
-              words: [{
-                symbols: [
-                  { text: 'C' }, { text: 'Ử' }, { text: 'A' }, { text: ' ' },
-                  { text: 'H' }, { text: 'À' }, { text: 'N' }, { text: 'G' }
+          blocks: [
+            // Header block
+            {
+              boundingBox: {
+                vertices: [
+                  { x: 50, y: 10 },
+                  { x: 350, y: 10 },
+                  { x: 350, y: 60 },
+                  { x: 50, y: 60 }
                 ]
-              }]
-            }],
-            confidence: 0.92
-          }]
+              },
+              paragraphs: [{
+                words: [{
+                  symbols: [
+                    { text: 'C' }, { text: 'Ử' }, { text: 'A' }, { text: ' ' },
+                    { text: 'H' }, { text: 'À' }, { text: 'N' }, { text: 'G' }
+                  ]
+                }]
+              }],
+              confidence: 0.95
+            },
+            // Date block
+            {
+              boundingBox: {
+                vertices: [
+                  { x: 50, y: 80 },
+                  { x: 200, y: 80 },
+                  { x: 200, y: 100 },
+                  { x: 50, y: 100 }
+                ]
+              },
+              paragraphs: [{
+                words: [{
+                  symbols: [
+                    { text: '0' }, { text: '9' }, { text: '/' },
+                    { text: '0' }, { text: '7' }, { text: '/' },
+                    { text: '2' }, { text: '0' }, { text: '2' }, { text: '5' }
+                  ]
+                }]
+              }],
+              confidence: 0.92
+            },
+            // Supplier block
+            {
+              boundingBox: {
+                vertices: [
+                  { x: 50, y: 120 },
+                  { x: 300, y: 120 },
+                  { x: 300, y: 140 },
+                  { x: 50, y: 140 }
+                ]
+              },
+              paragraphs: [{
+                words: [{
+                  symbols: [
+                    { text: 'C' }, { text: 'Ô' }, { text: 'N' }, { text: 'G' }, { text: ' ' },
+                    { text: 'T' }, { text: 'Y' }
+                  ]
+                }]
+              }],
+              confidence: 0.88
+            },
+            // Invoice number block
+            {
+              boundingBox: {
+                vertices: [
+                  { x: 50, y: 160 },
+                  { x: 250, y: 160 },
+                  { x: 250, y: 180 },
+                  { x: 50, y: 180 }
+                ]
+              },
+              paragraphs: [{
+                words: [{
+                  symbols: [
+                    { text: 'H' }, { text: 'D' }, { text: '2' }, { text: '0' },
+                    { text: '2' }, { text: '5' }, { text: '0' }, { text: '7' },
+                    { text: '0' }, { text: '9' }, { text: '0' }, { text: '1' }
+                  ]
+                }]
+              }],
+              confidence: 0.94
+            },
+            // Item 1 block
+            {
+              boundingBox: {
+                vertices: [
+                  { x: 50, y: 200 },
+                  { x: 300, y: 200 },
+                  { x: 300, y: 220 },
+                  { x: 50, y: 220 }
+                ]
+              },
+              paragraphs: [{
+                words: [{
+                  symbols: [
+                    { text: 'G' }, { text: 'ạ' }, { text: 'o' }, { text: ' ' },
+                    { text: 't' }, { text: 'á' }, { text: 'm' }
+                  ]
+                }]
+              }],
+              confidence: 0.90
+            },
+            // Total block
+            {
+              boundingBox: {
+                vertices: [
+                  { x: 50, y: 300 },
+                  { x: 200, y: 300 },
+                  { x: 200, y: 320 },
+                  { x: 50, y: 320 }
+                ]
+              },
+              paragraphs: [{
+                words: [{
+                  symbols: [
+                    { text: '9' }, { text: '0' }, { text: '.' }, { text: '0' },
+                    { text: '0' }, { text: '0' }, { text: 'đ' }
+                  ]
+                }]
+              }],
+              confidence: 0.96
+            },
+            // Notes block
+            {
+              boundingBox: {
+                vertices: [
+                  { x: 50, y: 340 },
+                  { x: 250, y: 340 },
+                  { x: 250, y: 360 },
+                  { x: 50, y: 360 }
+                ]
+              },
+              paragraphs: [{
+                words: [{
+                  symbols: [
+                    { text: 'H' }, { text: 'à' }, { text: 'n' }, { text: 'g' }, { text: ' ' },
+                    { text: 't' }, { text: 'ư' }, { text: 'ơ' }, { text: 'i' }
+                  ]
+                }]
+              }],
+              confidence: 0.87
+            }
+          ]
         }]
       }
     }];

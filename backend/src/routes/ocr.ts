@@ -11,9 +11,6 @@ const upload = multer({
   }
 });
 
-// Test endpoint without auth for fallback testing
-router.post('/test-fallback', upload.single('image'), ocrController.processImage);
-
 router.use(authMiddleware);
 
 router.post('/process-receipt', upload.single('image'), ocrController.processImage);

@@ -245,9 +245,22 @@ class OcrFormController {
       
       if (draft.type === 'IMPORT') {
         // Mapping fields/items sang ImportData
+        let supplierId = fields.find(f => f.name === 'supplierId')?.value || null;
+        if (supplierId && typeof supplierId === 'string') {
+          // Tra cứu id từ tên
+          const supplier = await prisma.supplier.findFirst({ where: { name: supplierId } });
+          if (supplier) {
+            supplierId = supplier.id;
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: `Nhà cung cấp '${supplierId}' không tồn tại trong hệ thống. Vui lòng kiểm tra lại.`
+            });
+          }
+        }
         const importData: any = {
           date: fields.find(f => f.name === 'date')?.value || new Date(),
-          supplierId: fields.find(f => f.name === 'supplierId')?.value || null,
+          supplierId,
           invoiceNumber: fields.find(f => f.name === 'invoice_no')?.value || '',
           processedById: userId,
           totalAmount: fields.find(f => f.name === 'total')?.value || 0,
@@ -268,10 +281,22 @@ class OcrFormController {
       
       else if (draft.type === 'EXPORT') {
         // Mapping fields/items sang ExportData
+        let departmentId = fields.find(f => f.name === 'department')?.value || null;
+        if (departmentId && typeof departmentId === 'string') {
+          const department = await prisma.department.findFirst({ where: { name: departmentId } });
+          if (department) {
+            departmentId = department.id;
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: `Phòng ban '${departmentId}' không tồn tại trong hệ thống. Vui lòng kiểm tra lại.`
+            });
+          }
+        }
         const exportData: any = {
           date: fields.find(f => f.name === 'date')?.value || new Date(),
           purpose: fields.find(f => f.name === 'purpose')?.value || 'GENERAL',
-          departmentId: fields.find(f => f.name === 'department')?.value || null,
+          departmentId,
           processedById: userId,
           notes: fields.find(f => f.name === 'notes')?.value || '',
           status: 'PENDING',
@@ -287,10 +312,22 @@ class OcrFormController {
       
       else if (draft.type === 'RETURN') {
         // Mapping fields/items sang ReturnData
+        let departmentId = fields.find(f => f.name === 'department')?.value || null;
+        if (departmentId && typeof departmentId === 'string') {
+          const department = await prisma.department.findFirst({ where: { name: departmentId } });
+          if (department) {
+            departmentId = department.id;
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: `Phòng ban '${departmentId}' không tồn tại trong hệ thống. Vui lòng kiểm tra lại.`
+            });
+          }
+        }
         const returnData: any = {
           date: fields.find(f => f.name === 'date')?.value || new Date(),
           reason: fields.find(f => f.name === 'reason')?.value || 'OTHER',
-          departmentId: fields.find(f => f.name === 'department')?.value || null,
+          departmentId,
           processedById: userId,
           notes: fields.find(f => f.name === 'notes')?.value || '',
           status: 'PENDING',
@@ -308,10 +345,22 @@ class OcrFormController {
       
       else if (draft.type === 'ADJUSTMENT') {
         // Mapping fields/items sang WasteData (vì ADJUSTMENT thường là hao hụt/điều chỉnh)
+        let departmentId = fields.find(f => f.name === 'department')?.value || null;
+        if (departmentId && typeof departmentId === 'string') {
+          const department = await prisma.department.findFirst({ where: { name: departmentId } });
+          if (department) {
+            departmentId = department.id;
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: `Phòng ban '${departmentId}' không tồn tại trong hệ thống. Vui lòng kiểm tra lại.`
+            });
+          }
+        }
         const wasteData: any = {
           date: fields.find(f => f.name === 'date')?.value || new Date(),
           wasteType: fields.find(f => f.name === 'reason')?.value || 'OTHER',
-          departmentId: fields.find(f => f.name === 'department')?.value || null,
+          departmentId,
           description: fields.find(f => f.name === 'notes')?.value || 'Điều chỉnh từ OCR',
           processedById: userId,
           notes: fields.find(f => f.name === 'notes')?.value || '',

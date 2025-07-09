@@ -10,6 +10,7 @@ import exportService from '../services/export.service';
 import returnService from '../services/return.service';
 import wasteService from '../services/waste.service';
 import ocrLearningService from '../services/ocr.learning.service';
+import logger, { ocrLogger, formLogger, apiLogger } from '../services/logger.service';
 
 const prisma = new PrismaClient();
 
@@ -55,15 +56,21 @@ class OcrFormController {
    * Xử lý OCR và map vào form
    */
   public async processForm(req: Request, res: Response) {
+    const startTime = Date.now();
+    apiLogger.request(req);
+    let draftId = '';
     try {
+      logger.info('Bắt đầu xử lý OCR form', { userId: req.user?.id, formType: req.body.formType });
       // Đảm bảo bảng OCRFormDraft tồn tại
       await this.ensureOCRFormDraftTable();
+      logger.info('Đã kiểm tra/tạo bảng OCRFormDraft');
 
       const formType = req.body.formType as FormType;
       const imageBuffer = req.file?.buffer;
       const userId = req.user && typeof req.user.id === 'string' ? req.user.id : (req.user && req.user.id ? String(req.user.id) : null);
 
       if (!imageBuffer) {
+        logger.error('Không tìm thấy file ảnh', { userId, formType });
         return res.status(400).json({
           success: false,
           message: 'Không tìm thấy file ảnh'
@@ -71,6 +78,7 @@ class OcrFormController {
       }
 
       if (!formType) {
+        logger.error('Thiếu loại form (formType)', { userId });
         return res.status(400).json({
           success: false,
           message: 'Thiếu loại form (formType)'
@@ -78,25 +86,43 @@ class OcrFormController {
       }
 
       // 1. Xử lý OCR
-      const ocrResult = await ocrService.processReceipt(imageBuffer);
+      const imageId = `ocr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      ocrLogger.start(imageId, { userId, formType });
+      let ocrResult;
+      try {
+        ocrResult = await ocrService.processReceipt(imageBuffer);
+        ocrLogger.complete(imageId, ocrResult.processingTime, ocrResult.confidence);
+        logger.info('Kết quả OCR', { imageId, ocrResult });
+      } catch (ocrError) {
+        ocrLogger.error(imageId, ocrError, { userId, formType });
+        logger.error('Lỗi khi xử lý OCR', { error: ocrError, userId, formType });
+        throw ocrError;
+      }
 
       // 2. Map vào form
-      const processedForm = await formContentMatcherService.processOcrContent(
-        ocrResult.contents as ExtractedContent[],
-        formType
-      );
+      let processedForm;
+      try {
+        processedForm = await formContentMatcherService.processOcrContent(
+          ocrResult.contents as ExtractedContent[],
+          formType
+        );
+        logger.info('Kết quả mapping OCR vào form', { processedForm });
+      } catch (mapError) {
+        logger.error('Lỗi khi mapping OCR vào form', { error: mapError, userId, formType });
+        throw mapError;
+      }
 
       // 3. Upload ảnh gốc
       let imagePath: string | null = null;
       try {
         imagePath = await uploadToStorage(imageBuffer, 'ocr-forms');
+        logger.info('Ảnh đã upload', { imagePath });
       } catch (uploadError) {
-        console.warn('Failed to upload image, continuing without image:', uploadError);
+        logger.warn('Lỗi upload ảnh, tiếp tục không lưu ảnh', { error: uploadError });
       }
 
       // 4. Lưu form draft vào DB
-      const draftId = `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+      draftId = `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       try {
         const draft = await prisma.oCRFormDraft.create({
           data: {
@@ -110,7 +136,9 @@ class OcrFormController {
             updatedAt: new Date()
           }
         });
-
+        formLogger.created(draftId, formType, { userId });
+        logger.info('Đã lưu form draft vào DB', { draftId });
+        apiLogger.response(req, res, Date.now() - startTime);
         return res.json({
           success: true,
           data: {
@@ -120,9 +148,10 @@ class OcrFormController {
           }
         });
       } catch (dbError: any) {
-        console.error('Failed to save draft to database:', dbError);
-        
+        formLogger.error(draftId, dbError, { userId });
+        logger.error('Lỗi khi lưu draft vào database', { error: dbError, draftId });
         // Trả về kết quả OCR mà không lưu database
+        apiLogger.response(req, res, Date.now() - startTime);
         return res.json({
           success: true,
           data: {
@@ -134,7 +163,8 @@ class OcrFormController {
         });
       }
     } catch (error: any) {
-      console.error('Error processing form:', error);
+      logger.error('Lỗi tổng thể xử lý OCR form', { error, userId: req.user?.id, formType: req.body.formType });
+      apiLogger.error(req, error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi khi xử lý form'

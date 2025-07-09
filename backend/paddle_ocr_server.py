@@ -5,8 +5,10 @@ import tempfile
 
 app = Flask(__name__)
 
-# Khởi tạo PaddleOCR với tiếng Việt, tối ưu cho hóa đơn
-ocr = PaddleOCR(use_angle_cls=True, lang='vi', rec=True, det=True, use_gpu=False)
+# Khởi tạo PaddleOCR với tiếng Việt - simple configuration
+print("🚀 Initializing PaddleOCR...")
+ocr = PaddleOCR(lang='vi')
+print("✅ PaddleOCR initialized successfully!")
 
 @app.route('/ocr', methods=['POST'])
 def ocr_endpoint():
@@ -19,10 +21,21 @@ def ocr_endpoint():
         os.unlink(tmp.name)
     # Chuyển kết quả về định dạng đơn giản
     lines = []
-    for line in result:
-        for box, (text, conf) in line:
-            lines.append({'text': text, 'confidence': float(conf)})
+    if result and result[0]:  # Check if result is not None and not empty
+        for line in result[0]:  # result[0] contains the OCR results
+            if len(line) >= 2:  # Ensure line has both box and text info
+                box, (text, conf) = line
+                lines.append({'text': text, 'confidence': float(conf)})
     return jsonify({'lines': lines})
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'healthy', 'service': 'PaddleOCR Server'})
+
+@app.route('/', methods=['GET'])
+def root():
+    return jsonify({'service': 'PaddleOCR Server', 'status': 'running', 'endpoints': ['/ocr', '/health']})
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    print("🚀 Starting PaddleOCR Server on port 5001...")
+    app.run(host='0.0.0.0', port=5001, debug=False)

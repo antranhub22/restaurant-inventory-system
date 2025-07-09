@@ -310,7 +310,7 @@ class OcrService {
     // Fallback: Nếu không có structure, dựa vào position để đoán text
     const position = this.calculateBlockPosition(block.boundingBox);
     
-    // Mock data mapping dựa vào vị trí block
+    // Mock data mapping dựa vào vị trí block - Updated for new structure
     if (position.top < 70) {
       return 'CỬA HÀNG THỰC PHẨM ABC';
     } else if (position.top >= 70 && position.top < 110) {
@@ -320,9 +320,40 @@ class OcrService {
     } else if (position.top >= 150 && position.top < 190) {
       return 'HD2025070901';
     } else if (position.top >= 190 && position.top < 230) {
-      return 'Gạo tám xoan';
+      // Item 1 row - different positions for different components
+      if (position.left < 130) {
+        return 'Gạo tám xoan';
+      } else if (position.left >= 130 && position.left < 210) {
+        return '2 bao';
+      } else if (position.left >= 210 && position.left < 310) {
+        return '25,000đ';
+      } else {
+        return '50,000đ';
+      }
+    } else if (position.top >= 230 && position.top < 260) {
+      // Item 2 row
+      if (position.left < 130) {
+        return 'Dầu ăn Neptune';
+      } else if (position.left >= 130 && position.left < 210) {
+        return '1 thùng';
+      } else if (position.left >= 210 && position.left < 310) {
+        return '25,000đ';
+      } else {
+        return '25,000đ';
+      }
+    } else if (position.top >= 260 && position.top < 290) {
+      // Item 3 row
+      if (position.left < 130) {
+        return 'Nước mắm Nam Ngư';
+      } else if (position.left >= 130 && position.left < 210) {
+        return '1 thùng';
+      } else if (position.left >= 210 && position.left < 310) {
+        return '15,000đ';
+      } else {
+        return '15,000đ';
+      }
     } else if (position.top >= 290 && position.top < 330) {
-      return '90.000đ';
+      return '90,000đ';
     } else if (position.top >= 330) {
       return 'Hàng tươi, chất lượng tốt';
     }

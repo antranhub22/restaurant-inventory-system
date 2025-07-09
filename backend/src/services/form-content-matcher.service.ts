@@ -363,20 +363,20 @@ export class FormContentMatcherService {
       // 1. Sắp xếp contents theo vị trí (từ trên xuống, trái sang phải)
       const sortedContents = [...contents].sort((a, b) => {
         const rowDiff = Math.abs(a.position.top - b.position.top);
-        // Nếu cùng hàng (chênh lệch < 10px)
-        if (rowDiff < 10) {
+        // Nếu cùng hàng (chênh lệch < 20px)
+        if (rowDiff < 20) {
           return a.position.left - b.position.left;
         }
         return a.position.top - b.position.top;
       });
 
-      // 2. Nhóm các content theo hàng
+      // 2. Nhóm các content theo hàng với tolerance lớn hơn
       const rows: ExtractedContent[][] = [];
       let currentRow: ExtractedContent[] = [];
       let lastTop = -1;
 
       sortedContents.forEach(content => {
-        if (lastTop === -1 || Math.abs(content.position.top - lastTop) < 10) {
+        if (lastTop === -1 || Math.abs(content.position.top - lastTop) < 20) {
           // Cùng hàng
           currentRow.push(content);
         } else {
@@ -402,8 +402,21 @@ export class FormContentMatcherService {
       }> = [];
 
       rows.forEach(row => {
-        // Bỏ qua các hàng không đủ thông tin
+        // Bỏ qua các hàng ít thông tin hoặc chỉ chứa header/total
         if (row.length < 2) return;
+        
+        // Skip header rows và total rows
+        const hasHeaderKeywords = row.some(content => 
+          content.text.toLowerCase().includes('cửa hàng') ||
+          content.text.toLowerCase().includes('hóa đơn') ||
+          content.text.toLowerCase().includes('ngày') ||
+          content.text.toLowerCase().includes('nhà cung cấp') ||
+          content.text.toLowerCase().includes('tổng cộng') ||
+          content.text.toLowerCase().includes('ghi chú') ||
+          content.text.toLowerCase().includes('cảm ơn')
+        );
+        
+        if (hasHeaderKeywords) return;
 
         // Tìm các thành phần trong hàng
         let name = '';
@@ -412,41 +425,60 @@ export class FormContentMatcherService {
         let total: number | undefined;
         let minConfidence = 1;
 
-        row.forEach(content => {
-          minConfidence = Math.min(minConfidence, content.confidence);
+        // Sort row contents by position for better parsing
+        const sortedRow = [...row].sort((a, b) => a.position.left - b.position.left);
 
-          switch (content.type) {
-            case 'text':
-              // Nếu chưa có tên hoặc content này dài hơn
-              if (!name || content.text.length > name.length) {
-                name = content.text;
+        sortedRow.forEach(content => {
+          minConfidence = Math.min(minConfidence, content.confidence);
+          const cleanText = content.text.trim();
+
+          // Identify content by position and type
+          if (content.position.left < 150) {
+            // Left side - usually item name
+            if (content.type === 'text' && cleanText.length > 2) {
+              name = cleanText;
+            }
+          } else if (content.position.left >= 150 && content.position.left < 220) {
+            // Middle-left - usually quantity
+            if ((content.type === 'text' || content.type === 'number') && 
+                (cleanText.includes('bao') || cleanText.includes('thùng') || 
+                 cleanText.includes('kg') || cleanText.includes('chai') ||
+                 /^\d+\s*\w+/.test(cleanText))) {
+              quantity = cleanText;
+            }
+          } else if (content.position.left >= 220 && content.position.left < 320) {
+            // Middle-right - usually unit price
+            if (content.type === 'currency' || /\d+.*đ/.test(cleanText)) {
+              const amount = parseFloat(cleanText.replace(/[^0-9.-]/g, ''));
+              if (!isNaN(amount) && amount > 0) {
+                price = amount;
               }
-              break;
-            case 'number':
-              // Số nhỏ thường là số lượng
-              const num = parseFloat(content.text.replace(/[^0-9.-]/g, ''));
-              if (!quantity && num < 1000) {
-                quantity = content.text;
+            }
+          } else if (content.position.left >= 320) {
+            // Right side - usually total price
+            if (content.type === 'currency' || /\d+.*đ/.test(cleanText)) {
+              const amount = parseFloat(cleanText.replace(/[^0-9.-]/g, ''));
+              if (!isNaN(amount) && amount > 0) {
+                total = amount;
               }
-              break;
-            case 'currency':
-              // Số lớn thường là giá
-              const amount = parseFloat(content.text.replace(/[^0-9.-]/g, ''));
-              if (amount >= 1000) {
-                if (!price) {
-                  price = amount;
-                } else {
-                  // Nếu đã có price, số lớn hơn là total
-                  total = Math.max(amount, price);
-                  price = Math.min(amount, price);
-                }
-              }
-              break;
+            }
           }
         });
 
-        // Thêm item nếu có đủ thông tin cơ bản
-        if (name && quantity) {
+        // Only add item if we have essential information
+        if (name && name.length > 2) {
+          // If no quantity found, try to infer from the text
+          if (!quantity) {
+            // Look for quantity patterns in the name or nearby text
+            const quantityPattern = /(\d+(?:\.\d+)?)\s*(bao|thùng|kg|chai|hộp|gói)/i;
+            const match = sortedRow.find(content => quantityPattern.test(content.text));
+            if (match) {
+              quantity = match.text;
+            } else {
+              quantity = '1'; // Default quantity
+            }
+          }
+
           items.push({
             name,
             quantity,
@@ -457,6 +489,7 @@ export class FormContentMatcherService {
         }
       });
 
+      console.log('[DEBUG] Grouped items:', items);
       return items;
     } catch (error) {
       console.error('Error in groupItemContents:', error);

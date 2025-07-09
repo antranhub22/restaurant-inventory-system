@@ -129,23 +129,24 @@ class OcrService {
       };
 
       logger.info('🔍 Gọi Google Cloud Vision API...');
-      const [result] = await Promise.race([
+      const result = await Promise.race([
         visionClient.documentTextDetection(request),
-        new Promise((_, reject) => 
+        new Promise<never>((_, reject) => 
           setTimeout(() => reject(new Error('Vision API timeout')), this.VISION_TIMEOUT)
         )
       ]);
 
-      if (!result.fullTextAnnotation) {
+      if (!result[0]?.fullTextAnnotation) {
         throw new Error('No text detected by Vision API');
       }
 
-      const rawText = result.fullTextAnnotation.text || '';
+      const fullTextAnnotation = result[0].fullTextAnnotation as any;
+      const rawText = fullTextAnnotation.text || '';
       
       // Tối ưu hóa kết quả cho tiếng Việt
       const vietnameseResult = vietnameseOptimizer.enhanceVietnameseOCRResult(rawText);
-      const contents = this.parseVisionAPIResult(result.fullTextAnnotation);
-      const confidence = Math.max(this.calculateVisionConfidence(result.fullTextAnnotation), vietnameseResult.confidence);
+      const contents = this.parseVisionAPIResult(fullTextAnnotation);
+      const confidence = Math.max(this.calculateVisionConfidence(fullTextAnnotation), vietnameseResult.confidence);
       const processingTime = Date.now() - startTime;
 
       logger.info(`✅ Vision API xử lý thành công trong ${processingTime}ms`);
@@ -176,7 +177,7 @@ class OcrService {
         createWorker('vie+eng', 1, {
           logger: (m: any) => logger.debug(`Tesseract: ${m.status} - ${m.progress * 100}%`)
         }),
-        new Promise((_, reject) => 
+        new Promise<never>((_, reject) => 
           setTimeout(() => reject(new Error('Tesseract initialization timeout')), 30000)
         )
       ]);
@@ -188,7 +189,7 @@ class OcrService {
       logger.info('🔍 Đang xử lý OCR với Tesseract...');
       const result = await Promise.race([
         worker.recognize(imageBuffer),
-        new Promise((_, reject) => 
+        new Promise<never>((_, reject) => 
           setTimeout(() => reject(new Error('Tesseract processing timeout')), this.TESSERACT_TIMEOUT)
         )
       ]);

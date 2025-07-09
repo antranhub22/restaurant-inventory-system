@@ -87,23 +87,16 @@ class ImageOptimizerService {
   private async performOptimization(imageBuffer: Buffer, metadata: sharp.Metadata): Promise<Buffer> {
     let pipeline = sharp(imageBuffer);
 
-    // 1. Chuyển đổi sang RGB nếu cần
-    if (metadata.space === 'srgb' || metadata.space === 'rgb') {
-      pipeline = pipeline.rgb();
-    }
+    // 1. Chuyển đổi sang RGB nếu cần - loại bỏ vì Sharp tự động xử lý color space
+    // Không cần explicit RGB conversion
 
     // 2. Tăng độ tương phản và độ sắc nét cho OCR
     pipeline = pipeline
       .modulate({
         brightness: 1.1,    // Tăng độ sáng nhẹ
-        contrast: 1.2,      // Tăng độ tương phản
         saturation: 0.8     // Giảm độ bão hòa để tập trung vào text
       })
-      .sharpen({
-        sigma: 1.5,         // Độ sắc nét
-        flat: 1.0,          // Ngưỡng phẳng
-        jagged: 2.0         // Ngưỡng răng cưa
-      });
+      .sharpen(1.5, 1.0, 2.0); // sigma, flat, jagged
 
     // 3. Resize nếu ảnh quá lớn
     if (metadata.width && metadata.height) {
@@ -120,7 +113,6 @@ class ImageOptimizerService {
     // 4. Tối ưu hóa cho OCR
     pipeline = pipeline
       .png({ 
-        quality: this.QUALITY,
         compressionLevel: 6,  // Nén vừa phải
         adaptiveFiltering: true
       })

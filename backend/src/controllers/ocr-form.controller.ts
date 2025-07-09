@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { FormType } from '../types/form-template';
 import ocrService from '../services/ocr.service';
 import formContentMatcherService from '../services/form-content-matcher.service';
+import aiFormMapperService from '../services/ai-form-mapper.service';
 import { uploadToStorage } from '../utils/storage';
 import { ExtractedContent } from '../types/ocr';
 import importService from '../services/import.service';
@@ -105,15 +106,26 @@ class OcrFormController {
         throw errorObj;
       }
 
-      // 2. Map vào form
+      // 2. Map vào form bằng AI
       let processedForm;
       try {
-        logger.info('[DEBUG] Bắt đầu mapping OCR vào form với formContentMatcherService.processOcrContent', { contentsLength: ocrResult.contents?.length, formType });
-        processedForm = await formContentMatcherService.processOcrContent(
-          ocrResult.contents as ExtractedContent[],
-          formType
-        );
-        logger.info('[DEBUG] Kết quả mapping OCR vào form', { processedForm });
+        // Kiểm tra xem có AI provider không
+        if (aiFormMapperService.hasProvider()) {
+          logger.info('[DEBUG] Bắt đầu mapping OCR vào form với AI (aiFormMapperService.processOcrContent)', { contentsLength: ocrResult.contents?.length, formType });
+          processedForm = await aiFormMapperService.processOcrContent(
+            ocrResult.contents as ExtractedContent[],
+            formType
+          );
+          logger.info('[DEBUG] Kết quả mapping OCR vào form bằng AI', { processedForm });
+        } else {
+          // Fallback về phương pháp cũ nếu không có AI
+          logger.info('[DEBUG] Không có AI provider, fallback về formContentMatcherService.processOcrContent', { contentsLength: ocrResult.contents?.length, formType });
+          processedForm = await formContentMatcherService.processOcrContent(
+            ocrResult.contents as ExtractedContent[],
+            formType
+          );
+          logger.info('[DEBUG] Kết quả mapping OCR vào form bằng phương pháp cũ', { processedForm });
+        }
       } catch (mapError) {
         const errorObj = mapError instanceof Error ? mapError : new Error(String(mapError));
         logger.error('[DEBUG] Lỗi khi mapping OCR vào form', { error: errorObj, userId, formType });

@@ -4,12 +4,12 @@ Hệ thống quản lý kho nhà hàng với khả năng OCR để xử lý hóa
 
 ## 🚀 Tính năng chính
 
-- **OCR Processing**: Trích xuất thông tin từ hóa đơn/phiếu kho bằng AI
-- **Form Mapping**: Tự động map dữ liệu OCR vào các form nghiệp vụ
-- **Real-time Reconciliation**: Theo dõi đối soát kho theo thời gian thực
-- **Multi-form Support**: Hỗ trợ Import, Export, Return, Adjustment, Waste
-- **Vietnamese Language**: Giao diện và xử lý tiếng Việt
-- **Mobile Responsive**: Tối ưu cho thiết bị di động
+- **🤖 AI-Powered OCR**: Trích xuất thông tin từ hóa đơn/phiếu kho bằng OpenAI/DeepSeek
+- **🧠 Intelligent Form Mapping**: AI phân tích và map dữ liệu OCR thông minh vào form
+- **📊 Real-time Reconciliation**: Theo dõi đối soát kho theo thời gian thực
+- **📝 Multi-form Support**: Hỗ trợ Import, Export, Return, Adjustment, Waste
+- **🇻🇳 Vietnamese Language**: Giao diện và xử lý tiếng Việt tối ưu
+- **📱 Mobile Responsive**: Tối ưu cho thiết bị di động và camera capture
 
 ## 🛠️ Tech Stack
 
@@ -17,8 +17,8 @@ Hệ thống quản lý kho nhà hàng với khả năng OCR để xử lý hóa
 - **Node.js** + **TypeScript** + **Express**
 - **PostgreSQL** (Neon.tech) + **Prisma ORM**
 - **Redis** cho caching và session
-- **Tesseract.js** cho OCR
-- **OpenAI** cho AI matching
+- **Tesseract.js** + **Google Vision API** cho OCR
+- **OpenAI/DeepSeek** cho AI-powered form mapping
 - **JWT** authentication
 
 ### Frontend
@@ -61,7 +61,16 @@ Cập nhật `.env` với thông tin database:
 DATABASE_URL="postgresql://username:password@host:port/database"
 REDIS_URL="redis://localhost:6379"
 JWT_SECRET="your-jwt-secret"
+
+# AI Services cho Form Mapping
+AI_SERVICE="openai"  # hoặc "deepseek"
 OPENAI_API_KEY="your-openai-key"
+DEEPSEEK_API_KEY="your-deepseek-key"
+
+# Google Vision API cho OCR
+GOOGLE_CLOUD_PROJECT_ID="your-project-id"
+GOOGLE_CLOUD_CLIENT_EMAIL="your-service-account-email"
+GOOGLE_CLOUD_PRIVATE_KEY="your-private-key"
 ```
 
 #### Frontend (.env)
@@ -97,12 +106,14 @@ npm run dev:frontend # Frontend trên port 5173
 - Email: `admin@restaurant.com`
 - Password: `password123`
 
-### 2. OCR Processing
-1. Chọn ảnh hóa đơn/phiếu kho
+### 2. AI-Powered OCR Processing
+1. Chọn ảnh hóa đơn/phiếu kho (hỗ trợ camera capture)
 2. Chọn loại phiếu (Import/Export/Return/Adjustment/Waste)
-3. Nhấn "Xử lý OCR"
-4. Kiểm tra và chỉnh sửa kết quả
-5. Xác nhận để lưu vào hệ thống
+3. Nhấn "Xử lý OCR" - AI sẽ phân tích thông minh
+4. Kiểm tra kết quả được AI mapping tự động
+5. Chỉnh sửa nếu cần và xác nhận để lưu vào hệ thống
+
+> **Mới**: AI hiểu ngữ cảnh và mapping thông minh thay vì rules cứng
 
 ### 3. Quản lý Form Templates
 - Truy cập: http://localhost:5173/admin/form-templates

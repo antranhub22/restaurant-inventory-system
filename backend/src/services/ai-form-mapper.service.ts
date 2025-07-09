@@ -83,11 +83,10 @@ class OpenAIProvider implements AIProvider {
   }
 
   private buildSystemPrompt(formType: FormType): string {
-    const formTypeMap = {
+    const formTypeMap: Record<FormType, string> = {
       IMPORT: 'nhập kho',
       EXPORT: 'xuất kho', 
       RETURN: 'hoàn trả',
-      WASTE: 'hủy bỏ',
       ADJUSTMENT: 'điều chỉnh'
     };
 
@@ -213,11 +212,10 @@ class DeepseekProvider implements AIProvider {
   }
 
   private buildSystemPrompt(formType: FormType): string {
-    const formTypeMap = {
+    const formTypeMap: Record<FormType, string> = {
       IMPORT: 'nhập kho',
       EXPORT: 'xuất kho', 
       RETURN: 'hoàn trả',
-      WASTE: 'hủy bỏ',
       ADJUSTMENT: 'điều chỉnh'
     };
 

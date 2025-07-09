@@ -11,6 +11,7 @@ import returnService from '../services/return.service';
 import wasteService from '../services/waste.service';
 import ocrLearningService from '../services/ocr.learning.service';
 import logger, { ocrLogger, formLogger, apiLogger } from '../services/logger.service';
+import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient();
 
@@ -125,7 +126,7 @@ class OcrFormController {
       }
 
       // 4. Lưu form draft vào DB
-      draftId = `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      draftId = uuidv4();
       try {
         const draft = await prisma.oCRFormDraft.create({
           data: {

@@ -71,11 +71,11 @@ class ImportService {
           });
         }
 
-        // Kiểm tra đơn giá
-        if (item.unitPrice <= 0) {
+        // Kiểm tra đơn giá (cho phép 0 cho OCR imports)
+        if (item.unitPrice < 0) {
           errors.push({
             field: `items[${item.itemId}].unitPrice`,
-            message: 'Đơn giá phải lớn hơn 0'
+            message: 'Đơn giá không được âm'
           });
         }
 

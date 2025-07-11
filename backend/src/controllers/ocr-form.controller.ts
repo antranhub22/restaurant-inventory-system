@@ -426,10 +426,32 @@ class OcrFormController {
           
           // Only add items with valid itemId
           if (itemId && !isNaN(Number(itemId))) {
+            // Lấy giá từ database nếu OCR không nhận diện được
+            let unitPrice = Number(item.unitPrice) || 0;
+            if (unitPrice === 0) {
+              try {
+                const dbItem = await prisma.item.findUnique({
+                  where: { id: Number(itemId) }
+                });
+                if (dbItem && dbItem.unitCost && dbItem.unitCost > 0) {
+                  unitPrice = Number(dbItem.unitCost);
+                  logger.info('[DEBUG] confirmFormContent - Using default unitPrice from database', { 
+                    itemId, 
+                    defaultPrice: unitPrice 
+                  });
+                }
+              } catch (error) {
+                logger.warn('[DEBUG] confirmFormContent - Failed to get default price', { 
+                  itemId, 
+                  error 
+                });
+              }
+            }
+
             processedItems.push({
               itemId: Number(itemId),
               quantity: Number(item.quantity) || 0,
-              unitPrice: Number(item.unitPrice) || 0,
+              unitPrice: unitPrice,
               expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
               batchNumber: item.batchNumber || null,
               notes: item.notes || ''

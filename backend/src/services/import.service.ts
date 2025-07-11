@@ -318,34 +318,52 @@ class ImportService {
         }
       });
 
-      // 3. Cập nhật tồn kho
-      await Promise.all(
-        import_data.items.map(async (item) => {
-          const itemId = Number(item.itemId);
-          
-          const inventory = await tx.inventory.findUnique({
-            where: { itemId: itemId }
+      // 3. Cập nhật tồn kho - Group theo itemId để tránh race condition
+      const itemGroups = import_data.items.reduce((groups, item) => {
+        const itemId = Number(item.itemId);
+        if (!groups[itemId]) {
+          groups[itemId] = {
+            itemId,
+            totalQuantity: 0,
+            items: []
+          };
+        }
+        groups[itemId].totalQuantity += item.quantity;
+        groups[itemId].items.push(item);
+        return groups;
+      }, {} as Record<number, { itemId: number; totalQuantity: number; items: any[] }>);
+
+      // Xử lý từng itemId duy nhất một lần
+      for (const group of Object.values(itemGroups)) {
+        const itemId = group.itemId;
+        
+        // Tìm inventory hiện tại
+        const inventory = await tx.inventory.findUnique({
+          where: { itemId: itemId }
+        });
+
+        if (inventory) {
+          // Cập nhật inventory hiện có
+          await tx.inventory.update({
+            where: { itemId: itemId },
+            data: {
+              currentStock: inventory.currentStock + group.totalQuantity,
+              lastUpdated: new Date()
+            }
           });
+        } else {
+          // Tạo inventory mới
+          await tx.inventory.create({
+            data: {
+              itemId: itemId,
+              currentStock: group.totalQuantity,
+              lastUpdated: new Date()
+            }
+          });
+        }
 
-          if (inventory) {
-            await tx.inventory.update({
-              where: { itemId: itemId },
-              data: {
-                currentStock: inventory.currentStock + item.quantity,
-                lastUpdated: new Date()
-              }
-            });
-          } else {
-            await tx.inventory.create({
-              data: {
-                itemId: itemId,
-                currentStock: item.quantity,
-                lastUpdated: new Date()
-              }
-            });
-          }
-
-          // Tạo batch mới
+        // Tạo batch cho từng item (giữ riêng biệt)
+        for (const item of group.items) {
           if (item.expiryDate || item.batchNumber) {
             await tx.inventoryBatch.create({
               data: {
@@ -359,8 +377,8 @@ class ImportService {
               }
             });
           }
-        })
-      );
+        }
+      }
 
       // 4. Tạo transaction logs cho tất cả items
       if (import_data.items && import_data.items.length > 0) {

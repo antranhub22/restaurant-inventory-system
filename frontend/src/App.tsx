@@ -9,6 +9,8 @@ import DailyReconciliation from './pages/DailyReconciliation';
 import DocumentManagement from './pages/DocumentManagement';
 import CameraCapture from './pages/CameraCapture';
 import OCRFormDemo from './pages/OCRFormDemo';
+import ExportManagement from './pages/ExportManagement';
+import ReturnManagement from './pages/ReturnManagement';
 import Login from './components/Login';
 import { useAuthStore } from './store';
 
@@ -70,6 +72,18 @@ function App() {
             </ProtectedRoute>
           } />
           
+          <Route path="/export" element={
+            <ProtectedRoute>
+              <ExportManagement />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/return" element={
+            <ProtectedRoute>
+              <ReturnManagement />
+            </ProtectedRoute>
+          } />
+          
           <Route path="/reconciliation" element={
             <ProtectedRoute>
               <DailyReconciliation />
@@ -101,4 +115,4 @@ function App() {
   );
 }
 
-export default App
+export default App;

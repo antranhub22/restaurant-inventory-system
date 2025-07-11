@@ -22,6 +22,8 @@ const navLinks = [
   { to: '/items', label: 'Hàng hóa', roles: ['owner', 'manager', 'supervisor', 'staff'] },
   { to: '/inventory', label: 'Tồn kho', roles: ['owner', 'manager', 'supervisor', 'staff'] },
   { to: '/transactions', label: 'Giao dịch', roles: ['owner', 'manager', 'supervisor', 'staff'] },
+  { to: '/export', label: 'Phiếu xuất kho', roles: ['owner', 'manager', 'supervisor'] },
+  { to: '/return', label: 'Phiếu hoàn kho', roles: ['owner', 'manager', 'supervisor'] },
   { to: '/reconciliation', label: 'Đối chiếu', roles: ['owner', 'manager', 'supervisor', 'staff'] },
   { to: '/documents', label: 'Phiếu & Báo cáo', roles: ['owner', 'manager'] },
   { to: '/ocr', label: 'Xử lý hóa đơn OCR', roles: ['owner', 'manager', 'supervisor'] },

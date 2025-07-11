@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { FormType } from '../types/form-template';
+import { ImportStatus } from '../types/import';
 import ocrService from '../services/ocr.service';
 import formContentMatcherService from '../services/form-content-matcher.service';
 import aiFormMapperService from '../services/ai-form-mapper.service';
@@ -477,15 +478,37 @@ class OcrFormController {
         
         const dateValue = fields.find(f => f.name === 'date')?.value;
         const totalValue = fields.find(f => f.name === 'total')?.value;
+        let invoiceNumber = fields.find(f => f.name === 'invoice_no')?.value || '';
+        
+        // Generate unique invoice number if missing or to avoid duplicates
+        if (!invoiceNumber || invoiceNumber.trim() === '') {
+          const timestamp = Date.now();
+          invoiceNumber = `OCR-${timestamp}`;
+        } else {
+          // Check if invoice number already exists
+          const existingImport = await prisma.import.findFirst({
+            where: { invoiceNumber: invoiceNumber }
+          });
+          
+          if (existingImport) {
+            // Add timestamp to make it unique
+            const timestamp = Date.now();
+            invoiceNumber = `${invoiceNumber}-${timestamp}`;
+            logger.info('[DEBUG] confirmFormContent - Modified duplicate invoice number', { 
+              originalInvoice: fields.find(f => f.name === 'invoice_no')?.value,
+              newInvoice: invoiceNumber
+            });
+          }
+        }
         
         const importData: any = {
           date: dateValue ? new Date(dateValue) : new Date(),
           supplierId: Number(supplierId),
-          invoiceNumber: fields.find(f => f.name === 'invoice_no')?.value || '',
+          invoiceNumber: invoiceNumber,
           processedById: userId,
           totalAmount: Number(totalValue) || 0,
           notes: fields.find(f => f.name === 'notes')?.value || '',
-          status: 'PENDING',
+          status: ImportStatus.PENDING,
           attachments: draft.originalImage ? [draft.originalImage] : [],
           items: processedItems
         };
@@ -569,7 +592,7 @@ class OcrFormController {
           departmentId,
           processedById: userId,
           notes: fields.find(f => f.name === 'notes')?.value || '',
-          status: 'PENDING',
+          status: 'pending',
           attachments: draft.originalImage ? [draft.originalImage] : [],
           items: items.map((item: any) => ({
             itemId: item.itemId || null,
@@ -634,7 +657,7 @@ class OcrFormController {
           departmentId,
           processedById: userId,
           notes: fields.find(f => f.name === 'notes')?.value || '',
-          status: 'PENDING',
+          status: 'pending',
           attachments: draft.originalImage ? [draft.originalImage] : [],
           items: items.map((item: any) => ({
             itemId: item.itemId || null,
@@ -702,7 +725,7 @@ class OcrFormController {
           description: fields.find(f => f.name === 'notes')?.value || 'Điều chỉnh từ OCR',
           processedById: userId,
           notes: fields.find(f => f.name === 'notes')?.value || '',
-          status: 'PENDING',
+          status: 'pending',
           evidencePhotos: draft.originalImage ? [draft.originalImage] : [],
           items: items.map((item: any) => ({
             itemId: item.itemId || null,

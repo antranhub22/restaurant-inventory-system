@@ -137,7 +137,7 @@ class ImportController {
   async getPendingImports(req: Request, res: Response) {
     try {
       const pendingImports = await prisma.import.findMany({
-        where: { status: 'PENDING' },
+        where: { status: 'pending' },
         include: {
           items: {
             include: {

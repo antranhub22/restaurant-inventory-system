@@ -5,13 +5,9 @@ import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Modal from '../components/common/Modal';
 import { useAuthStore } from '../store';
-import sampleData from '../data/sample_data.json';
-import { SampleData } from '../types/sample_data';
+import { useQuery } from '@tanstack/react-query';
+import itemsService from '../services/items.service';
 import approvalService from '../services/approval.service';
-
-const data = sampleData as SampleData;
-const items = data.sample_items;
-const units = data.units;
 
 interface ImportItem {
   itemId: number;
@@ -75,10 +71,11 @@ const ImportManagement: React.FC = () => {
   // Import records data
   const [imports, setImports] = useState<ImportRecord[]>([]);
 
-  const getUnitName = (unitId: number) => {
-    const unit = units.find(u => u.id === unitId);
-    return unit ? unit.abbreviation : '';
-  };
+  // Fetch items using React Query
+  const { data: items = [], isLoading: itemsLoading } = useQuery({
+    queryKey: ['items'],
+    queryFn: itemsService.getAllItems
+  });
 
   const calculateItemTotal = (quantity: number, unitPrice: number) => {
     return quantity * unitPrice;
@@ -96,7 +93,7 @@ const ImportManagement: React.FC = () => {
         quantity: 1,
         unitPrice: 0,
         totalPrice: 0,
-        unit: getUnitName(selectedItem.unit_id),
+        unit: selectedItem.unit,
         expiryDate: '',
         notes: ''
       };
@@ -521,7 +518,9 @@ const ImportManagement: React.FC = () => {
         >
           <div className="space-y-4">
             <div className="max-h-96 overflow-y-auto">
-              {items.length > 0 ? (
+              {itemsLoading ? (
+                <div className="text-center py-8 text-gray-500">Đang tải danh sách hàng hóa...</div>
+              ) : items.length > 0 ? (
                 items.map(item => (
                   <div
                     key={item.id}
@@ -534,7 +533,7 @@ const ImportManagement: React.FC = () => {
                   >
                     <div className="font-medium">{item.name}</div>
                     <div className="text-sm text-gray-600">
-                      Mã: {item.id} | ĐVT: {getUnitName(item.unit_id)}
+                      Mã: {item.id} | ĐVT: {item.unit} | Loại: {item.category.name}
                     </div>
                   </div>
                 ))

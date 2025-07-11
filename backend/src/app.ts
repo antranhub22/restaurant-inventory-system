@@ -17,6 +17,7 @@ import exportRoutes from './routes/export.routes';
 import returnRoutes from './routes/return.routes';
 import wasteRoutes from './routes/waste.routes';
 import ocrFormRoutes from './routes/ocr-form.routes';
+import itemsRoutes from './routes/items.routes';
 
 // Load environment variables
 dotenv.config();
@@ -105,6 +106,7 @@ app.get('/', (_req: Request, res: Response) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/items', itemsRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);

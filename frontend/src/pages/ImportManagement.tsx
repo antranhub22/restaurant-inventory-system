@@ -387,69 +387,72 @@ const ImportManagement: React.FC = () => {
               </div>
 
               {importForm.items.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border border-gray-200 rounded-md">
+                <div className="overflow-x-auto bg-white rounded-md border border-gray-200">
+                  <table className="w-full min-w-[800px]">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left py-2 px-3 text-sm font-medium">Hàng hóa</th>
-                        <th className="text-left py-2 px-3 text-sm font-medium">Số lượng</th>
-                        <th className="text-left py-2 px-3 text-sm font-medium">Đơn giá</th>
-                        <th className="text-left py-2 px-3 text-sm font-medium">Thành tiền</th>
-                        <th className="text-left py-2 px-3 text-sm font-medium">Hạn sử dụng</th>
-                        <th className="text-left py-2 px-3 text-sm font-medium">Ghi chú</th>
-                        <th className="text-left py-2 px-3 text-sm font-medium">Thao tác</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium min-w-[200px]">Hàng hóa</th>
+                        <th className="text-center py-3 px-3 text-sm font-medium min-w-[100px]">Số lượng</th>
+                        <th className="text-right py-3 px-3 text-sm font-medium min-w-[120px]">Đơn giá</th>
+                        <th className="text-right py-3 px-3 text-sm font-medium min-w-[120px]">Thành tiền</th>
+                        <th className="text-center py-3 px-3 text-sm font-medium min-w-[130px]">Hạn sử dụng</th>
+                        <th className="text-left py-3 px-3 text-sm font-medium min-w-[100px]">Ghi chú</th>
+                        <th className="text-center py-3 px-3 text-sm font-medium min-w-[80px]">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
                       {importForm.items.map((item, index) => (
-                        <tr key={index} className="border-t border-gray-200">
-                          <td className="py-2 px-3 text-sm">
-                            {item.itemName} ({item.unit})
+                        <tr key={index} className="border-t border-gray-200 hover:bg-gray-50">
+                          <td className="py-3 px-4 text-sm">
+                            <div className="font-medium text-gray-900">{item.itemName}</div>
+                            <div className="text-xs text-gray-500">ĐVT: {item.unit}</div>
                           </td>
-                          <td className="py-2 px-3">
+                          <td className="py-3 px-3">
                             <Input
                               type="number"
                               value={item.quantity}
                               onChange={(e) => handleUpdateItem(index, 'quantity', Number(e.target.value))}
-                              className="w-20 text-sm"
+                              className="w-full text-center text-base font-medium"
                               min="0"
                               step="0.01"
+                              placeholder="0"
                             />
                           </td>
-                          <td className="py-2 px-3">
+                          <td className="py-3 px-3">
                             <Input
                               type="number"
                               value={item.unitPrice}
                               onChange={(e) => handleUpdateItem(index, 'unitPrice', Number(e.target.value))}
-                              className="w-24 text-sm"
+                              className="w-full text-right text-base font-medium"
                               min="0"
                               step="1000"
+                              placeholder="0"
                             />
                           </td>
-                          <td className="py-2 px-3 text-sm font-semibold">
+                          <td className="py-3 px-3 text-sm font-semibold text-right text-blue-600">
                             {formatCurrency(item.totalPrice)}
                           </td>
-                          <td className="py-2 px-3">
+                          <td className="py-3 px-3">
                             <Input
                               type="date"
                               value={item.expiryDate || ''}
                               onChange={(e) => handleUpdateItem(index, 'expiryDate', e.target.value)}
-                              className="w-32 text-sm"
+                              className="w-full text-sm text-center"
                             />
                           </td>
-                          <td className="py-2 px-3">
+                          <td className="py-3 px-3">
                             <Input
                               value={item.notes || ''}
                               onChange={(e) => handleUpdateItem(index, 'notes', e.target.value)}
-                              className="w-32 text-sm"
-                              placeholder="Ghi chú"
+                              className="w-full text-sm"
+                              placeholder="Ghi chú..."
                             />
                           </td>
-                          <td className="py-2 px-3">
+                          <td className="py-3 px-3 text-center">
                             <Button
                               variant="secondary"
                               onClick={() => handleRemoveItem(index)}
-                              className="text-xs px-2 py-1 text-red-600 hover:bg-red-50"
+                              className="text-xs px-2 py-1 text-red-600 hover:bg-red-50 border-red-200 hover:border-red-300"
                             >
                               Xóa
                             </Button>
@@ -457,15 +460,15 @@ const ImportManagement: React.FC = () => {
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot className="bg-gray-50">
+                    <tfoot className="bg-gray-100 border-t-2 border-gray-300">
                       <tr>
-                        <td colSpan={3} className="py-2 px-3 text-sm font-semibold text-right">
+                        <td colSpan={3} className="py-3 px-4 text-base font-semibold text-right text-gray-800">
                           Tổng cộng:
                         </td>
-                        <td className="py-2 px-3 text-sm font-bold">
+                        <td className="py-3 px-3 text-base font-bold text-right text-blue-600">
                           {formatCurrency(calculateFormTotal())}
                         </td>
-                        <td colSpan={3}></td>
+                        <td colSpan={3} className="py-3"></td>
                       </tr>
                     </tfoot>
                   </table>

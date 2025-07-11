@@ -4,12 +4,39 @@ import path from 'path';
 
 const { combine, timestamp, printf, colorize } = winston.format;
 
+// Utility function để tránh circular references
+const safeStringify = (obj: any, depth = 2): string => {
+  const seen = new WeakSet();
+  
+  const replacer = (key: string, value: any): any => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular Reference]';
+      }
+      seen.add(value);
+    }
+    
+    // Giới hạn depth để tránh objects quá sâu
+    if (typeof value === 'object' && value !== null && depth <= 0) {
+      return '[Object]';
+    }
+    
+    return value;
+  };
+  
+  try {
+    return JSON.stringify(obj, replacer);
+  } catch (error) {
+    return '[Unserializable]';
+  }
+};
+
 // Custom format cho logs
 const logFormat = printf(({ level, message, timestamp, ...metadata }) => {
   let msg = `${timestamp} [${level}]: ${message}`;
   
   if (Object.keys(metadata).length > 0) {
-    msg += ` ${JSON.stringify(metadata)}`;
+    msg += ` ${safeStringify(metadata)}`;
   }
   
   return msg;
@@ -104,17 +131,33 @@ export const formLogger = {
   }
 };
 
-// Các hàm helper cho API logging
-export const apiLogger = {
-  request: (req: any) => {
-    logger.info('API request', {
+// Safe utility để extract thông tin từ request
+const safeExtractRequest = (req: any) => {
+  try {
+    return {
       method: req.method,
       url: req.url,
       params: req.params,
       query: req.query,
-      body: req.body,
-      userId: req.user?.id
-    });
+      body: req.file ? { ...req.body, file: `[File: ${req.file.originalname}]` } : req.body,
+      userId: req.user?.id,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip
+    };
+  } catch (error) {
+    return {
+      method: req.method,
+      url: req.url,
+      error: 'Failed to extract request data'
+    };
+  }
+};
+
+// Các hàm helper cho API logging
+export const apiLogger = {
+  request: (req: any) => {
+    const requestData = safeExtractRequest(req);
+    logger.info('API request', requestData);
   },
 
   response: (req: any, res: any, duration: number) => {

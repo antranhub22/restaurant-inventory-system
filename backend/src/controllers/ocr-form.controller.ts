@@ -71,7 +71,12 @@ class OcrFormController {
       const imageBuffer = req.file?.buffer;
       const userId = req.user && typeof req.user.id === 'string' ? req.user.id : (req.user && req.user.id ? String(req.user.id) : null);
 
-      logger.info('[DEBUG] Input nhận được', { formType, hasImage: !!imageBuffer, userId });
+      logger.info('[DEBUG] Input nhận được', { 
+        formType, 
+        hasImage: !!imageBuffer, 
+        imageSize: imageBuffer?.length,
+        userId 
+      });
 
       if (!imageBuffer) {
         logger.error('[DEBUG] Không tìm thấy file ảnh', { userId, formType });
@@ -96,9 +101,17 @@ class OcrFormController {
       try {
         logger.info('[DEBUG] Bắt đầu gọi ocrService.processReceipt');
         ocrResult = await ocrService.processReceipt(imageBuffer);
-        logger.info('[DEBUG] Kết quả trả về từ ocrService.processReceipt', { ocrResult });
+        logger.info('[DEBUG] Kết quả trả về từ ocrService.processReceipt', { 
+          contentsLength: ocrResult.contents?.length,
+          confidence: ocrResult.confidence,
+          processingTime: ocrResult.processingTime
+        });
         ocrLogger.complete(imageId, ocrResult.processingTime, ocrResult.confidence);
-        logger.info('Kết quả OCR', { imageId, ocrResult });
+        logger.info('Kết quả OCR', { 
+          imageId, 
+          contentsLength: ocrResult.contents?.length,
+          confidence: ocrResult.confidence
+        });
       } catch (ocrError) {
         const errorObj = ocrError instanceof Error ? ocrError : new Error(String(ocrError));
         ocrLogger.error(imageId, errorObj, { userId, formType });
@@ -116,7 +129,10 @@ class OcrFormController {
             ocrResult.contents as ExtractedContent[],
             formType
           );
-          logger.info('[DEBUG] Kết quả mapping OCR vào form bằng AI', { processedForm });
+          logger.info('[DEBUG] Kết quả mapping OCR vào form bằng AI', { 
+            fieldsCount: processedForm?.fields?.length,
+            itemsCount: processedForm?.items?.length 
+          });
         } else {
           // Fallback về phương pháp cũ nếu không có AI
           logger.info('[DEBUG] Không có AI provider, fallback về formContentMatcherService.processOcrContent', { contentsLength: ocrResult.contents?.length, formType });
@@ -124,7 +140,10 @@ class OcrFormController {
             ocrResult.contents as ExtractedContent[],
             formType
           );
-          logger.info('[DEBUG] Kết quả mapping OCR vào form bằng phương pháp cũ', { processedForm });
+          logger.info('[DEBUG] Kết quả mapping OCR vào form bằng phương pháp cũ', { 
+            fieldsCount: processedForm?.fields?.length,
+            itemsCount: processedForm?.items?.length 
+          });
         }
       } catch (mapError) {
         const errorObj = mapError instanceof Error ? mapError : new Error(String(mapError));
@@ -146,7 +165,11 @@ class OcrFormController {
       // 4. Lưu form draft vào DB
       draftId = uuidv4();
       try {
-        logger.info('[DEBUG] Bắt đầu lưu form draft vào DB', { draftId, processedForm });
+        logger.info('[DEBUG] Bắt đầu lưu form draft vào DB', { 
+          draftId, 
+          fieldsCount: processedForm?.fields?.length,
+          itemsCount: processedForm?.items?.length
+        });
         const draft = await prisma.oCRFormDraft.create({
           data: {
             id: draftId,

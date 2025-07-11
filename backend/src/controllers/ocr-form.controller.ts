@@ -590,10 +590,25 @@ class OcrFormController {
           }
         }
 
-        // Process items - validate itemId
+        // Process items - auto-find items by name if no itemId
         const processedItems = [];
         for (const item of items) {
           let itemId = item.itemId;
+          
+          // If no itemId, try to find by name
+          if (!itemId && item.name) {
+            const existingItem = await prisma.item.findFirst({
+              where: { name: { contains: item.name, mode: 'insensitive' } }
+            });
+            
+            if (existingItem) {
+              itemId = existingItem.id;
+              logger.info('[DEBUG] confirmFormContent - Found existing item for export', { 
+                itemId, 
+                itemName: existingItem.name 
+              });
+            }
+          }
           
           // Validate itemId
           if (!itemId || isNaN(Number(itemId))) {
@@ -705,10 +720,25 @@ class OcrFormController {
           }
         }
 
-        // Process items - validate itemId
+        // Process items - auto-find items by name if no itemId
         const processedItems = [];
         for (const item of items) {
           let itemId = item.itemId;
+          
+          // If no itemId, try to find by name
+          if (!itemId && item.name) {
+            const existingItem = await prisma.item.findFirst({
+              where: { name: { contains: item.name, mode: 'insensitive' } }
+            });
+            
+            if (existingItem) {
+              itemId = existingItem.id;
+              logger.info('[DEBUG] confirmFormContent - Found existing item for return', { 
+                itemId, 
+                itemName: existingItem.name 
+              });
+            }
+          }
           
           // Validate itemId
           if (!itemId || isNaN(Number(itemId))) {
@@ -822,10 +852,25 @@ class OcrFormController {
           }
         }
 
-        // Process items - validate itemId
+        // Process items - auto-find items by name if no itemId
         const processedItems = [];
         for (const item of items) {
           let itemId = item.itemId;
+          
+          // If no itemId, try to find by name
+          if (!itemId && item.name) {
+            const existingItem = await prisma.item.findFirst({
+              where: { name: { contains: item.name, mode: 'insensitive' } }
+            });
+            
+            if (existingItem) {
+              itemId = existingItem.id;
+              logger.info('[DEBUG] confirmFormContent - Found existing item for waste', { 
+                itemId, 
+                itemName: existingItem.name 
+              });
+            }
+          }
           
           // Validate itemId
           if (!itemId || isNaN(Number(itemId))) {

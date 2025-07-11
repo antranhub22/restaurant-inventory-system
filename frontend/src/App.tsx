@@ -6,11 +6,13 @@ import ItemDetail from './pages/ItemDetail';
 import InventoryCurrent from './pages/InventoryCurrent';
 import TransactionHistory from './pages/TransactionHistory';
 import DailyReconciliation from './pages/DailyReconciliation';
+import ReportsDashboard from './pages/ReportsDashboard';
 import DocumentManagement from './pages/DocumentManagement';
 import CameraCapture from './pages/CameraCapture';
 import OCRFormDemo from './pages/OCRFormDemo';
 import ExportManagement from './pages/ExportManagement';
 import ReturnManagement from './pages/ReturnManagement';
+import VarianceReport from './pages/VarianceReport';
 import Login from './components/Login';
 import { useAuthStore } from './store';
 
@@ -87,6 +89,18 @@ function App() {
           <Route path="/reconciliation" element={
             <ProtectedRoute>
               <DailyReconciliation />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/variance" element={
+            <ProtectedRoute>
+              <VarianceReport />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/reports" element={
+            <ProtectedRoute>
+              <ReportsDashboard />
             </ProtectedRoute>
           } />
           

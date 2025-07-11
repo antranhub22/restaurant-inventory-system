@@ -133,69 +133,9 @@ class ImportService {
         )
       );
 
-      // 3. Cập nhật tồn kho
-      await Promise.all(
-        data.items.map(async (item) => {
-          const itemId = Number(item.itemId);
-          
-          const inventory = await tx.inventory.findUnique({
-            where: { itemId: itemId }
-          });
+      // NOTE: Không cập nhật inventory ở đây, chỉ khi approve mới cập nhật
 
-          if (inventory) {
-            await tx.inventory.update({
-              where: { itemId: itemId },
-              data: {
-                currentStock: inventory.currentStock + item.quantity,
-                lastUpdated: new Date()
-              }
-            });
-          } else {
-            await tx.inventory.create({
-              data: {
-                itemId: itemId,
-                currentStock: item.quantity,
-                lastUpdated: new Date()
-              }
-            });
-          }
-
-          // Tạo batch mới
-          if (item.expiryDate || item.batchNumber) {
-            await tx.inventoryBatch.create({
-              data: {
-                itemId: itemId,
-                batchNumber: item.batchNumber,
-                initialQuantity: item.quantity,
-                currentQuantity: item.quantity,
-                unitCost: item.unitPrice,
-                receivedDate: data.date,
-                expiryDate: item.expiryDate
-              }
-            });
-          }
-        })
-      );
-
-      // 4. Tạo transaction logs cho tất cả items
-      if (data.items && data.items.length > 0) {
-        await Promise.all(
-          data.items.map(item =>
-            tx.transaction.create({
-              data: {
-                type: 'IN',
-                itemId: Number(item.itemId),
-                quantity: item.quantity,
-                unitCost: item.unitPrice,
-                processedById: data.processedById,
-                notes: `Nhập kho từ ${data.invoiceNumber || 'OCR'}`
-              }
-            })
-          )
-        );
-      }
-
-      // 5. Cập nhật cache Redis
+      // 3. Cập nhật cache Redis
       await this.updateCache(importRecord.id);
 
       return {
@@ -377,6 +317,68 @@ class ImportService {
           approvedAt: new Date()
         }
       });
+
+      // 3. Cập nhật tồn kho
+      await Promise.all(
+        import_data.items.map(async (item) => {
+          const itemId = Number(item.itemId);
+          
+          const inventory = await tx.inventory.findUnique({
+            where: { itemId: itemId }
+          });
+
+          if (inventory) {
+            await tx.inventory.update({
+              where: { itemId: itemId },
+              data: {
+                currentStock: inventory.currentStock + item.quantity,
+                lastUpdated: new Date()
+              }
+            });
+          } else {
+            await tx.inventory.create({
+              data: {
+                itemId: itemId,
+                currentStock: item.quantity,
+                lastUpdated: new Date()
+              }
+            });
+          }
+
+          // Tạo batch mới
+          if (item.expiryDate || item.batchNumber) {
+            await tx.inventoryBatch.create({
+              data: {
+                itemId: itemId,
+                batchNumber: item.batchNumber,
+                initialQuantity: item.quantity,
+                currentQuantity: item.quantity,
+                unitCost: item.unitPrice,
+                receivedDate: import_data.date,
+                expiryDate: item.expiryDate
+              }
+            });
+          }
+        })
+      );
+
+      // 4. Tạo transaction logs cho tất cả items
+      if (import_data.items && import_data.items.length > 0) {
+        await Promise.all(
+          import_data.items.map(item =>
+            tx.transaction.create({
+              data: {
+                type: 'IN',
+                itemId: Number(item.itemId),
+                quantity: item.quantity,
+                unitCost: item.unitPrice,
+                processedById: import_data.processedById,
+                notes: `Nhập kho từ ${import_data.invoiceNumber || 'OCR'}`
+              }
+            })
+          )
+        );
+      }
 
       // Xóa cache
       await this.redis.del(`import:${id}`);

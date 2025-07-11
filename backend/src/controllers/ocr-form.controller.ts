@@ -590,7 +590,7 @@ class OcrFormController {
           }
         }
 
-        // Process items - auto-find items by name if no itemId
+        // Process items - auto-find and auto-create items if needed
         const processedItems = [];
         for (const item of items) {
           let itemId = item.itemId;
@@ -607,23 +607,55 @@ class OcrFormController {
                 itemId, 
                 itemName: existingItem.name 
               });
+            } else {
+              // Auto-create new item
+              logger.info('[DEBUG] confirmFormContent - Creating new item for export', { itemName: item.name });
+              try {
+                // Get default category (first available)
+                const defaultCategory = await prisma.category.findFirst({ where: { isActive: true } });
+                if (!defaultCategory) {
+                  throw new Error('No active category found for new item');
+                }
+                
+                const newItem = await prisma.item.create({
+                  data: {
+                    name: item.name,
+                    categoryId: defaultCategory.id,
+                    unit: item.unit || 'kg',
+                    unitCost: Number(item.unitPrice) || 0,
+                    description: 'Tự động tạo từ OCR Export',
+                    isActive: true
+                  }
+                });
+                itemId = newItem.id;
+                logger.info('[DEBUG] confirmFormContent - Created new item successfully for export', { 
+                  itemId: newItem.id, 
+                  itemName: newItem.name 
+                });
+              } catch (createError) {
+                logger.error('[DEBUG] confirmFormContent - Failed to create item for export', { 
+                  error: createError, 
+                  itemName: item.name 
+                });
+                // Continue without this item rather than failing the whole export
+                continue;
+              }
             }
           }
           
-          // Validate itemId
-          if (!itemId || isNaN(Number(itemId))) {
+          // Only add items with valid itemId
+          if (itemId && !isNaN(Number(itemId))) {
+            processedItems.push({
+              itemId: Number(itemId),
+              quantity: Number(item.quantity) || 0,
+              notes: item.notes || ''
+            });
+          } else {
             logger.warn('[DEBUG] confirmFormContent - Skipping export item with invalid itemId', { 
               itemId, 
               itemName: item.name 
             });
-            continue;
           }
-
-          processedItems.push({
-            itemId: Number(itemId),
-            quantity: Number(item.quantity) || 0,
-            notes: item.notes || ''
-          });
         }
 
         // Check if we have valid items
@@ -720,7 +752,7 @@ class OcrFormController {
           }
         }
 
-        // Process items - auto-find items by name if no itemId
+        // Process items - auto-find and auto-create items if needed
         const processedItems = [];
         for (const item of items) {
           let itemId = item.itemId;
@@ -737,25 +769,57 @@ class OcrFormController {
                 itemId, 
                 itemName: existingItem.name 
               });
+            } else {
+              // Auto-create new item
+              logger.info('[DEBUG] confirmFormContent - Creating new item for return', { itemName: item.name });
+              try {
+                // Get default category (first available)
+                const defaultCategory = await prisma.category.findFirst({ where: { isActive: true } });
+                if (!defaultCategory) {
+                  throw new Error('No active category found for new item');
+                }
+                
+                const newItem = await prisma.item.create({
+                  data: {
+                    name: item.name,
+                    categoryId: defaultCategory.id,
+                    unit: item.unit || 'kg',
+                    unitCost: Number(item.unitPrice) || 0,
+                    description: 'Tự động tạo từ OCR Return',
+                    isActive: true
+                  }
+                });
+                itemId = newItem.id;
+                logger.info('[DEBUG] confirmFormContent - Created new item successfully for return', { 
+                  itemId: newItem.id, 
+                  itemName: newItem.name 
+                });
+              } catch (createError) {
+                logger.error('[DEBUG] confirmFormContent - Failed to create item for return', { 
+                  error: createError, 
+                  itemName: item.name 
+                });
+                // Continue without this item rather than failing the whole return
+                continue;
+              }
             }
           }
           
-          // Validate itemId
-          if (!itemId || isNaN(Number(itemId))) {
+          // Only add items with valid itemId
+          if (itemId && !isNaN(Number(itemId))) {
+            processedItems.push({
+              itemId: Number(itemId),
+              quantity: Number(item.quantity) || 0,
+              condition: ItemCondition.GOOD, // Default to good condition
+              originalExportId: item.originalExportId ? Number(item.originalExportId) : null,
+              notes: item.notes || ''
+            });
+          } else {
             logger.warn('[DEBUG] confirmFormContent - Skipping return item with invalid itemId', { 
               itemId, 
               itemName: item.name 
             });
-            continue;
           }
-
-          processedItems.push({
-            itemId: Number(itemId),
-            quantity: Number(item.quantity) || 0,
-            condition: ItemCondition.GOOD, // Default to good condition
-            originalExportId: item.originalExportId ? Number(item.originalExportId) : null,
-            notes: item.notes || ''
-          });
         }
 
         // Check if we have valid items
@@ -869,25 +933,57 @@ class OcrFormController {
                 itemId, 
                 itemName: existingItem.name 
               });
+            } else {
+              // Auto-create new item
+              logger.info('[DEBUG] confirmFormContent - Creating new item for waste', { itemName: item.name });
+              try {
+                // Get default category (first available)
+                const defaultCategory = await prisma.category.findFirst({ where: { isActive: true } });
+                if (!defaultCategory) {
+                  throw new Error('No active category found for new item');
+                }
+                
+                const newItem = await prisma.item.create({
+                  data: {
+                    name: item.name,
+                    categoryId: defaultCategory.id,
+                    unit: item.unit || 'kg',
+                    unitCost: Number(item.unitPrice) || 0,
+                    description: 'Tự động tạo từ OCR Waste',
+                    isActive: true
+                  }
+                });
+                itemId = newItem.id;
+                logger.info('[DEBUG] confirmFormContent - Created new item successfully for waste', { 
+                  itemId: newItem.id, 
+                  itemName: newItem.name 
+                });
+              } catch (createError) {
+                logger.error('[DEBUG] confirmFormContent - Failed to create item for waste', { 
+                  error: createError, 
+                  itemName: item.name 
+                });
+                // Continue without this item rather than failing the whole waste
+                continue;
+              }
             }
           }
           
-          // Validate itemId
-          if (!itemId || isNaN(Number(itemId))) {
+          // Only add items with valid itemId
+          if (itemId && !isNaN(Number(itemId))) {
+            processedItems.push({
+              itemId: Number(itemId),
+              quantity: Number(item.quantity) || 0,
+              estimatedValue: Number(item.estimatedValue) || 0,
+              reason: item.reason || 'Điều chỉnh từ OCR',
+              notes: item.notes || ''
+            });
+          } else {
             logger.warn('[DEBUG] confirmFormContent - Skipping waste item with invalid itemId', { 
               itemId, 
               itemName: item.name 
             });
-            continue;
           }
-
-          processedItems.push({
-            itemId: Number(itemId),
-            quantity: Number(item.quantity) || 0,
-            estimatedValue: Number(item.estimatedValue) || 0,
-            reason: item.reason || 'Điều chỉnh từ OCR',
-            notes: item.notes || ''
-          });
         }
 
         // Check if we have valid items

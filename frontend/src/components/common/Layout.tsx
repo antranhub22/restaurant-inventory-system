@@ -34,8 +34,6 @@ const sampleUsers = [
 // Top level navigation items (không thuộc nhóm nào)
 const primaryNavItems = [
   { to: '/dashboard', label: '🏠 Bảng điều khiển', roles: ['owner', 'manager', 'supervisor', 'staff'] },
-  { to: '/items', label: '📦 Hàng hóa', roles: ['owner', 'manager', 'supervisor', 'staff'] },
-  { to: '/inventory', label: '📊 Tồn kho', roles: ['owner', 'manager', 'supervisor', 'staff'] },
 ];
 
 // Grouped navigation
@@ -46,6 +44,7 @@ const navGroups: NavGroup[] = [
     icon: '📊',
     roles: ['owner', 'manager', 'supervisor', 'staff'],
     items: [
+      { to: '/inventory', label: 'Tồn kho hiện tại', roles: ['owner', 'manager', 'supervisor', 'staff'] },
       { to: '/reports', label: 'Phân tích & Báo cáo', roles: ['owner', 'manager', 'supervisor'] },
       { to: '/variance', label: 'Báo cáo chênh lệch', roles: ['owner', 'manager', 'supervisor'] },
       { to: '/reconciliation', label: 'Đối chiếu hàng ngày', roles: ['owner', 'manager', 'supervisor', 'staff'] },
@@ -57,8 +56,9 @@ const navGroups: NavGroup[] = [
     id: 'manual-entry',
     label: '✏️ Nhập Dữ liệu',
     icon: '✏️',
-    roles: ['owner', 'manager', 'supervisor'],
+    roles: ['owner', 'manager', 'supervisor', 'staff'],
     items: [
+      { to: '/items', label: 'Quản lý hàng hóa', roles: ['owner', 'manager', 'supervisor', 'staff'] },
       { to: '/manual/import', label: 'Phiếu nhập kho', roles: ['owner', 'manager', 'supervisor'] },
       { to: '/manual/export', label: 'Phiếu xuất kho', roles: ['owner', 'manager', 'supervisor'] },
       { to: '/manual/return', label: 'Phiếu hoàn kho', roles: ['owner', 'manager', 'supervisor'] },

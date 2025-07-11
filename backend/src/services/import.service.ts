@@ -43,9 +43,18 @@ class ImportService {
       });
     } else {
       for (const item of data.items) {
+        // Kiểm tra itemId hợp lệ
+        if (!item.itemId || isNaN(Number(item.itemId))) {
+          errors.push({
+            field: `items[${item.itemId || 'undefined'}]`,
+            message: `Item ID không hợp lệ: ${item.itemId}`
+          });
+          continue;
+        }
+
         // Kiểm tra sản phẩm tồn tại
         const product = await this.prisma.item.findUnique({
-          where: { id: item.itemId }
+          where: { id: Number(item.itemId) }
         });
         if (!product) {
           errors.push({
@@ -87,7 +96,8 @@ class ImportService {
     // Validate dữ liệu
     const errors = await this.validateImport(data);
     if (errors.length > 0) {
-      throw new Error(JSON.stringify(errors));
+      const errorMessages = errors.map(err => `${err.field}: ${err.message}`).join('; ');
+      throw new Error(`Lỗi validation: ${errorMessages}`);
     }
 
     // Bắt đầu transaction
@@ -112,7 +122,7 @@ class ImportService {
           tx.importItem.create({
             data: {
               importId: importRecord.id,
-              itemId: item.itemId,
+              itemId: Number(item.itemId),
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               expiryDate: item.expiryDate,
@@ -126,13 +136,15 @@ class ImportService {
       // 3. Cập nhật tồn kho
       await Promise.all(
         data.items.map(async (item) => {
+          const itemId = Number(item.itemId);
+          
           const inventory = await tx.inventory.findUnique({
-            where: { itemId: item.itemId }
+            where: { itemId: itemId }
           });
 
           if (inventory) {
             await tx.inventory.update({
-              where: { itemId: item.itemId },
+              where: { itemId: itemId },
               data: {
                 currentStock: inventory.currentStock + item.quantity,
                 lastUpdated: new Date()
@@ -141,7 +153,7 @@ class ImportService {
           } else {
             await tx.inventory.create({
               data: {
-                itemId: item.itemId,
+                itemId: itemId,
                 currentStock: item.quantity,
                 lastUpdated: new Date()
               }
@@ -152,7 +164,7 @@ class ImportService {
           if (item.expiryDate || item.batchNumber) {
             await tx.inventoryBatch.create({
               data: {
-                itemId: item.itemId,
+                itemId: itemId,
                 batchNumber: item.batchNumber,
                 initialQuantity: item.quantity,
                 currentQuantity: item.quantity,
@@ -165,17 +177,23 @@ class ImportService {
         })
       );
 
-      // 4. Tạo transaction log
-      await tx.transaction.create({
-        data: {
-          type: 'IN',
-          itemId: data.items[0].itemId, // Ghi log cho item đầu tiên
-          quantity: data.items[0].quantity,
-          unitCost: data.items[0].unitPrice,
-          processedById: data.processedById,
-          notes: `Nhập kho từ ${data.invoiceNumber}`
-        }
-      });
+      // 4. Tạo transaction logs cho tất cả items
+      if (data.items && data.items.length > 0) {
+        await Promise.all(
+          data.items.map(item =>
+            tx.transaction.create({
+              data: {
+                type: 'IN',
+                itemId: Number(item.itemId),
+                quantity: item.quantity,
+                unitCost: item.unitPrice,
+                processedById: data.processedById,
+                notes: `Nhập kho từ ${data.invoiceNumber || 'OCR'}`
+              }
+            })
+          )
+        );
+      }
 
       // 5. Cập nhật cache Redis
       await this.updateCache(importRecord.id);

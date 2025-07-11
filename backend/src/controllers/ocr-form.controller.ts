@@ -425,36 +425,65 @@ class OcrFormController {
           }
           
           // Only add items with valid itemId
-          if (itemId) {
+          if (itemId && !isNaN(Number(itemId))) {
             processedItems.push({
-              itemId: itemId,
-              quantity: item.quantity || 0,
-              unitPrice: item.unitPrice || 0,
-              expiryDate: item.expiryDate || null,
+              itemId: Number(itemId),
+              quantity: Number(item.quantity) || 0,
+              unitPrice: Number(item.unitPrice) || 0,
+              expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
               batchNumber: item.batchNumber || null,
               notes: item.notes || ''
+            });
+          } else {
+            logger.warn('[DEBUG] confirmFormContent - Skipping item with invalid itemId', { 
+              itemId, 
+              itemName: item.name 
             });
           }
         }
 
+        const dateValue = fields.find(f => f.name === 'date')?.value;
+        const totalValue = fields.find(f => f.name === 'total')?.value;
+        
         const importData: any = {
-          date: fields.find(f => f.name === 'date')?.value || new Date(),
+          date: dateValue ? new Date(dateValue) : new Date(),
           supplierId: Number(supplierId),
           invoiceNumber: fields.find(f => f.name === 'invoice_no')?.value || '',
           processedById: userId,
-          totalAmount: fields.find(f => f.name === 'total')?.value || 0,
+          totalAmount: Number(totalValue) || 0,
           notes: fields.find(f => f.name === 'notes')?.value || '',
           status: 'PENDING',
           attachments: draft.originalImage ? [draft.originalImage] : [],
           items: processedItems
         };
         
-        logger.info('[DEBUG] confirmFormContent - Calling importService.createImport', { importData });
+        // Kiểm tra có items hợp lệ không
+        if (processedItems.length === 0) {
+          logger.error('[DEBUG] confirmFormContent - No valid items to import');
+          return res.status(400).json({
+            success: false,
+            message: 'Không có sản phẩm hợp lệ để nhập kho'
+          });
+        }
+        
+        logger.info('[DEBUG] confirmFormContent - Calling importService.createImport', { 
+          supplierId: importData.supplierId,
+          itemsCount: importData.items.length,
+          totalAmount: importData.totalAmount
+        });
         try {
           createdRecord = await importService.createImport(importData);
-          logger.info('[DEBUG] confirmFormContent - Import created successfully', { createdRecord });
+          logger.info('[DEBUG] confirmFormContent - Import created successfully', { 
+            importId: createdRecord.id,
+            itemsCount: createdRecord.items?.length
+          });
         } catch (importError: any) {
-          logger.error('[DEBUG] confirmFormContent - Error creating import', { error: importError, importData });
+          logger.error('[DEBUG] confirmFormContent - Error creating import', { 
+            error: importError.message,
+            stack: importError.stack,
+            supplierId: importData.supplierId,
+            itemsCount: importData.items.length
+          });
           return res.status(500).json({
             success: false,
             message: `Lỗi khi tạo phiếu nhập: ${importError.message || 'Unknown error'}`

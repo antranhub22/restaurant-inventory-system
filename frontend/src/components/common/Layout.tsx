@@ -25,6 +25,7 @@ const navLinks = [
   { to: '/reconciliation', label: 'Đối chiếu', roles: ['owner', 'manager', 'supervisor', 'staff'] },
   { to: '/documents', label: 'Phiếu & Báo cáo', roles: ['owner', 'manager'] },
   { to: '/ocr', label: 'Xử lý hóa đơn OCR', roles: ['owner', 'manager', 'supervisor'] },
+  { to: '/camera', label: 'Camera', roles: ['owner', 'manager', 'supervisor', 'staff'] },
   { to: '/users', label: 'Quản lý người dùng', roles: ['owner'] },
 ];
 

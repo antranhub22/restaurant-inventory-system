@@ -348,6 +348,72 @@ class OcrFormController {
             message: 'Không thể xác định nhà cung cấp từ dữ liệu OCR'
           });
         }
+        // Process items - auto-create if not exist
+        const processedItems = [];
+        for (const item of items) {
+          let itemId = item.itemId;
+          
+          // If no itemId, try to find by name
+          if (!itemId && item.name) {
+            const existingItem = await prisma.item.findFirst({
+              where: { name: { contains: item.name, mode: 'insensitive' } }
+            });
+            
+            if (existingItem) {
+              itemId = existingItem.id;
+              logger.info('[DEBUG] confirmFormContent - Found existing item', { 
+                itemId, 
+                itemName: existingItem.name 
+              });
+            } else {
+              // Auto-create new item
+              logger.info('[DEBUG] confirmFormContent - Creating new item', { itemName: item.name });
+              try {
+                // Get default category (first available)
+                const defaultCategory = await prisma.category.findFirst({ where: { isActive: true } });
+                if (!defaultCategory) {
+                  throw new Error('No active category found for new item');
+                }
+                
+                const newItem = await prisma.item.create({
+                  data: {
+                    name: item.name,
+                    categoryId: defaultCategory.id,
+                    unit: item.unit || 'kg',
+                    unitCost: item.unitPrice || 0,
+                    description: 'Tự động tạo từ OCR',
+                    isActive: true
+                  }
+                });
+                itemId = newItem.id;
+                logger.info('[DEBUG] confirmFormContent - Created new item successfully', { 
+                  itemId: newItem.id, 
+                  itemName: newItem.name 
+                });
+              } catch (createError) {
+                logger.error('[DEBUG] confirmFormContent - Failed to create item', { 
+                  error: createError, 
+                  itemName: item.name 
+                });
+                // Continue without this item rather than failing the whole import
+                continue;
+              }
+            }
+          }
+          
+          // Only add items with valid itemId
+          if (itemId) {
+            processedItems.push({
+              itemId: itemId,
+              quantity: item.quantity || 0,
+              unitPrice: item.unitPrice || 0,
+              expiryDate: item.expiryDate || null,
+              batchNumber: item.batchNumber || null,
+              notes: item.notes || ''
+            });
+          }
+        }
+
         const importData: any = {
           date: fields.find(f => f.name === 'date')?.value || new Date(),
           supplierId: Number(supplierId),
@@ -357,14 +423,7 @@ class OcrFormController {
           notes: fields.find(f => f.name === 'notes')?.value || '',
           status: 'PENDING',
           attachments: draft.originalImage ? [draft.originalImage] : [],
-          items: items.map((item: any) => ({
-            itemId: item.itemId || null,
-            quantity: item.quantity || 0,
-            unitPrice: item.unitPrice || 0,
-            expiryDate: item.expiryDate || null,
-            batchNumber: item.batchNumber || null,
-            notes: item.notes || ''
-          }))
+          items: processedItems
         };
         
         logger.info('[DEBUG] confirmFormContent - Calling importService.createImport', { importData });
@@ -617,7 +676,7 @@ class OcrFormController {
       
       return res.json({
         success: true,
-        message: 'Đã xác nhận và lưu vào dữ liệu thực tế. Các thông tin mới sẽ được tự động tạo trong hệ thống.',
+        message: 'Đã xác nhận và lưu vào dữ liệu thực tế. Nhà cung cấp, phòng ban và mặt hàng mới sẽ được tự động tạo trong hệ thống.',
         data: createdRecord
       });
     } catch (error: any) {

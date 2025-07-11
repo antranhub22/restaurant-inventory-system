@@ -3,8 +3,10 @@ import 'express';
 declare global {
   namespace Express {
     interface User {
-      id: string;
+      id: number; // Changed from string to number for consistency with database
+      username?: string;
       role?: string;
+      permissions?: string[];
       [key: string]: any;
     }
     interface Request {

@@ -205,13 +205,30 @@ class OcrFormController {
    */
   public async confirmFormContent(req: Request, res: Response) {
     try {
+      logger.info('[DEBUG] confirmFormContent - Start', { 
+        body: req.body, 
+        user: req.user,
+        hasUser: !!req.user,
+        userId: req.user?.id 
+      });
+
       // Đảm bảo bảng OCRFormDraft tồn tại
       await this.ensureOCRFormDraftTable();
 
       const { formId, corrections } = req.body;
-      const userId = req.user && typeof req.user.id === 'string' ? req.user.id : (req.user && req.user.id ? String(req.user.id) : null);
+      
+      // Get userId directly from authenticated user
+      const userId = req.user?.id;
+      
+      logger.info('[DEBUG] confirmFormContent - Parsed data', { 
+        formId, 
+        userId, 
+        hasCorrections: !!corrections, 
+        correctionsLength: corrections?.length 
+      });
 
       if (!formId) {
+        logger.error('[DEBUG] confirmFormContent - Missing formId');
         return res.status(400).json({
           success: false,
           message: 'Thiếu form ID'
@@ -266,26 +283,47 @@ class OcrFormController {
       let createdRecord = null;
       
       if (draft.type === 'IMPORT') {
+        logger.info('[DEBUG] confirmFormContent - Processing IMPORT type');
+        
         // Mapping fields/items sang ImportData
-        let supplierId = fields.find(f => f.name === 'supplierId')?.value || null;
+        let supplierId = fields.find(f => f.name === 'supplierId')?.value || fields.find(f => f.name === 'supplier')?.value || null;
+        
+        logger.info('[DEBUG] confirmFormContent - Original supplierId', { supplierId, fields: fields.map(f => ({ name: f.name, value: f.value })) });
+        
         if (supplierId && typeof supplierId === 'string') {
           // Tra cứu id từ tên
           const supplier = await prisma.supplier.findFirst({ where: { name: supplierId } });
           if (supplier) {
             supplierId = supplier.id;
+            logger.info('[DEBUG] confirmFormContent - Found supplier', { supplierId, supplierName: supplier.name });
           } else {
+            logger.error('[DEBUG] confirmFormContent - Supplier not found', { supplierName: supplierId });
             return res.status(400).json({
               success: false,
               message: `Nhà cung cấp '${supplierId}' không tồn tại trong hệ thống. Vui lòng kiểm tra lại.`
             });
           }
         }
-        // Kiểm tra supplierId hợp lệ
+        
+        // Convert to number if it's a string number
+        if (typeof supplierId === 'string' && !isNaN(Number(supplierId))) {
+          supplierId = Number(supplierId);
+        }
+        
+        // If still no valid supplierId, try to use a default or create one
         if (!supplierId || isNaN(Number(supplierId))) {
-          return res.status(400).json({
-            success: false,
-            message: 'Thiếu hoặc sai định dạng ID nhà cung cấp'
-          });
+          logger.warn('[DEBUG] confirmFormContent - No valid supplierId, using default');
+          // Try to get any supplier or create default
+          const defaultSupplier = await prisma.supplier.findFirst({ where: { isActive: true } });
+          if (defaultSupplier) {
+            supplierId = defaultSupplier.id;
+            logger.info('[DEBUG] confirmFormContent - Using default supplier', { supplierId: defaultSupplier.id, name: defaultSupplier.name });
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: 'Không tìm thấy nhà cung cấp hợp lệ trong hệ thống'
+            });
+          }
         }
         const importData: any = {
           date: fields.find(f => f.name === 'date')?.value || new Date(),
@@ -305,7 +343,18 @@ class OcrFormController {
             notes: item.notes || ''
           }))
         };
-        createdRecord = await importService.createImport(importData);
+        
+        logger.info('[DEBUG] confirmFormContent - Calling importService.createImport', { importData });
+        try {
+          createdRecord = await importService.createImport(importData);
+          logger.info('[DEBUG] confirmFormContent - Import created successfully', { createdRecord });
+        } catch (importError: any) {
+          logger.error('[DEBUG] confirmFormContent - Error creating import', { error: importError, importData });
+          return res.status(500).json({
+            success: false,
+            message: `Lỗi khi tạo phiếu nhập: ${importError.message || 'Unknown error'}`
+          });
+        }
       }
       
       else if (draft.type === 'EXPORT') {
@@ -434,16 +483,34 @@ class OcrFormController {
         }
       }
 
+      logger.info('[DEBUG] confirmFormContent - Success', { 
+        formId, 
+        userId, 
+        type: draft.type, 
+        createdRecordId: createdRecord?.id 
+      });
+      
       return res.json({
         success: true,
         message: 'Đã xác nhận và lưu vào dữ liệu thực tế',
         data: createdRecord
       });
     } catch (error: any) {
-      console.error('Error confirming form content:', error);
+      logger.error('[DEBUG] confirmFormContent - Error', { 
+        error: error.message, 
+        stack: error.stack,
+        formId: req.body?.formId,
+        userId: req.user?.id,
+        body: req.body
+      });
+      
       return res.status(500).json({
         success: false,
-        message: error.message || 'Lỗi khi xác nhận form'
+        message: error.message || 'Lỗi khi xác nhận form',
+        debug: process.env.NODE_ENV === 'development' ? {
+          error: error.message,
+          stack: error.stack
+        } : undefined
       });
     }
   }

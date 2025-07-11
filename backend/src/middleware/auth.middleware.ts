@@ -58,10 +58,10 @@ export const authMiddleware = async (
 
       // 4. Gắn thông tin user vào request
       req.user = {
-        id: user.id ? user.id.toString() : '',
+        id: user.id, // Keep as number for consistency
         username: user.username ? user.username.toString() : '',
         role: user.role ? user.role.toString() : '',
-        permissions: Array.isArray(user.permissions) ? user.permissions : []
+        permissions: Array.isArray(user.permissions) ? user.permissions as string[] : []
       };
 
       next();

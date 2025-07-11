@@ -6,6 +6,10 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 
+// Services
+import autoMigrationService from './services/auto-migration.service';
+import logger from './services/logger.service';
+
 // Import routes
 import authRoutes from './routes/auth';
 import inventoryRoutes from './routes/inventory';
@@ -25,6 +29,45 @@ dotenv.config();
 const app = express();
 app.set('trust proxy', 1); // Tin tưởng proxy để xác định đúng IP client
 const prisma = new PrismaClient();
+
+// Auto-migration initialization
+let migrationPromise: Promise<any> | null = null;
+
+async function initializeAutoMigration(): Promise<void> {
+  if (!autoMigrationService.isEnabled()) {
+    logger.info('[AUTO-MIGRATION] Auto-migration is disabled');
+    return;
+  }
+
+  try {
+    const hasChanged = await autoMigrationService.checkDatabaseChange();
+    if (hasChanged) {
+      logger.info('[AUTO-MIGRATION] Database change detected, starting migration...');
+      const result = await autoMigrationService.autoMigrate();
+      
+      if (result.success) {
+        logger.info('[AUTO-MIGRATION] Migration completed successfully', { 
+          message: result.message,
+          details: result.details 
+        });
+      } else {
+        logger.error('[AUTO-MIGRATION] Migration failed', { 
+          message: result.message,
+          details: result.details 
+        });
+      }
+    } else {
+      logger.info('[AUTO-MIGRATION] No database changes detected');
+    }
+  } catch (error) {
+    logger.error('[AUTO-MIGRATION] Migration initialization failed', { error });
+  }
+}
+
+// Start migration check (non-blocking)
+if (process.env.AUTO_MIGRATION_ENABLED === 'true') {
+  migrationPromise = initializeAutoMigration();
+}
 
 // Request logging middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -76,13 +119,20 @@ app.get('/api/health', async (req: Request, res: Response) => {
     const redisService = (await import('./services/redis.service')).default.getInstance();
     const redisStatus = redisService.isAvailable();
     
+    // Kiểm tra migration status
+    let migrationStatus = 'disabled';
+    if (autoMigrationService.isEnabled()) {
+      migrationStatus = migrationPromise ? 'in_progress' : 'ready';
+    }
+    
     res.json({
       status: 'OK',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
       services: {
         database: dbStatus ? 'connected' : 'disconnected',
-        redis: redisStatus ? 'connected' : 'not configured'
+        redis: redisStatus ? 'connected' : 'not configured',
+        autoMigration: migrationStatus
       }
     });
   } catch (error) {
@@ -90,6 +140,78 @@ app.get('/api/health', async (req: Request, res: Response) => {
       status: 'ERROR',
       timestamp: new Date().toISOString(),
       error: 'Service unavailable'
+    });
+  }
+});
+
+// Auto-migration status endpoint
+app.get('/api/migration/status', async (req: Request, res: Response) => {
+  try {
+    const isEnabled = autoMigrationService.isEnabled();
+    const hasChanged = isEnabled ? await autoMigrationService.checkDatabaseChange() : false;
+    
+    res.json({
+      enabled: isEnabled,
+      hasChanges: hasChanged,
+      inProgress: migrationPromise !== null,
+      currentUrl: process.env.DATABASE_URL ? 'configured' : 'not configured'
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to check migration status',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Manual migration trigger endpoint
+app.post('/api/migration/trigger', async (req: Request, res: Response) => {
+  try {
+    if (!autoMigrationService.isEnabled()) {
+      return res.status(400).json({
+        error: 'Auto-migration is disabled',
+        message: 'Set AUTO_MIGRATION_ENABLED=true to enable'
+      });
+    }
+
+    if (migrationPromise) {
+      return res.status(409).json({
+        error: 'Migration already in progress',
+        message: 'Please wait for current migration to complete'
+      });
+    }
+
+    // Start migration
+    migrationPromise = (async () => {
+      try {
+        const result = await autoMigrationService.autoMigrate();
+        logger.info('[MANUAL-MIGRATION] Migration completed', { result });
+        return result;
+      } finally {
+        migrationPromise = null;
+      }
+    })();
+
+    const result = await migrationPromise;
+    
+    if (result && result.success) {
+      res.json({
+        success: true,
+        message: result.message,
+        details: result.details
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result?.message || 'Migration failed',
+        details: result?.details
+      });
+    }
+  } catch (error) {
+    migrationPromise = null;
+    res.status(500).json({
+      error: 'Migration failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

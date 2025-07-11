@@ -7,7 +7,13 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "test": "jest"
+    "test": "jest",
+    "seed": "prisma db seed",
+    "migration:enable": "./auto-migration.sh enable",
+    "migration:disable": "./auto-migration.sh disable",
+    "migration:status": "./auto-migration.sh status",
+    "migration:trigger": "./auto-migration.sh trigger",
+    "migration:backup": "./auto-migration.sh backup"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

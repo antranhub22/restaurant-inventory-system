@@ -46,7 +46,10 @@ interface ImportRecord {
 }
 
 const suppliers = [
-  { value: '', label: 'Chọn nhà cung cấp...' }
+  { value: '', label: 'Chọn nhà cung cấp...' },
+  { value: 'supplier_a', label: 'Nhà cung cấp A' },
+  { value: 'supplier_b', label: 'Nhà cung cấp B' },
+  { value: 'supplier_c', label: 'Nhà cung cấp C' }
 ];
 
 const ImportManagement: React.FC = () => {
@@ -61,7 +64,7 @@ const ImportManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [importForm, setImportForm] = useState<ImportForm>({
     date: new Date().toISOString().split('T')[0],
-    supplier: '',
+    supplier: 'supplier_a',
     invoiceNumber: '',
     purchaseOrder: '',
     items: [],
@@ -154,7 +157,7 @@ const ImportManagement: React.FC = () => {
     setShowCreateModal(false);
     setImportForm({
       date: new Date().toISOString().split('T')[0],
-      supplier: '',
+      supplier: 'supplier_a',
       invoiceNumber: '',
       purchaseOrder: '',
       items: [],
@@ -518,22 +521,42 @@ const ImportManagement: React.FC = () => {
         >
           <div className="space-y-4">
             <div className="max-h-96 overflow-y-auto">
-              {items.map(item => (
-                <div
-                  key={item.id}
-                  className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                    selectedItem?.id === item.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => setSelectedItem(item)}
-                >
-                  <div className="font-medium">{item.name}</div>
-                  <div className="text-sm text-gray-600">
-                    Mã: {item.id} | ĐVT: {getUnitName(item.unit_id)}
+              {items.length > 0 ? (
+                items.map(item => (
+                  <div
+                    key={item.id}
+                    className={`p-3 border rounded-md cursor-pointer transition-colors ${
+                      selectedItem?.id === item.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedItem(item)}
+                  >
+                    <div className="font-medium">{item.name}</div>
+                    <div className="text-sm text-gray-600">
+                      Mã: {item.id} | ĐVT: {getUnitName(item.unit_id)}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-6xl mb-4">📦</div>
+                  <div className="text-lg font-medium mb-2">Chưa có hàng hóa nào</div>
+                  <div className="text-sm text-gray-400 mb-4">
+                    Vui lòng thêm hàng hóa vào hệ thống trước khi tạo phiếu nhập kho
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setShowItemModal(false);
+                      // Navigate to items management page
+                      window.location.href = '/items';
+                    }}
+                  >
+                    Quản lý hàng hóa
+                  </Button>
                 </div>
-              ))}
+              )}
             </div>
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button

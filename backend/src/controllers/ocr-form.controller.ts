@@ -320,6 +320,7 @@ class OcrFormController {
         
         logger.info('[DEBUG] confirmFormContent - Original supplierId', { supplierId, fields: fields.map(f => ({ name: f.name, value: f.value })) });
         
+        // PRE-PROCESS: Auto-create supplier trước khi tạo import
         if (supplierId && typeof supplierId === 'string') {
           // Tra cứu supplier từ tên
           let supplier = await prisma.supplier.findFirst({ where: { name: supplierId } });
@@ -371,7 +372,8 @@ class OcrFormController {
             message: 'Không thể xác định nhà cung cấp từ dữ liệu OCR'
           });
         }
-        // Process items - auto-create if not exist
+
+        // PRE-PROCESS: Process items - auto-create if not exist BEFORE main transaction
         const processedItems = [];
         for (const item of items) {
           let itemId = item.itemId;
@@ -464,6 +466,15 @@ class OcrFormController {
           }
         }
 
+        // Kiểm tra có items hợp lệ không
+        if (processedItems.length === 0) {
+          logger.error('[DEBUG] confirmFormContent - No valid items to import');
+          return res.status(400).json({
+            success: false,
+            message: 'Không có sản phẩm hợp lệ để nhập kho'
+          });
+        }
+        
         const dateValue = fields.find(f => f.name === 'date')?.value;
         const totalValue = fields.find(f => f.name === 'total')?.value;
         
@@ -478,15 +489,6 @@ class OcrFormController {
           attachments: draft.originalImage ? [draft.originalImage] : [],
           items: processedItems
         };
-        
-        // Kiểm tra có items hợp lệ không
-        if (processedItems.length === 0) {
-          logger.error('[DEBUG] confirmFormContent - No valid items to import');
-          return res.status(400).json({
-            success: false,
-            message: 'Không có sản phẩm hợp lệ để nhập kho'
-          });
-        }
         
         logger.info('[DEBUG] confirmFormContent - Calling importService.createImport', { 
           supplierId: importData.supplierId,

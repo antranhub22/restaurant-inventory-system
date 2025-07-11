@@ -100,7 +100,7 @@ class ImportService {
       throw new Error(`Lỗi validation: ${errorMessages}`);
     }
 
-    // Bắt đầu transaction
+    // Bắt đầu transaction với timeout tăng lên 
     return await this.prisma.$transaction(async (tx) => {
       // 1. Tạo phiếu nhập
       const importRecord = await tx.import.create({
@@ -202,6 +202,9 @@ class ImportService {
         ...importRecord,
         items: importItems
       };
+    }, {
+      maxWait: 10000, // Tăng maxWait lên 10 giây
+      timeout: 30000, // Tăng timeout lên 30 giây
     });
   }
 

@@ -17,6 +17,7 @@ async function main() {
 
   console.log('🌱 Database initialized with basic structure!');
   console.log('📊 Created categories for Vietnamese restaurant inventory');
+  console.log('🚀 Auto-creation enabled for suppliers and departments from OCR');
   console.log('✅ Ready for production data entry');
 }
 

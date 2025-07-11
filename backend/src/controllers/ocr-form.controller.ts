@@ -205,15 +205,8 @@ class OcrFormController {
    */
   public async confirmFormContent(req: Request, res: Response) {
     try {
-      console.log('=== OCR CONFIRM DEBUG START ===');
-      console.log('Request body:', JSON.stringify(req.body, null, 2));
-      console.log('Request headers:', req.headers);
-      console.log('User object:', req.user);
-      console.log('=== OCR CONFIRM DEBUG END ===');
-      
       logger.info('[DEBUG] confirmFormContent - Start', { 
-        body: req.body, 
-        user: req.user,
+        formId: req.body?.formId,
         hasUser: !!req.user,
         userId: req.user?.id 
       });
@@ -223,8 +216,16 @@ class OcrFormController {
 
       const { formId, corrections } = req.body;
       
-      // Get userId directly from authenticated user (or use default for testing)
-      const userId = req.user?.id || 1; // Default to user ID 1 for testing
+      // Get userId directly from authenticated user
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        logger.error('[DEBUG] confirmFormContent - Missing userId');
+        return res.status(401).json({
+          success: false,
+          message: 'Yêu cầu đăng nhập để thực hiện chức năng này'
+        });
+      }
       
       logger.info('[DEBUG] confirmFormContent - Parsed data', { 
         formId, 
@@ -297,17 +298,40 @@ class OcrFormController {
         logger.info('[DEBUG] confirmFormContent - Original supplierId', { supplierId, fields: fields.map(f => ({ name: f.name, value: f.value })) });
         
         if (supplierId && typeof supplierId === 'string') {
-          // Tra cứu id từ tên
-          const supplier = await prisma.supplier.findFirst({ where: { name: supplierId } });
+          // Tra cứu supplier từ tên
+          let supplier = await prisma.supplier.findFirst({ where: { name: supplierId } });
+          
           if (supplier) {
             supplierId = supplier.id;
-            logger.info('[DEBUG] confirmFormContent - Found supplier', { supplierId, supplierName: supplier.name });
+            logger.info('[DEBUG] confirmFormContent - Found existing supplier', { supplierId, supplierName: supplier.name });
           } else {
-            logger.error('[DEBUG] confirmFormContent - Supplier not found', { supplierName: supplierId });
-            return res.status(400).json({
-              success: false,
-              message: `Nhà cung cấp '${supplierId}' không tồn tại trong hệ thống. Vui lòng kiểm tra lại.`
-            });
+            // Tự động tạo supplier mới nếu chưa tồn tại
+            logger.info('[DEBUG] confirmFormContent - Creating new supplier', { supplierName: supplierId });
+            try {
+              supplier = await prisma.supplier.create({
+                data: {
+                  name: supplierId,
+                  contactPerson: 'Chưa cập nhật',
+                  phone: '',
+                  address: 'Chưa cập nhật',
+                  isActive: true
+                }
+              });
+              supplierId = supplier.id;
+              logger.info('[DEBUG] confirmFormContent - Created new supplier successfully', { 
+                supplierId: supplier.id, 
+                supplierName: supplier.name 
+              });
+            } catch (createError) {
+              logger.error('[DEBUG] confirmFormContent - Failed to create supplier', { 
+                error: createError, 
+                supplierName: supplierId 
+              });
+              return res.status(500).json({
+                success: false,
+                message: `Lỗi khi tạo nhà cung cấp mới: ${supplierId}`
+              });
+            }
           }
         }
         
@@ -316,20 +340,13 @@ class OcrFormController {
           supplierId = Number(supplierId);
         }
         
-        // If still no valid supplierId, try to use a default or create one
+        // If still no valid supplierId, return error
         if (!supplierId || isNaN(Number(supplierId))) {
-          logger.warn('[DEBUG] confirmFormContent - No valid supplierId, using default');
-          // Try to get any supplier or create default
-          const defaultSupplier = await prisma.supplier.findFirst({ where: { isActive: true } });
-          if (defaultSupplier) {
-            supplierId = defaultSupplier.id;
-            logger.info('[DEBUG] confirmFormContent - Using default supplier', { supplierId: defaultSupplier.id, name: defaultSupplier.name });
-          } else {
-            return res.status(400).json({
-              success: false,
-              message: 'Không tìm thấy nhà cung cấp hợp lệ trong hệ thống'
-            });
-          }
+          logger.error('[DEBUG] confirmFormContent - No valid supplierId after processing');
+          return res.status(400).json({
+            success: false,
+            message: 'Không thể xác định nhà cung cấp từ dữ liệu OCR'
+          });
         }
         const importData: any = {
           date: fields.find(f => f.name === 'date')?.value || new Date(),
@@ -364,17 +381,51 @@ class OcrFormController {
       }
       
       else if (draft.type === 'EXPORT') {
+        logger.info('[DEBUG] confirmFormContent - Processing EXPORT type');
+        
         // Mapping fields/items sang ExportData
         let departmentId = fields.find(f => f.name === 'department')?.value || null;
         if (departmentId && typeof departmentId === 'string') {
-          const department = await prisma.department.findFirst({ where: { name: departmentId } });
+          // Tra cứu department từ tên
+          let department = await prisma.department.findFirst({ where: { name: departmentId } });
+          
           if (department) {
             departmentId = department.id;
+            logger.info('[DEBUG] confirmFormContent - Found existing department', { departmentId, departmentName: department.name });
           } else {
-            return res.status(400).json({
-              success: false,
-              message: `Phòng ban '${departmentId}' không tồn tại trong hệ thống. Vui lòng kiểm tra lại.`
-            });
+            // Tự động tạo department mới nếu chưa tồn tại
+            logger.info('[DEBUG] confirmFormContent - Creating new department', { departmentName: departmentId });
+            try {
+              // Generate unique code for department
+              let deptCode = departmentId.replace(/\s+/g, '_').toUpperCase();
+              const existingCode = await prisma.department.findFirst({ where: { code: deptCode } });
+              if (existingCode) {
+                deptCode = `${deptCode}_${Date.now()}`;
+              }
+              
+              department = await prisma.department.create({
+                data: {
+                  name: departmentId,
+                  code: deptCode,
+                  description: 'Tự động tạo từ OCR',
+                  isActive: true
+                }
+              });
+              departmentId = department.id;
+              logger.info('[DEBUG] confirmFormContent - Created new department successfully', { 
+                departmentId: department.id, 
+                departmentName: department.name 
+              });
+            } catch (createError) {
+              logger.error('[DEBUG] confirmFormContent - Failed to create department', { 
+                error: createError, 
+                departmentName: departmentId 
+              });
+              return res.status(500).json({
+                success: false,
+                message: `Lỗi khi tạo phòng ban mới: ${departmentId}`
+              });
+            }
           }
         }
         const exportData: any = {
@@ -395,17 +446,51 @@ class OcrFormController {
       }
       
       else if (draft.type === 'RETURN') {
+        logger.info('[DEBUG] confirmFormContent - Processing RETURN type');
+        
         // Mapping fields/items sang ReturnData
         let departmentId = fields.find(f => f.name === 'department')?.value || null;
         if (departmentId && typeof departmentId === 'string') {
-          const department = await prisma.department.findFirst({ where: { name: departmentId } });
+          // Tra cứu department từ tên
+          let department = await prisma.department.findFirst({ where: { name: departmentId } });
+          
           if (department) {
             departmentId = department.id;
+            logger.info('[DEBUG] confirmFormContent - Found existing department', { departmentId, departmentName: department.name });
           } else {
-            return res.status(400).json({
-              success: false,
-              message: `Phòng ban '${departmentId}' không tồn tại trong hệ thống. Vui lòng kiểm tra lại.`
-            });
+            // Tự động tạo department mới nếu chưa tồn tại
+            logger.info('[DEBUG] confirmFormContent - Creating new department', { departmentName: departmentId });
+            try {
+              // Generate unique code for department
+              let deptCode = departmentId.replace(/\s+/g, '_').toUpperCase();
+              const existingCode = await prisma.department.findFirst({ where: { code: deptCode } });
+              if (existingCode) {
+                deptCode = `${deptCode}_${Date.now()}`;
+              }
+              
+              department = await prisma.department.create({
+                data: {
+                  name: departmentId,
+                  code: deptCode,
+                  description: 'Tự động tạo từ OCR',
+                  isActive: true
+                }
+              });
+              departmentId = department.id;
+              logger.info('[DEBUG] confirmFormContent - Created new department successfully', { 
+                departmentId: department.id, 
+                departmentName: department.name 
+              });
+            } catch (createError) {
+              logger.error('[DEBUG] confirmFormContent - Failed to create department', { 
+                error: createError, 
+                departmentName: departmentId 
+              });
+              return res.status(500).json({
+                success: false,
+                message: `Lỗi khi tạo phòng ban mới: ${departmentId}`
+              });
+            }
           }
         }
         const returnData: any = {
@@ -428,17 +513,51 @@ class OcrFormController {
       }
       
       else if (draft.type === 'ADJUSTMENT') {
+        logger.info('[DEBUG] confirmFormContent - Processing ADJUSTMENT type');
+        
         // Mapping fields/items sang WasteData (vì ADJUSTMENT thường là hao hụt/điều chỉnh)
         let departmentId = fields.find(f => f.name === 'department')?.value || null;
         if (departmentId && typeof departmentId === 'string') {
-          const department = await prisma.department.findFirst({ where: { name: departmentId } });
+          // Tra cứu department từ tên
+          let department = await prisma.department.findFirst({ where: { name: departmentId } });
+          
           if (department) {
             departmentId = department.id;
+            logger.info('[DEBUG] confirmFormContent - Found existing department', { departmentId, departmentName: department.name });
           } else {
-            return res.status(400).json({
-              success: false,
-              message: `Phòng ban '${departmentId}' không tồn tại trong hệ thống. Vui lòng kiểm tra lại.`
-            });
+            // Tự động tạo department mới nếu chưa tồn tại
+            logger.info('[DEBUG] confirmFormContent - Creating new department', { departmentName: departmentId });
+            try {
+              // Generate unique code for department
+              let deptCode = departmentId.replace(/\s+/g, '_').toUpperCase();
+              const existingCode = await prisma.department.findFirst({ where: { code: deptCode } });
+              if (existingCode) {
+                deptCode = `${deptCode}_${Date.now()}`;
+              }
+              
+              department = await prisma.department.create({
+                data: {
+                  name: departmentId,
+                  code: deptCode,
+                  description: 'Tự động tạo từ OCR',
+                  isActive: true
+                }
+              });
+              departmentId = department.id;
+              logger.info('[DEBUG] confirmFormContent - Created new department successfully', { 
+                departmentId: department.id, 
+                departmentName: department.name 
+              });
+            } catch (createError) {
+              logger.error('[DEBUG] confirmFormContent - Failed to create department', { 
+                error: createError, 
+                departmentName: departmentId 
+              });
+              return res.status(500).json({
+                success: false,
+                message: `Lỗi khi tạo phòng ban mới: ${departmentId}`
+              });
+            }
           }
         }
         const wasteData: any = {
@@ -498,35 +617,19 @@ class OcrFormController {
       
       return res.json({
         success: true,
-        message: 'Đã xác nhận và lưu vào dữ liệu thực tế',
+        message: 'Đã xác nhận và lưu vào dữ liệu thực tế. Các thông tin mới sẽ được tự động tạo trong hệ thống.',
         data: createdRecord
       });
     } catch (error: any) {
-      console.log('=== OCR CONFIRM ERROR DEBUG ===');
-      console.log('Error:', error);
-      console.log('Error message:', error.message);
-      console.log('Error stack:', error.stack);
-      console.log('Request body:', req.body);
-      console.log('User:', req.user);
-      console.log('=== OCR CONFIRM ERROR DEBUG END ===');
-      
       logger.error('[DEBUG] confirmFormContent - Error', { 
         error: error.message, 
-        stack: error.stack,
         formId: req.body?.formId,
-        userId: req.user?.id,
-        body: req.body
+        userId: req.user?.id
       });
       
       return res.status(500).json({
         success: false,
-        message: error.message || 'Lỗi khi xác nhận form',
-        debug: {
-          error: error.message,
-          stack: error.stack,
-          body: req.body,
-          user: req.user
-        }
+        message: error.message || 'Lỗi khi xác nhận form'
       });
     }
   }

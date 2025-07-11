@@ -79,7 +79,8 @@ class ExportService {
     // Validate dữ liệu
     const errors = await this.validateExport(data);
     if (errors.length > 0) {
-      throw new Error(JSON.stringify(errors));
+      const errorMessages = errors.map(err => `${err.field}: ${err.message}`).join('; ');
+      throw new Error(`Lỗi validation: ${errorMessages}`);
     }
 
     // Bắt đầu transaction

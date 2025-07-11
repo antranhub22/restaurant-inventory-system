@@ -96,7 +96,8 @@ class WasteService {
     // Validate dữ liệu
     const errors = await this.validateWaste(data);
     if (errors.length > 0) {
-      throw new Error(JSON.stringify(errors));
+      const errorMessages = errors.map(err => `${err.field}: ${err.message}`).join('; ');
+      throw new Error(`Lỗi validation: ${errorMessages}`);
     }
 
     // Bắt đầu transaction

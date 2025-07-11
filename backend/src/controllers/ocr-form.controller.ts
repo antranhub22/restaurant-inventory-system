@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { FormType } from '../types/form-template';
 import { ImportStatus } from '../types/import';
+import { ExportPurpose, ExportStatus } from '../types/export';
+import { ReturnReason, ReturnStatus, ItemCondition } from '../types/return';
+import { WasteType, WasteStatus } from '../types/waste';
 import ocrService from '../services/ocr.service';
 import formContentMatcherService from '../services/form-content-matcher.service';
 import aiFormMapperService from '../services/ai-form-mapper.service';
@@ -586,21 +589,71 @@ class OcrFormController {
             }
           }
         }
+
+        // Process items - validate itemId
+        const processedItems = [];
+        for (const item of items) {
+          let itemId = item.itemId;
+          
+          // Validate itemId
+          if (!itemId || isNaN(Number(itemId))) {
+            logger.warn('[DEBUG] confirmFormContent - Skipping export item with invalid itemId', { 
+              itemId, 
+              itemName: item.name 
+            });
+            continue;
+          }
+
+          processedItems.push({
+            itemId: Number(itemId),
+            quantity: Number(item.quantity) || 0,
+            notes: item.notes || ''
+          });
+        }
+
+        // Check if we have valid items
+        if (processedItems.length === 0) {
+          logger.error('[DEBUG] confirmFormContent - No valid items to export');
+          return res.status(400).json({
+            success: false,
+            message: 'Không có sản phẩm hợp lệ để xuất kho'
+          });
+        }
+
         const exportData: any = {
-          date: fields.find(f => f.name === 'date')?.value || new Date(),
-          purpose: fields.find(f => f.name === 'purpose')?.value || 'GENERAL',
-          departmentId,
+          date: fields.find(f => f.name === 'date')?.value ? new Date(fields.find(f => f.name === 'date')?.value) : new Date(),
+          purpose: ExportPurpose.PRODUCTION, // Default to production, could be mapped from OCR
+          departmentId: Number(departmentId),
           processedById: userId,
           notes: fields.find(f => f.name === 'notes')?.value || '',
-          status: 'pending',
+          status: ExportStatus.PENDING,
           attachments: draft.originalImage ? [draft.originalImage] : [],
-          items: items.map((item: any) => ({
-            itemId: item.itemId || null,
-            quantity: item.quantity || 0,
-            notes: item.notes || ''
-          }))
+          items: processedItems
         };
-        createdRecord = await exportService.createExport(exportData);
+        
+        logger.info('[DEBUG] confirmFormContent - Calling exportService.createExport', { 
+          departmentId: exportData.departmentId,
+          itemsCount: exportData.items.length,
+          purpose: exportData.purpose
+        });
+        
+        try {
+          createdRecord = await exportService.createExport(exportData);
+          logger.info('[DEBUG] confirmFormContent - Export created successfully', { 
+            exportId: createdRecord.id,
+            itemsCount: createdRecord.items?.length
+          });
+        } catch (exportError: any) {
+          logger.error('[DEBUG] confirmFormContent - Error creating export', { 
+            error: exportError.message,
+            departmentId: exportData.departmentId,
+            itemsCount: exportData.items.length
+          });
+          return res.status(500).json({
+            success: false,
+            message: `Lỗi khi tạo phiếu xuất: ${exportError.message || 'Unknown error'}`
+          });
+        }
       }
       
       else if (draft.type === 'RETURN') {
@@ -651,23 +704,73 @@ class OcrFormController {
             }
           }
         }
+
+        // Process items - validate itemId
+        const processedItems = [];
+        for (const item of items) {
+          let itemId = item.itemId;
+          
+          // Validate itemId
+          if (!itemId || isNaN(Number(itemId))) {
+            logger.warn('[DEBUG] confirmFormContent - Skipping return item with invalid itemId', { 
+              itemId, 
+              itemName: item.name 
+            });
+            continue;
+          }
+
+          processedItems.push({
+            itemId: Number(itemId),
+            quantity: Number(item.quantity) || 0,
+            condition: ItemCondition.GOOD, // Default to good condition
+            originalExportId: item.originalExportId ? Number(item.originalExportId) : null,
+            notes: item.notes || ''
+          });
+        }
+
+        // Check if we have valid items
+        if (processedItems.length === 0) {
+          logger.error('[DEBUG] confirmFormContent - No valid items to return');
+          return res.status(400).json({
+            success: false,
+            message: 'Không có sản phẩm hợp lệ để hoàn trả'
+          });
+        }
+
         const returnData: any = {
-          date: fields.find(f => f.name === 'date')?.value || new Date(),
-          reason: fields.find(f => f.name === 'reason')?.value || 'OTHER',
-          departmentId,
+          date: fields.find(f => f.name === 'date')?.value ? new Date(fields.find(f => f.name === 'date')?.value) : new Date(),
+          reason: ReturnReason.OTHER,
+          departmentId: Number(departmentId),
           processedById: userId,
           notes: fields.find(f => f.name === 'notes')?.value || '',
-          status: 'pending',
+          status: ReturnStatus.PENDING,
           attachments: draft.originalImage ? [draft.originalImage] : [],
-          items: items.map((item: any) => ({
-            itemId: item.itemId || null,
-            quantity: item.quantity || 0,
-            condition: item.condition || 'GOOD',
-            originalExportId: item.originalExportId || null,
-            notes: item.notes || ''
-          }))
+          items: processedItems
         };
-        createdRecord = await returnService.createReturn(returnData);
+        
+        logger.info('[DEBUG] confirmFormContent - Calling returnService.createReturn', { 
+          departmentId: returnData.departmentId,
+          itemsCount: returnData.items.length,
+          reason: returnData.reason
+        });
+        
+        try {
+          createdRecord = await returnService.createReturn(returnData);
+          logger.info('[DEBUG] confirmFormContent - Return created successfully', { 
+            returnId: createdRecord.id,
+            itemsCount: createdRecord.items?.length
+          });
+        } catch (returnError: any) {
+          logger.error('[DEBUG] confirmFormContent - Error creating return', { 
+            error: returnError.message,
+            departmentId: returnData.departmentId,
+            itemsCount: returnData.items.length
+          });
+          return res.status(500).json({
+            success: false,
+            message: `Lỗi khi tạo phiếu hoàn trả: ${returnError.message || 'Unknown error'}`
+          });
+        }
       }
       
       else if (draft.type === 'ADJUSTMENT') {
@@ -718,24 +821,75 @@ class OcrFormController {
             }
           }
         }
-        const wasteData: any = {
-          date: fields.find(f => f.name === 'date')?.value || new Date(),
-          wasteType: fields.find(f => f.name === 'reason')?.value || 'OTHER',
-          departmentId,
-          description: fields.find(f => f.name === 'notes')?.value || 'Điều chỉnh từ OCR',
-          processedById: userId,
-          notes: fields.find(f => f.name === 'notes')?.value || '',
-          status: 'pending',
-          evidencePhotos: draft.originalImage ? [draft.originalImage] : [],
-          items: items.map((item: any) => ({
-            itemId: item.itemId || null,
-            quantity: item.quantity || 0,
-            estimatedValue: item.estimatedValue || 0,
+
+        // Process items - validate itemId
+        const processedItems = [];
+        for (const item of items) {
+          let itemId = item.itemId;
+          
+          // Validate itemId
+          if (!itemId || isNaN(Number(itemId))) {
+            logger.warn('[DEBUG] confirmFormContent - Skipping waste item with invalid itemId', { 
+              itemId, 
+              itemName: item.name 
+            });
+            continue;
+          }
+
+          processedItems.push({
+            itemId: Number(itemId),
+            quantity: Number(item.quantity) || 0,
+            estimatedValue: Number(item.estimatedValue) || 0,
             reason: item.reason || 'Điều chỉnh từ OCR',
             notes: item.notes || ''
-          }))
+          });
+        }
+
+        // Check if we have valid items
+        if (processedItems.length === 0) {
+          logger.error('[DEBUG] confirmFormContent - No valid items for waste/adjustment');
+          return res.status(400).json({
+            success: false,
+            message: 'Không có sản phẩm hợp lệ để báo cáo hao hụt'
+          });
+        }
+
+        const wasteData: any = {
+          date: fields.find(f => f.name === 'date')?.value ? new Date(fields.find(f => f.name === 'date')?.value) : new Date(),
+          wasteType: WasteType.OTHER,
+          departmentId: Number(departmentId),
+          description: fields.find(f => f.name === 'notes')?.value || 'Điều chỉnh từ OCR',
+          processedById: userId,
+          witnesses: [],
+          evidencePhotos: draft.originalImage ? [draft.originalImage] : [],
+          notes: fields.find(f => f.name === 'notes')?.value || '',
+          status: WasteStatus.PENDING,
+          items: processedItems
         };
-        createdRecord = await wasteService.createWaste(wasteData);
+        
+        logger.info('[DEBUG] confirmFormContent - Calling wasteService.createWaste', { 
+          departmentId: wasteData.departmentId,
+          itemsCount: wasteData.items.length,
+          wasteType: wasteData.wasteType
+        });
+        
+        try {
+          createdRecord = await wasteService.createWaste(wasteData);
+          logger.info('[DEBUG] confirmFormContent - Waste created successfully', { 
+            wasteId: createdRecord.id,
+            itemsCount: createdRecord.items?.length
+          });
+        } catch (wasteError: any) {
+          logger.error('[DEBUG] confirmFormContent - Error creating waste', { 
+            error: wasteError.message,
+            departmentId: wasteData.departmentId,
+            itemsCount: wasteData.items.length
+          });
+          return res.status(500).json({
+            success: false,
+            message: `Lỗi khi tạo báo cáo hao hụt: ${wasteError.message || 'Unknown error'}`
+          });
+        }
       }
 
       // TODO: Thêm mapping cho WASTE, ADJUSTMENT...

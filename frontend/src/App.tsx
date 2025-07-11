@@ -12,8 +12,14 @@ import CameraCapture from './pages/CameraCapture';
 import OCRFormDemo from './pages/OCRFormDemo';
 import ExportManagement from './pages/ExportManagement';
 import ReturnManagement from './pages/ReturnManagement';
+import ImportManagement from './pages/ImportManagement';
+import WasteManagement from './pages/WasteManagement';
+import InventoryCheck from './pages/InventoryCheck';
 import VarianceReport from './pages/VarianceReport';
 import ApprovalDashboard from './pages/ApprovalDashboard';
+import ReportsOverview from './pages/ReportsOverview';
+import ManualEntryOverview from './pages/ManualEntryOverview';
+import OCROverview from './pages/OCROverview';
 import Login from './components/Login';
 import { useAuthStore } from './store';
 
@@ -75,17 +81,61 @@ function App() {
             </ProtectedRoute>
           } />
           
-          <Route path="/export" element={
+          {/* Group Overview Routes */}
+          <Route path="/reports-overview" element={
+            <ProtectedRoute>
+              <ReportsOverview />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/manual-overview" element={
+            <ProtectedRoute>
+              <ManualEntryOverview />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/ocr-overview" element={
+            <ProtectedRoute>
+              <OCROverview />
+            </ProtectedRoute>
+          } />
+          
+          {/* Manual Data Entry Routes */}
+          <Route path="/manual/import" element={
+            <ProtectedRoute>
+              <ImportManagement />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/manual/export" element={
             <ProtectedRoute>
               <ExportManagement />
             </ProtectedRoute>
           } />
           
-          <Route path="/return" element={
+          <Route path="/manual/return" element={
             <ProtectedRoute>
               <ReturnManagement />
             </ProtectedRoute>
           } />
+          
+          <Route path="/manual/waste" element={
+            <ProtectedRoute>
+              <WasteManagement />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/manual/inventory-check" element={
+            <ProtectedRoute>
+              <InventoryCheck />
+            </ProtectedRoute>
+          } />
+          
+          {/* Legacy routes for backward compatibility */}
+          <Route path="/export" element={<Navigate to="/manual/export" replace />} />
+          <Route path="/exports" element={<Navigate to="/manual/export" replace />} />
+          <Route path="/return" element={<Navigate to="/manual/return" replace />} />
+          <Route path="/returns" element={<Navigate to="/manual/return" replace />} />
           
           <Route path="/reconciliation" element={
             <ProtectedRoute>

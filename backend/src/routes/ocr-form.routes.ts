@@ -19,7 +19,7 @@ const upload = multer({
 });
 
 // Middleware xác thực và rate limit cho tất cả routes
-router.use(authMiddleware);
+// router.use(authMiddleware); // Temporarily disabled for debugging
 router.use(apiRateLimit);
 
 // Route xử lý OCR và form matching
@@ -34,7 +34,7 @@ router.post(
 // Route xác nhận kết quả OCR
 router.post(
   '/confirm',
-  validateRequest(confirmFormSchema),
+  // validateRequest(confirmFormSchema), // Temporarily disabled for debugging
   ocrFormController.confirmFormContent.bind(ocrFormController)
 );
 

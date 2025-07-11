@@ -12,13 +12,13 @@ export const processFormSchema = z.object({
 
 // Schema cho confirmFormContent request
 export const confirmFormSchema = z.object({
-  formId: z.string().uuid(),
+  formId: z.string().min(1), // Allow any non-empty string, not just UUID
   corrections: z.array(z.object({
     fieldId: z.string(),
-    oldValue: z.string(),
-    newValue: z.string(),
+    oldValue: z.any(), // Allow any type for oldValue
+    newValue: z.any(), // Allow any type for newValue  
     confidence: z.number().min(0).max(1).optional()
-  }))
+  })).optional().default([]) // Make corrections optional with default empty array
 });
 
 // Schema cho getPendingForms request

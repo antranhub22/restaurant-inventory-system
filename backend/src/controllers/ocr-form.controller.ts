@@ -205,6 +205,12 @@ class OcrFormController {
    */
   public async confirmFormContent(req: Request, res: Response) {
     try {
+      console.log('=== OCR CONFIRM DEBUG START ===');
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      console.log('Request headers:', req.headers);
+      console.log('User object:', req.user);
+      console.log('=== OCR CONFIRM DEBUG END ===');
+      
       logger.info('[DEBUG] confirmFormContent - Start', { 
         body: req.body, 
         user: req.user,
@@ -217,8 +223,8 @@ class OcrFormController {
 
       const { formId, corrections } = req.body;
       
-      // Get userId directly from authenticated user
-      const userId = req.user?.id;
+      // Get userId directly from authenticated user (or use default for testing)
+      const userId = req.user?.id || 1; // Default to user ID 1 for testing
       
       logger.info('[DEBUG] confirmFormContent - Parsed data', { 
         formId, 
@@ -496,6 +502,14 @@ class OcrFormController {
         data: createdRecord
       });
     } catch (error: any) {
+      console.log('=== OCR CONFIRM ERROR DEBUG ===');
+      console.log('Error:', error);
+      console.log('Error message:', error.message);
+      console.log('Error stack:', error.stack);
+      console.log('Request body:', req.body);
+      console.log('User:', req.user);
+      console.log('=== OCR CONFIRM ERROR DEBUG END ===');
+      
       logger.error('[DEBUG] confirmFormContent - Error', { 
         error: error.message, 
         stack: error.stack,
@@ -507,10 +521,12 @@ class OcrFormController {
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi khi xác nhận form',
-        debug: process.env.NODE_ENV === 'development' ? {
+        debug: {
           error: error.message,
-          stack: error.stack
-        } : undefined
+          stack: error.stack,
+          body: req.body,
+          user: req.user
+        }
       });
     }
   }

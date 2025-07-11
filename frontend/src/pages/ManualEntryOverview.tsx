@@ -76,16 +76,9 @@ const ManualEntryOverview: React.FC = () => {
     user && form.roles.includes(user.role)
   );
 
-  const getTypeStats = (type: string) => {
-    // Mock data for demonstration
-    const stats = {
-      import: { count: 8, value: '15.2M VND' },
-      export: { count: 12, value: '8.7M VND' },
-      return: { count: 3, value: '1.2M VND' },
-      waste: { count: 5, value: '800K VND' },
-      check: { count: 2, variance: '3 mặt hàng' }
-    };
-    return stats[type as keyof typeof stats] || { count: 0 };
+  const getTypeStats = (_type: string): { count: number; value?: string; variance?: string } => {
+    // TODO: Get actual stats from API
+    return { count: 0 };
   };
 
   return (
@@ -103,23 +96,23 @@ const ManualEntryOverview: React.FC = () => {
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <Card className="text-center">
-            <div className="text-xl font-bold text-green-600">8</div>
+            <div className="text-xl font-bold text-green-600">0</div>
             <div className="text-xs text-gray-600">Phiếu nhập tháng này</div>
           </Card>
           <Card className="text-center">
-            <div className="text-xl font-bold text-blue-600">12</div>
+            <div className="text-xl font-bold text-blue-600">0</div>
             <div className="text-xs text-gray-600">Phiếu xuất tháng này</div>
           </Card>
           <Card className="text-center">
-            <div className="text-xl font-bold text-amber-600">3</div>
+            <div className="text-xl font-bold text-amber-600">0</div>
             <div className="text-xs text-gray-600">Phiếu hoàn tháng này</div>
           </Card>
           <Card className="text-center">
-            <div className="text-xl font-bold text-red-600">5</div>
+            <div className="text-xl font-bold text-red-600">0</div>
             <div className="text-xs text-gray-600">Phiếu hao phí tháng này</div>
           </Card>
           <Card className="text-center">
-            <div className="text-xl font-bold text-purple-600">2</div>
+            <div className="text-xl font-bold text-purple-600">0</div>
             <div className="text-xs text-gray-600">Lần kiểm kho tháng này</div>
           </Card>
         </div>

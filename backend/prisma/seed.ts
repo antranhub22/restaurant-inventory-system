@@ -3,99 +3,21 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Hash mật khẩu cho user owner
-  const ownerPassword = '1234';
-  const ownerPasswordHash = await bcrypt.hash(ownerPassword, 10);
-
-  // Hash mật khẩu mặc định cho các user khác
-  const defaultPassword = 'password123';
-  const defaultPasswordHash = await bcrypt.hash(defaultPassword, 10);
-
-  // Seed users
-  const users = await prisma.user.createMany({
-    data: [
-      {
-        username: 'owner',
-        email: 'owner@restaurant.com',
-        passwordHash: ownerPasswordHash,
-        fullName: 'Nguyễn Văn An',
-        role: 'owner',
-        isActive: true
-      },
-      {
-        username: 'manager',
-        email: 'manager@restaurant.com',
-        passwordHash: defaultPasswordHash,
-        fullName: 'Trần Thị Bình',
-        role: 'manager',
-        isActive: true
-      },
-      {
-        username: 'kitchen',
-        email: 'kitchen@restaurant.com',
-        passwordHash: defaultPasswordHash,
-        fullName: 'Lê Văn Cường',
-        role: 'supervisor',
-        isActive: true
-      },
-      {
-        username: 'staff1',
-        email: 'staff1@restaurant.com',
-        passwordHash: defaultPasswordHash,
-        fullName: 'Hoàng Văn Em',
-        role: 'staff',
-        isActive: true
-      }
-    ]
-  });
-
-  // Seed categories
+  // Create basic category structure for Vietnamese restaurants
   const categories = await prisma.category.createMany({
     data: [
       { name: 'Đồ uống', description: 'Nước giải khát, bia, rượu', colorCode: '#3498db' },
-      { name: 'Thịt tươi', description: 'Các loại thịt tươi sống', colorCode: '#e74c3c' },
-      { name: 'Rau củ', description: 'Rau củ quả các loại', colorCode: '#27ae60' },
-      { name: 'Gia vị', description: 'Gia vị, phụ liệu', colorCode: '#f1c40f' },
+      { name: 'Thịt tươi sống', description: 'Các loại thịt tươi sống', colorCode: '#e74c3c' },
+      { name: 'Hải sản', description: 'Cá, tôm, cua và các loại hải sản', colorCode: '#3498db' },
+      { name: 'Rau củ quả', description: 'Rau xanh, củ quả các loại', colorCode: '#27ae60' },
+      { name: 'Gia vị', description: 'Gia vị, nước mắm, tương ớt', colorCode: '#f1c40f' },
+      { name: 'Thực phẩm khô', description: 'Gạo, bún, phở và các loại thực phẩm khô', colorCode: '#95a5a6' },
     ]
   });
 
-  // Seed suppliers
-  const supplier = await prisma.supplier.create({
-    data: {
-      name: 'Nhà cung cấp A',
-      contactPerson: 'Nguyễn Văn A',
-      phone: '0901234567',
-      email: 'nccA@example.com',
-      address: '123 Đường Lớn, Quận 1, TP.HCM',
-      paymentTerms: '30 ngày',
-      isActive: true
-    }
-  });
-
-  // Seed items
-  await prisma.item.create({
-    data: {
-      name: 'Bia Saigon 330ml',
-      categoryId: 1,
-      unit: 'chai',
-      unitCost: 12000,
-      minStock: 10,
-      maxStock: 200,
-      barcode: '8934567890123',
-      description: 'Bia lon Saigon 330ml',
-      isActive: true,
-      primarySupplierId: supplier.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      aliases: ['Bia SG', 'Saigon Beer']
-    }
-  });
-
-  console.log('🌱 Seeding completed!');
-  console.log('👤 Owner account created:');
-  console.log('   Username: owner');
-  console.log('   Password: 1234');
-  console.log('📝 Other users created with default password:', defaultPassword);
+  console.log('🌱 Database initialized with basic structure!');
+  console.log('📊 Created categories for Vietnamese restaurant inventory');
+  console.log('✅ Ready for production data entry');
 }
 
 main()

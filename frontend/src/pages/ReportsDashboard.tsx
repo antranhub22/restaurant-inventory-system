@@ -9,14 +9,13 @@ import {
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import sampleData from '../data/sample_data.json';
-import { MockupData, LossAnalysis, DepartmentPerformance } from '../types/reports';
+import { LossAnalysis, DepartmentPerformance } from '../types/reports';
 
-const mockupData = sampleData.mockup_data as MockupData;
-const stats = mockupData.dashboard_stats;
-const departments = mockupData.department_performance;
-const inventoryTrend = mockupData.inventory_trend;
-const lossAnalysis = mockupData.loss_analysis;
+// Clean report data structure
+const stats = { total_items: 0, total_value: 0, loss_rate: 0, accuracy: 0 };
+const departments: DepartmentPerformance[] = [];
+const inventoryTrend: any[] = [];
+const lossAnalysis: LossAnalysis[] = [];
 
 const quickReports = [
   { key: 'daily', label: '📊 Báo cáo ngày' },

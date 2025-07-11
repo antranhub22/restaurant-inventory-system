@@ -34,12 +34,19 @@ interface ImportForm {
   notes: string;
 }
 
+interface ImportRecord {
+  id: number;
+  date: string;
+  supplier: string;
+  invoiceNumber: string;
+  status: string;
+  totalItems: number;
+  totalAmount: number;
+  processedBy: string;
+}
+
 const suppliers = [
-  { value: 'supplier1', label: 'Công ty TNHH Thực phẩm Sạch' },
-  { value: 'supplier2', label: 'Nhà cung cấp Rau Củ Quả Hữu Cơ' },
-  { value: 'supplier3', label: 'Công ty CP Thịt Sạch Việt Nam' },
-  { value: 'supplier4', label: 'Cửa hàng Gia Vị Truyền Thống' },
-  { value: 'supplier5', label: 'Công ty TNHH Hải Sản Tươi Sống' },
+  { value: '', label: 'Chọn nhà cung cấp...' }
 ];
 
 const ImportManagement: React.FC = () => {
@@ -54,7 +61,7 @@ const ImportManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [importForm, setImportForm] = useState<ImportForm>({
     date: new Date().toISOString().split('T')[0],
-    supplier: 'supplier1',
+    supplier: '',
     invoiceNumber: '',
     purchaseOrder: '',
     items: [],
@@ -62,29 +69,8 @@ const ImportManagement: React.FC = () => {
     notes: ''
   });
 
-  // Mock data for existing imports
-  const [imports, setImports] = useState([
-    {
-      id: 1,
-      date: '2024-01-15',
-      supplier: 'Công ty TNHH Thực phẩm Sạch',
-      invoiceNumber: 'HĐ001',
-      status: 'approved',
-      totalItems: 8,
-      totalAmount: 5500000,
-      processedBy: 'Nguyễn Văn A'
-    },
-    {
-      id: 2,
-      date: '2024-01-14',
-      supplier: 'Nhà cung cấp Rau Củ Quả Hữu Cơ',
-      invoiceNumber: 'HĐ002',
-      status: 'pending',
-      totalItems: 5,
-      totalAmount: 2300000,
-      processedBy: 'Trần Thị B'
-    }
-  ]);
+  // Import records data
+  const [imports, setImports] = useState<ImportRecord[]>([]);
 
   const getUnitName = (unitId: number) => {
     const unit = units.find(u => u.id === unitId);
@@ -168,7 +154,7 @@ const ImportManagement: React.FC = () => {
     setShowCreateModal(false);
     setImportForm({
       date: new Date().toISOString().split('T')[0],
-      supplier: 'supplier1',
+      supplier: '',
       invoiceNumber: '',
       purchaseOrder: '',
       items: [],

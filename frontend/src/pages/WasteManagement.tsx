@@ -36,6 +36,18 @@ interface WasteForm {
   notes: string;
 }
 
+interface WasteRecord {
+  id: number;
+  date: string;
+  department: string;
+  category: string;
+  status: string;
+  totalItems: number;
+  totalValue: number;
+  responsiblePerson: string;
+  processedBy: string;
+}
+
 const wasteReasons = [
   { value: 'expired', label: 'Hết hạn sử dụng' },
   { value: 'spoiled', label: 'Hỏng, thối' },
@@ -113,61 +125,22 @@ const WasteManagement: React.FC = () => {
     notes: ''
   });
 
-  // Mock data for existing waste records
-  const [wasteRecords, setWasteRecords] = useState([
-    {
-      id: 1,
-      date: '2024-01-15',
-      department: 'Bếp',
-      category: 'Nguyên liệu thô',
-      status: 'approved',
-      totalItems: 3,
-      totalValue: 450000,
-      responsiblePerson: 'Nguyễn Văn A',
-      processedBy: 'Trần Thị B'
-    },
-    {
-      id: 2,
-      date: '2024-01-14',
-      department: 'Quầy bar',
-      category: 'Thành phẩm',
-      status: 'pending',
-      totalItems: 2,
-      totalValue: 320000,
-      responsiblePerson: 'Lê Văn C',
-      processedBy: 'Hoàng Thị D'
-    }
-  ]);
+  // Waste records data
+  const [wasteRecords, setWasteRecords] = useState<WasteRecord[]>([]);
 
   const getUnitName = (unitId: number) => {
     const unit = units.find(u => u.id === unitId);
     return unit ? unit.abbreviation : '';
   };
 
-  const getItemStock = (itemId: number) => {
-    // Mock inventory data
-    const mockInventory = [
-      { itemId: 1, currentStock: 100 },
-      { itemId: 2, currentStock: 50 },
-      { itemId: 3, currentStock: 200 },
-      { itemId: 4, currentStock: 75 },
-      { itemId: 5, currentStock: 120 },
-    ];
-    const inv = mockInventory.find(i => i.itemId === itemId);
-    return inv ? inv.currentStock : 0;
+  const getItemStock = (_itemId: number) => {
+    // TODO: Call API to get actual inventory
+    return 0;
   };
 
-  const estimateItemValue = (itemId: number, quantity: number) => {
-    // Mock price estimation based on item
-    const mockPrices = [
-      { itemId: 1, unitPrice: 25000 },
-      { itemId: 2, unitPrice: 45000 },
-      { itemId: 3, unitPrice: 12000 },
-      { itemId: 4, unitPrice: 80000 },
-      { itemId: 5, unitPrice: 150000 },
-    ];
-    const price = mockPrices.find(p => p.itemId === itemId);
-    return price ? price.unitPrice * quantity : 0;
+  const estimateItemValue = (_itemId: number, _quantity: number) => {
+    // TODO: Call API to get actual item pricing
+    return 0;
   };
 
   const handleAddItem = () => {

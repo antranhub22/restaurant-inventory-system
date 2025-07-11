@@ -22,30 +22,9 @@ interface InventoryItem {
   last_updated: string;
 }
 
-// Import sample data from public directory
-const sampleData = {
-  sample_inventory_current: [
-    {
-      item_id: 1,
-      current_stock: 100,
-      reserved_stock: 20,
-      average_cost: 15000,
-      stock_status: 'in_stock' as const,
-      last_updated: new Date().toISOString()
-    }
-  ],
-  sample_items: [
-    {
-      id: 1,
-      name: 'Gạo',
-      unit_id: 'kg',
-      min_stock: 50
-    }
-  ]
-};
-
-const inventory: InventoryItem[] = sampleData.sample_inventory_current;
-const items: Item[] = sampleData.sample_items;
+// Clean inventory data structure
+const inventory: InventoryItem[] = [];
+const items: Item[] = [];
 
 function getItem(item_id: number): Item | undefined {
   return items.find(i => i.id === item_id);

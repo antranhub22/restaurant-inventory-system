@@ -3,11 +3,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/common/Layout';
 import Card from '../components/common/Card';
 import { useAuthStore } from '../store';
-import sampleData from '../data/sample_data.json';
-import { SampleData } from '../types/sample_data';
 import approvalService from '../services/approval.service';
-
-const data = sampleData as SampleData;
 
 const Dashboard: React.FC = () => {
   const { user } = useAuthStore();
@@ -43,21 +39,16 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Sample stats data
+  // Dashboard stats data
   const stats = {
-    totalItems: data.sample_items.length,
-    lowStockItems: 12,
-    todayTransactions: 25,
+    totalItems: 0,
+    lowStockItems: 0,
+    todayTransactions: 0,
     pendingApprovals: pendingRecords.totalCount,
-    totalValue: 45000000,
+    totalValue: 0,
   };
 
-  const recentTransactions = [
-    { id: 1, type: 'Nhập kho', amount: 2500000, time: '10:30' },
-    { id: 2, type: 'Xuất kho', amount: -1200000, time: '11:15' },
-    { id: 3, type: 'Điều chỉnh', amount: 300000, time: '14:20' },
-    { id: 4, type: 'Hao hụt', amount: -150000, time: '16:45' },
-  ];
+  const recentTransactions: any[] = [];
 
   return (
     <Layout header={<div className="text-2xl font-bold">Bảng điều khiển</div>}>
@@ -213,17 +204,11 @@ const Dashboard: React.FC = () => {
           {/* Low Stock Alert */}
           <Card header="Cảnh báo tồn kho thấp">
             <div className="space-y-3">
-              {data.sample_items.slice(0, 5).map((item) => (
-                <div key={item.id} className="flex justify-between items-center p-3 bg-orange-50 rounded">
-                  <div>
-                    <div className="font-medium">{item.name}</div>
-                    <div className="text-sm text-gray-500">Tồn kho: 5kg</div>
-                  </div>
-                  <div className="text-orange-600 font-bold">
-                    Ngưỡng: 10kg
-                  </div>
+              {stats.lowStockItems === 0 && (
+                <div className="text-center text-gray-500 py-4">
+                  Không có cảnh báo tồn kho
                 </div>
-              ))}
+              )}
             </div>
             <div className="mt-4 text-center">
               <Link to="/inventory" className="text-blue-600 hover:text-blue-800">

@@ -7,6 +7,7 @@ import Modal from '../components/common/Modal';
 import { useAuthStore } from '../store';
 import sampleData from '../data/sample_data.json';
 import { SampleData } from '../types/sample_data';
+import approvalService from '../services/approval.service';
 
 const data = sampleData as SampleData;
 const items = data.sample_items;
@@ -48,7 +49,12 @@ const ExportManagement: React.FC = () => {
   const { user } = useAuthStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedExport, setSelectedExport] = useState<any>(null);
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [exportForm, setExportForm] = useState<ExportForm>({
     date: new Date().toISOString().split('T')[0],
     purpose: 'production',
@@ -58,7 +64,7 @@ const ExportManagement: React.FC = () => {
   });
 
   // Mock data for existing exports
-  const [exports] = useState([
+  const [exports, setExports] = useState([
     {
       id: 1,
       date: '2024-01-15',
@@ -149,6 +155,61 @@ const ExportManagement: React.FC = () => {
     });
   };
 
+  // New approval handlers
+  const handleApprovalClick = (exportItem: any, action: 'approve' | 'reject') => {
+    setSelectedExport(exportItem);
+    setApprovalAction(action);
+    if (action === 'reject') {
+      setRejectionReason('');
+    }
+    setShowApprovalModal(true);
+  };
+
+  const handleApprovalSubmit = async () => {
+    if (!selectedExport) return;
+
+    setIsLoading(true);
+    try {
+      if (approvalAction === 'approve') {
+        await approvalService.approveExport(selectedExport.id);
+        
+        // Update local state
+        setExports(prev => prev.map(exp => 
+          exp.id === selectedExport.id 
+            ? { ...exp, status: 'approved' }
+            : exp
+        ));
+        
+        alert('Đã duyệt phiếu xuất kho thành công!');
+      } else {
+        if (!rejectionReason.trim()) {
+          alert('Vui lòng nhập lý do từ chối');
+          return;
+        }
+        
+        await approvalService.rejectExport(selectedExport.id, rejectionReason);
+        
+        // Update local state
+        setExports(prev => prev.map(exp => 
+          exp.id === selectedExport.id 
+            ? { ...exp, status: 'rejected' }
+            : exp
+        ));
+        
+        alert('Đã từ chối phiếu xuất kho');
+      }
+      
+      setShowApprovalModal(false);
+      setSelectedExport(null);
+      setRejectionReason('');
+    } catch (error: any) {
+      console.error('Error processing approval:', error);
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi xử lý phê duyệt');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-800';
@@ -190,7 +251,7 @@ const ExportManagement: React.FC = () => {
   return (
     <Layout header={
       <div className="text-2xl font-bold flex items-center justify-between">
-        📤 Quản lý Phiếu Xuất kho
+        📦 Quản lý Phiếu Xuất kho
         <Button 
           variant="primary" 
           onClick={() => setShowCreateModal(true)}
@@ -232,8 +293,23 @@ const ExportManagement: React.FC = () => {
                   <td className="px-4 py-2">{export_item.processedBy}</td>
                   <td className="px-4 py-2">
                     <Button variant="secondary" className="text-xs mr-2">Xem</Button>
-                    {export_item.status === 'pending' && (
-                      <Button variant="primary" className="text-xs">Duyệt</Button>
+                    {export_item.status === 'pending' && user && ['owner', 'manager'].includes(user.role) && (
+                      <>
+                        <Button 
+                          variant="primary" 
+                          className="text-xs mr-2"
+                          onClick={() => handleApprovalClick(export_item, 'approve')}
+                        >
+                          Duyệt
+                        </Button>
+                        <Button 
+                          variant="danger" 
+                          className="text-xs"
+                          onClick={() => handleApprovalClick(export_item, 'reject')}
+                        >
+                          Từ chối
+                        </Button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -243,16 +319,74 @@ const ExportManagement: React.FC = () => {
         </div>
       </Card>
 
+      {/* Approval Modal */}
+      {showApprovalModal && selectedExport && (
+        <Modal
+          title={`${approvalAction === 'approve' ? 'Duyệt' : 'Từ chối'} phiếu xuất kho #${selectedExport.id}`}
+          onClose={() => {
+            setShowApprovalModal(false);
+            setSelectedExport(null);
+            setRejectionReason('');
+          }}
+          open={showApprovalModal}
+        >
+          <div className="p-4">
+            <div className="mb-4">
+              <p><strong>Ngày:</strong> {selectedExport.date}</p>
+              <p><strong>Mục đích:</strong> {getPurposeText(selectedExport.purpose)}</p>
+              <p><strong>Bộ phận:</strong> {getDepartmentText(selectedExport.department)}</p>
+              <p><strong>Số mặt hàng:</strong> {selectedExport.totalItems}</p>
+              <p><strong>Tổng giá trị:</strong> {selectedExport.totalValue.toLocaleString('vi-VN')} VND</p>
+              <p><strong>Người tạo:</strong> {selectedExport.processedBy}</p>
+            </div>
+
+            {approvalAction === 'reject' && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Lý do từ chối *</label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Nhập lý do từ chối..."
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setShowApprovalModal(false);
+                  setSelectedExport(null);
+                  setRejectionReason('');
+                }}
+                disabled={isLoading}
+              >
+                Hủy
+              </Button>
+              <Button 
+                variant={approvalAction === 'approve' ? 'primary' : 'danger'}
+                onClick={handleApprovalSubmit}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Đang xử lý...' : (approvalAction === 'approve' ? 'Duyệt' : 'Từ chối')}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Create Export Modal */}
       <Modal
-        open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
         title="Tạo phiếu xuất kho"
+        onClose={() => setShowCreateModal(false)}
+        open={showCreateModal}
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="p-4">
+          <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Ngày xuất</label>
+              <label className="block text-sm font-medium mb-1">Ngày xuất</label>
               <Input
                 type="date"
                 value={exportForm.date}
@@ -260,28 +394,28 @@ const ExportManagement: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Mục đích</label>
+              <label className="block text-sm font-medium mb-1">Mục đích</label>
               <select
                 value={exportForm.purpose}
                 onChange={(e) => setExportForm(prev => ({ ...prev, purpose: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                {purposes.map(p => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
+                {purposes.map(purpose => (
+                  <option key={purpose.value} value={purpose.value}>{purpose.label}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Bộ phận</label>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Bộ phận</label>
             <select
               value={exportForm.department}
               onChange={(e) => setExportForm(prev => ({ ...prev, department: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              {departments.map(d => (
-                <option key={d.value} value={d.value}>{d.label}</option>
+              {departments.map(dept => (
+                <option key={dept.value} value={dept.value}>{dept.label}</option>
               ))}
             </select>
           </div>
@@ -301,7 +435,7 @@ const ExportManagement: React.FC = () => {
                     <tr>
                       <th className="px-3 py-2 text-left">Tên hàng</th>
                       <th className="px-3 py-2 text-left">Tồn kho</th>
-                      <th className="px-3 py-2 text-left">Số lượng</th>
+                      <th className="px-3 py-2 text-left">Số lượng xuất</th>
                       <th className="px-3 py-2 text-left">Ghi chú</th>
                       <th className="px-3 py-2 text-left">Thao tác</th>
                     </tr>
@@ -350,68 +484,55 @@ const ExportManagement: React.FC = () => {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Ghi chú</label>
+          <div className="mt-4">
+            <label className="block text-sm font-medium mb-1">Ghi chú</label>
             <textarea
               value={exportForm.notes}
               onChange={(e) => setExportForm(prev => ({ ...prev, notes: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Ghi chú thêm..."
             />
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end gap-2 mt-6">
             <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
               Hủy
             </Button>
-            <Button 
-              variant="primary" 
-              onClick={handleSubmit}
-              disabled={exportForm.items.length === 0}
-            >
+            <Button variant="primary" onClick={handleSubmit}>
               Tạo phiếu xuất
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Add Item Modal */}
+      {/* Item Selection Modal */}
       <Modal
-        open={showItemModal}
-        onClose={() => setShowItemModal(false)}
         title="Chọn hàng hóa"
+        onClose={() => setShowItemModal(false)}
+        open={showItemModal}
       >
-        <div className="space-y-4">
+        <div className="p-4">
           <div className="max-h-96 overflow-y-auto">
-            <div className="space-y-2">
+            <div className="grid gap-2">
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                    selectedItem?.id === item.id 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
+                  className={`p-3 border rounded-md cursor-pointer hover:bg-gray-50 ${
+                    selectedItem?.id === item.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                   }`}
                   onClick={() => setSelectedItem(item)}
                 >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-medium">{item.name}</h4>
-                      <p className="text-sm text-gray-600">
-                        Tồn kho: {getItemStock(item.id)} {getUnitName(item.unit_id)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{item.unit_cost.toLocaleString('vi-VN')} VND</p>
-                    </div>
+                  <div className="font-medium">{item.name}</div>
+                  <div className="text-sm text-gray-500">
+                    Tồn kho: {getItemStock(item.id)} {getUnitName(item.unit_id)}
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
-          <div className="flex justify-end space-x-3">
+          
+          <div className="flex justify-end gap-2 mt-4">
             <Button variant="secondary" onClick={() => setShowItemModal(false)}>
               Hủy
             </Button>
@@ -420,7 +541,7 @@ const ExportManagement: React.FC = () => {
               onClick={handleAddItem}
               disabled={!selectedItem}
             >
-              Thêm hàng hóa
+              Thêm
             </Button>
           </div>
         </div>

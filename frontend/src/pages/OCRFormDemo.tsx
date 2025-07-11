@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FormType } from '../types/form-template';
 import OCRFormConfirmation from '../components/forms/OCRFormConfirmation';
 import OCRProcessingModal from '../components/common/OCRProcessingModal';
@@ -6,6 +7,7 @@ import ImagePreview from '../components/common/ImagePreview';
 import useOCRForm from '../hooks/useOCRForm';
 
 const OCRFormDemo: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFormType, setSelectedFormType] = useState<FormType>(FormType.IMPORT);
   const [ocrResult, setOcrResult] = useState<any>(null);
@@ -148,11 +150,14 @@ const OCRFormDemo: React.FC = () => {
   const handleConfirm = async (formId: string, corrections: any[]) => {
     try {
       await confirmOCRForm(formId, corrections);
-      alert('Đã xác nhận và lưu thành công!');
+      alert('Đã xác nhận và lưu thành công! Chuyển đến trang phê duyệt.');
       setShowConfirmation(false);
       setOcrResult(null);
       setSelectedFile(null);
       setCapturedImage(null);
+      
+      // Redirect to approval dashboard
+      navigate('/approval');
     } catch (err) {
       console.error('Error confirming form:', err);
     }

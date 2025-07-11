@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import importService from '../services/import.service';
 
 const prisma = new PrismaClient();
 
@@ -59,6 +60,107 @@ class ImportController {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: 'Could not delete import' });
+    }
+  }
+
+  /**
+   * Approve import record và cập nhật inventory
+   */
+  async approveImport(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      const approvedById = req.user?.id ? parseInt(String(req.user.id)) : null;
+
+      if (!approvedById) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Không xác định được người duyệt' 
+        });
+      }
+
+      const approved = await importService.approveImport(id, approvedById);
+      
+      res.json({
+        success: true,
+        message: 'Đã duyệt phiếu nhập kho thành công',
+        data: approved
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Lỗi khi duyệt phiếu nhập kho' 
+      });
+    }
+  }
+
+  /**
+   * Reject import record
+   */
+  async rejectImport(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      const rejectedById = req.user?.id ? parseInt(String(req.user.id)) : null;
+      const { reason } = req.body;
+
+      if (!rejectedById) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Không xác định được người từ chối' 
+        });
+      }
+
+      if (!reason) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Vui lòng nhập lý do từ chối' 
+        });
+      }
+
+      const rejected = await importService.rejectImport(id, rejectedById, reason);
+      
+      res.json({
+        success: true,
+        message: 'Đã từ chối phiếu nhập kho',
+        data: rejected
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Lỗi khi từ chối phiếu nhập kho' 
+      });
+    }
+  }
+
+  /**
+   * Get pending imports for approval
+   */
+  async getPendingImports(req: Request, res: Response) {
+    try {
+      const pendingImports = await prisma.import.findMany({
+        where: { status: 'PENDING' },
+        include: {
+          items: {
+            include: {
+              item: true
+            }
+          },
+          supplier: true,
+          processedBy: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      res.json({
+        success: true,
+        data: pendingImports
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Lỗi khi lấy danh sách phiếu nhập chờ duyệt' 
+      });
     }
   }
 }

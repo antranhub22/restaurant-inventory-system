@@ -13,6 +13,7 @@ import OCRFormDemo from './pages/OCRFormDemo';
 import ExportManagement from './pages/ExportManagement';
 import ReturnManagement from './pages/ReturnManagement';
 import VarianceReport from './pages/VarianceReport';
+import ApprovalDashboard from './pages/ApprovalDashboard';
 import Login from './components/Login';
 import { useAuthStore } from './store';
 
@@ -95,6 +96,12 @@ function App() {
           <Route path="/variance" element={
             <ProtectedRoute>
               <VarianceReport />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/approval" element={
+            <ProtectedRoute>
+              <ApprovalDashboard />
             </ProtectedRoute>
           } />
           

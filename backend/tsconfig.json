@@ -17,8 +17,8 @@
       "@/*": ["src/*"]
     },
     "typeRoots": [
-      "./src/types",
-      "./node_modules/@types"
+      "./node_modules/@types",
+      "./src/types"
     ],
     "types": [
       "node",
@@ -36,7 +36,10 @@
     "declarationMap": true,
     "sourceMap": true,
     "composite": true,
-    "incremental": true
+    "incremental": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]

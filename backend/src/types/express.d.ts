@@ -4,76 +4,66 @@ import { ParamsDictionary, Query } from 'express-serve-static-core';
 import { JwtPayload } from 'jsonwebtoken';
 
 declare module 'express-serve-static-core' {
+  interface User {
+    userId: number;
+    email: string;
+    role: Role;
+  }
+
   interface Request {
-    user?: {
-      userId: number;
-      email: string;
-      role: Role;
-    };
+    user?: User;
+    file?: Express.Multer.File;
+    files?: Express.Multer.File[];
+  }
+
+  interface Response {
+    json(data: any): this;
   }
 }
 
-declare global {
-  namespace Express {
-    interface User {
-      userId: number;
-      email: string;
-      role: Role;
-    }
+declare module 'express' {
+  interface Express {
+    json: any;
+    urlencoded: any;
+    static: any;
+  }
 
-    interface Request<
-      P = ParamsDictionary,
-      ResBody = any,
-      ReqBody = any,
-      ReqQuery = Query,
-      Locals extends Record<string, any> = Record<string, any>
-    > extends ExpressRequest {
-      user?: User;
-      file?: Express.Multer.File;
-      files?: Express.Multer.File[];
-    }
+  interface Application {
+    use: any;
+    json: any;
+    urlencoded: any;
+    static: any;
+  }
 
-    interface Response<
-      ResBody = any,
-      Locals extends Record<string, any> = Record<string, any>
-    > extends ExpressResponse {
-      json(data: ResBody): this;
-    }
+  interface Request extends ExpressRequest {
+    user?: User;
+    file?: Express.Multer.File;
+    files?: Express.Multer.File[];
+  }
 
-    interface Multer {
-      File: {
-        fieldname: string;
-        originalname: string;
-        encoding: string;
-        mimetype: string;
-        size: number;
-        destination?: string;
-        filename?: string;
-        path?: string;
-        buffer?: Buffer;
-      }
-    }
+  interface Response extends ExpressResponse {
+    json(data: any): this;
   }
 }
 
-export interface TypedRequestBody<T> extends Express.Request {
+export interface TypedRequestBody<T> extends ExpressRequest {
   body: T;
 }
 
-export interface TypedRequestQuery<T> extends Express.Request {
+export interface TypedRequestQuery<T> extends ExpressRequest {
   query: T;
 }
 
-export interface TypedRequestParams<T> extends Express.Request {
+export interface TypedRequestParams<T> extends ExpressRequest {
   params: T;
 }
 
-export interface TypedRequest<T extends Record<string, any>, U extends Record<string, any>> extends Express.Request {
+export interface TypedRequest<T extends Record<string, any>, U extends Record<string, any>> extends ExpressRequest {
   body: T;
   query: U;
 }
 
-export interface TypedResponse<T> extends Express.Response {
+export interface TypedResponse<T> extends ExpressResponse {
   json: (body: T) => TypedResponse<T>;
 }
 

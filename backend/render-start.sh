@@ -2,8 +2,18 @@
 # exit on error
 set -o errexit
 
-# Run database migrations
-npx prisma migrate deploy
+echo "🚀 Starting restaurant inventory backend..."
+
+# Push database schema (instead of migrations to avoid conflicts)
+echo "📊 Setting up database schema..."
+npx prisma db push --accept-data-loss
+
+# Run reset and setup script
+echo "🔄 Setting up initial data..."
+node reset-database.js
+
+echo "✅ Database setup complete!"
 
 # Start the server
-node dist/server.js
+echo "🖥️ Starting server..."
+node dist/server.js 

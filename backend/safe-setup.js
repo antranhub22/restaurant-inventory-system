@@ -12,18 +12,22 @@ async function safeSetupDatabase() {
     const adminPrisma = new PrismaClient();
     
     // Tạo schema riêng (không ảnh hưởng dự án khác)
-    await adminPrisma.$executeRaw`CREATE SCHEMA IF NOT EXISTS ${SCHEMA_NAME};`;
+    // Sử dụng string literal thay vì template literal để tránh lỗi syntax
+    await adminPrisma.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS "${SCHEMA_NAME}"`);
     
     console.log(`✅ Schema "${SCHEMA_NAME}" đã được tạo an toàn`);
     
     await adminPrisma.$disconnect();
     
     console.log('📊 Schema setup hoàn thành!');
-    console.log('🔧 Bây giờ cần cập nhật DATABASE_URL để sử dụng schema riêng');
-    console.log(`   Thêm: ?schema=${SCHEMA_NAME} vào cuối DATABASE_URL`);
+    console.log('🔧 Database sẵn sàng với schema riêng');
     
   } catch (error) {
-    console.error('❌ Lỗi setup:', error);
+    if (error.message.includes('already exists')) {
+      console.log(`✅ Schema "${SCHEMA_NAME}" đã tồn tại - OK!`);
+    } else {
+      console.error('❌ Lỗi setup:', error.message);
+    }
   }
 }
 

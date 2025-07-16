@@ -19,6 +19,13 @@ declare module 'express-serve-static-core' {
   interface Response {
     json(data: any): this;
   }
+
+  interface Application {
+    use: any;
+    json: any;
+    urlencoded: any;
+    static: any;
+  }
 }
 
 declare module 'express' {
@@ -43,6 +50,34 @@ declare module 'express' {
 
   interface Response extends ExpressResponse {
     json(data: any): this;
+  }
+
+  export interface Express {
+    (): Application;
+  }
+
+  export interface Application {
+    use: any;
+    json: any;
+    urlencoded: any;
+    static: any;
+  }
+
+  export interface NextFunction {
+    (err?: any): void;
+  }
+
+  export interface Express {
+    json: any;
+    urlencoded: any;
+    static: any;
+  }
+
+  export interface Express {
+    (): Application;
+    json: any;
+    urlencoded: any;
+    static: any;
   }
 }
 

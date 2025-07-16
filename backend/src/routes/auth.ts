@@ -1,10 +1,10 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient, Role } from '@prisma/client';
 
 interface LoginRequest {
-  email: string; // Có thể là email hoặc username
+  email: string;
   password: string;
 }
 
@@ -30,7 +30,11 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // Login
-router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response<AuthResponse | { error: string }>): Promise<void> => {
+const login = async (
+  req: Request<{}, AuthResponse | { error: string }, LoginRequest>,
+  res: Response<AuthResponse | { error: string }>,
+  _next: NextFunction
+): Promise<void> => {
   try {
     const { email, password } = req.body;
     
@@ -75,10 +79,14 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response<A
     console.error('Login error:', error);
     res.status(500).json({ error: 'Lỗi hệ thống' });
   }
-});
+};
 
 // Register
-router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Response<AuthResponse | { error: string }>): Promise<void> => {
+const register = async (
+  req: Request<{}, AuthResponse | { error: string }, RegisterRequest>,
+  res: Response<AuthResponse | { error: string }>,
+  _next: NextFunction
+): Promise<void> => {
   try {
     const { email, password, fullName, role = 'staff' } = req.body;
     
@@ -130,6 +138,9 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequest>, res: Resp
     console.error('Register error:', error);
     res.status(500).json({ error: 'Lỗi hệ thống' });
   }
-});
+};
+
+router.post('/login', login as express.RequestHandler);
+router.post('/register', register as express.RequestHandler);
 
 export default router; 

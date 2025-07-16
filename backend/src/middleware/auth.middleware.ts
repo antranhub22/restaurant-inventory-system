@@ -1,99 +1,87 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express-serve-static-core';
+import { JwtPayload as BaseJwtPayload } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { Role } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
-// Không cần AuthRequest riêng, dùng luôn Express.Request đã mở rộng
-
-interface JwtPayload {
+interface CustomJwtPayload extends BaseJwtPayload {
   userId: number;
+  email: string;
+  role: Role;
 }
 
 export const authMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
-    // 1. Lấy token từ header
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
+    if (!authHeader) {
+      res.status(401).json({
         message: 'Không tìm thấy token xác thực'
       });
+      return;
     }
 
-    const token: string = (authHeader && typeof authHeader === 'string' && authHeader.split(' ')[1]) ? authHeader.split(' ')[1] : '';
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : authHeader;
 
-    // 2. Verify token
-    const jwtSecret: string = process.env.JWT_SECRET || '';
-    const decoded = jwt.verify(token, jwtSecret);
+    try {
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'fallback-secret'
+      ) as CustomJwtPayload;
 
-    // Type guard cho payload
-    if (
-      typeof decoded === 'object' &&
-      decoded !== null &&
-      'userId' in decoded
-    ) {
-      // 3. Lấy thông tin user
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
-        select: {
-          id: true,
-          username: true,
-          role: true,
-          permissions: true,
-          isActive: true
-        }
-      });
-
-      if (!user || !user.isActive) {
-        return res.status(401).json({
-          success: false,
-          message: 'User không tồn tại hoặc đã bị vô hiệu hóa'
+      if (!decoded.userId || !decoded.email || !decoded.role) {
+        res.status(401).json({
+          message: 'Token không hợp lệ hoặc đã hết hạn'
         });
+        return;
       }
 
-      // 4. Gắn thông tin user vào request
       req.user = {
-        id: user.id, // Keep as number for consistency
-        username: user.username ? user.username.toString() : '',
-        role: user.role ? user.role.toString() : '',
-        permissions: Array.isArray(user.permissions) ? user.permissions as string[] : []
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role
       };
 
       next();
-    } else {
-      return res.status(401).json({
-        success: false,
-        message: 'Token không hợp lệ'
+    } catch (error) {
+      res.status(401).json({
+        message: 'Token không hợp lệ hoặc đã hết hạn',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
+      return;
     }
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    return res.status(401).json({
-      success: false,
-      message: 'Token không hợp lệ'
+    res.status(401).json({
+      message: 'Lỗi xác thực',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 };
 
-export const authorize = (allowedRoles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+export const checkRole = (allowedRoles: Role[]) => {
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     try {
       if (!req.user) {
-        return res.status(401).json({ message: 'Chưa xác thực người dùng' });
+        res.status(401).json({ message: 'Chưa xác thực người dùng' });
+        return;
       }
 
-      if (!allowedRoles.includes(req.user.role || '')) {
-        return res.status(403).json({ message: 'Không có quyền thực hiện thao tác này' });
+      if (!allowedRoles.includes(req.user.role)) {
+        res.status(403).json({ message: 'Không có quyền thực hiện thao tác này' });
+        return;
       }
 
       next();
     } catch (error) {
-      return res.status(403).json({ message: 'Lỗi kiểm tra quyền' });
+      res.status(403).json({ message: 'Lỗi kiểm tra quyền' });
     }
   };
 };

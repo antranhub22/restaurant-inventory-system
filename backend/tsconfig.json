@@ -13,10 +13,30 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "*": ["node_modules/*"],
+      "*": ["node_modules/*", "src/types/*"],
       "@/*": ["src/*"]
     },
-    "typeRoots": ["./src/types", "./node_modules/@types"]
+    "typeRoots": [
+      "./src/types",
+      "./node_modules/@types"
+    ],
+    "types": [
+      "node",
+      "express",
+      "express-serve-static-core",
+      "multer",
+      "jsonwebtoken"
+    ],
+    "noImplicitAny": false,
+    "strictPropertyInitialization": false,
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]

@@ -15,7 +15,7 @@ Hệ thống quản lý kho nhà hàng với khả năng OCR để xử lý hóa
 
 ### Backend
 - **Node.js** + **TypeScript** + **Express**
-- **PostgreSQL** (Render.com PostgreSQL add-on) + **Prisma ORM**
+- **PostgreSQL** (Neon.tech) + **Prisma ORM**
 - **Redis** cho caching và session
 - **Tesseract.js** + **Google Vision API** cho OCR
 - **OpenAI/DeepSeek** cho AI-powered form mapping

@@ -79,6 +79,23 @@ declare module 'express' {
     urlencoded: any;
     static: any;
   }
+
+  export interface Express {
+    (): Application;
+    json: any;
+    urlencoded: any;
+    static: any;
+    default: Express;
+  }
+
+  export interface Express {
+    (): Application;
+    json: any;
+    urlencoded: any;
+    static: any;
+    default: Express;
+    default(): Application;
+  }
 }
 
 export interface TypedRequestBody<T> extends ExpressRequest {

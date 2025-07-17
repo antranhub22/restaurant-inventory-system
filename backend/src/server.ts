@@ -39,8 +39,8 @@ async function connectDatabase(): Promise<boolean> {
       
       if (url.hostname.startsWith('dpg-') && url.hostname.includes('render')) {
         console.log('   Provider: ✅ Render PostgreSQL');
-      } else if (url.hostname.includes('neon.tech')) {
-        console.log('   Provider: Neon.tech');
+      } else if (url.hostname.includes('render.com')) {
+  console.log('   Provider: Render PostgreSQL');
       } else {
         console.log('   Provider: Custom PostgreSQL');
       }

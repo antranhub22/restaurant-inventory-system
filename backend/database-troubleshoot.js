@@ -64,8 +64,8 @@ async function troubleshootDatabase() {
     // Detect provider
     if (dbUrl.hostname.startsWith('dpg-') && dbUrl.hostname.includes('.render.com')) {
       log('SUCCESS', '🎯 Render PostgreSQL detected');
-    } else if (dbUrl.hostname.includes('neon.tech')) {
-      log('INFO', '🎯 Neon.tech PostgreSQL detected');
+    } else if (dbUrl.hostname.includes('render.com')) {
+    log('INFO', '🎯 Render PostgreSQL detected');
     } else if (dbUrl.hostname === 'localhost' || dbUrl.hostname === '127.0.0.1') {
       log('WARNING', '🎯 Local PostgreSQL detected (not suitable for production)');
     } else {

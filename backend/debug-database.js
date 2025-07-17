@@ -25,8 +25,8 @@ if (process.env.DATABASE_URL) {
     console.log('   SSL Mode:', sslMode || 'default');
     
     // Identify provider
-    if (dbUrl.hostname.includes('neon.tech')) {
-      console.log('   Provider: Neon.tech');
+    if (dbUrl.hostname.includes('render.com')) {
+    console.log('   Provider: Render PostgreSQL');
     } else if (dbUrl.hostname.startsWith('dpg-') && dbUrl.hostname.includes('render')) {
       console.log('   Provider: Render PostgreSQL ✅');
     } else if (dbUrl.hostname === 'localhost' || dbUrl.hostname === '127.0.0.1') {

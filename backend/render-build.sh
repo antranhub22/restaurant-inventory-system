@@ -42,8 +42,8 @@ else
     # Parse DATABASE_URL to check provider
     if [[ $DATABASE_URL == *"dpg-"*".render"* ]]; then
         echo "🎯 Render PostgreSQL detected"
-    elif [[ $DATABASE_URL == *"neon.tech"* ]]; then
-        echo "🎯 Neon.tech detected" 
+    elif [[ $DATABASE_URL == *"render.com"* ]]; then
+  echo "🎯 Render PostgreSQL detected" 
     else
         echo "🎯 Custom PostgreSQL detected"
     fi

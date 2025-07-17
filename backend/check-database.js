@@ -24,8 +24,8 @@ async function checkDatabase() {
       console.log('   Database:', dbUrl.pathname.slice(1));
       console.log('   SSL:', dbUrl.searchParams.get('sslmode') || 'default');
       
-      if (dbUrl.hostname.includes('neon.tech')) {
-        console.log('   Provider: Neon.tech');
+      if (dbUrl.hostname.includes('render.com')) {
+    console.log('   Provider: Render PostgreSQL');
       } else if (dbUrl.hostname.startsWith('dpg-')) {
         console.log('   Provider: Render PostgreSQL ✅');
       } else if (dbUrl.hostname === 'localhost') {

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Restaurant Inventory Management System Backend",
   "main": "dist/server.js",
+  "type": "commonjs",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc && npm run build:verify",

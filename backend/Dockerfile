@@ -38,7 +38,7 @@ RUN echo "🔍 Verifying build output..." && \
 RUN npm ci --only=production && npm cache clean --force
 
 # Make scripts executable
-RUN chmod +x render-start.sh render-build.sh
+RUN chmod +x render-start.sh render-build.sh index.js
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -52,5 +52,5 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:4000/api/health || exit 1
 
-# Start command with proper error handling
+# Start command with multiple fallback options
 CMD ["./render-start.sh"] 

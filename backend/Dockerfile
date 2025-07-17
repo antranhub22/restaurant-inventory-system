@@ -29,8 +29,11 @@ RUN NODE_ENV=development npm run build
 # Remove dev dependencies after build to reduce image size
 RUN npm ci --only=production && npm cache clean --force
 
+# Make scripts executable
+RUN chmod +x render-start.sh
+
 # Expose port
 EXPOSE 4000
 
-# Start command
-CMD ["npm", "run", "start"] 
+# Start command with database setup
+CMD ["./render-start.sh"] 

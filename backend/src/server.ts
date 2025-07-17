@@ -7,6 +7,25 @@ const PORT = process.env.PORT || 4000;
 // Test database connection
 async function connectDatabase() {
   try {
+    // Debug database URL
+    console.log('=== DATABASE DEBUG ===');
+    console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+    if (process.env.DATABASE_URL) {
+      try {
+        const url = new URL(process.env.DATABASE_URL);
+        console.log('Database host:', url.hostname);
+        console.log('Database port:', url.port || 'default');
+        if (url.hostname.includes('neon.tech')) {
+          console.log('Provider: Neon.tech ✅');
+        } else if (url.hostname.startsWith('dpg-')) {
+          console.log('Provider: Render PostgreSQL ⚠️ (should use Neon.tech)');
+        }
+      } catch (e) {
+        console.log('Invalid DATABASE_URL format');
+      }
+    }
+    console.log('======================');
+    
     console.log('🔄 Testing database connection...');
     await prisma.$connect();
     console.log('✅ Database connected successfully');

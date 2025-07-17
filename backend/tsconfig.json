@@ -21,11 +21,7 @@
       "./src/types"
     ],
     "types": [
-      "node",
-      "express",
-      "express-serve-static-core",
-      "multer",
-      "jsonwebtoken"
+      "node"
     ],
     "noImplicitAny": false,
     "strictPropertyInitialization": false,

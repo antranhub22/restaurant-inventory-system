@@ -387,6 +387,16 @@ class OcrFormController {
         }
 
         // PRE-PROCESS: Process items - auto-create if not exist BEFORE main transaction
+        logger.info('[DEBUG] confirmFormContent - Raw items data', { 
+          itemsCount: items.length,
+          itemsStructure: items.map(item => ({
+            name: item.name,
+            itemId: item.itemId,
+            quantity: item.quantity,
+            keys: Object.keys(item)
+          }))
+        });
+        
         const processedItems = [];
         for (const item of items) {
           let itemId = item.itemId;
@@ -407,10 +417,19 @@ class OcrFormController {
               // Auto-create new item
               logger.info('[DEBUG] confirmFormContent - Creating new item', { itemName: item.name });
               try {
-                // Get default category (first available)
-                const defaultCategory = await prisma.category.findFirst({ where: { isActive: true } });
+                // Get default category (first available) or create one
+                let defaultCategory = await prisma.category.findFirst({ where: { isActive: true } });
                 if (!defaultCategory) {
-                  throw new Error('No active category found for new item');
+                  logger.info('[DEBUG] confirmFormContent - No categories found, creating default category');
+                  defaultCategory = await prisma.category.create({
+                    data: {
+                      name: 'Thực phẩm chung',
+                      description: 'Danh mục mặc định cho OCR items',
+                      colorCode: '#6c757d',
+                      sortOrder: 1,
+                      isActive: true
+                    }
+                  });
                 }
                 
                 const newItem = await prisma.item.create({

@@ -223,7 +223,54 @@ async function startServer() {
         }
       }
       
-      // If setup=true query param, create admin users
+      // If force=true query param, force create admin user
+      if (req.query.force === 'true') {
+        try {
+          const bcrypt = require('bcryptjs');
+          
+          // Delete existing admin users to recreate
+          await prisma.user.deleteMany({
+            where: {
+              OR: [
+                { username: 'admin' },
+                { email: 'admin@restaurant.com' }
+              ]
+            }
+          });
+
+          // Create admin user with admin/admin123
+          const adminHash = await bcrypt.hash('admin123', 10);
+          
+          const adminUser = await prisma.user.create({
+            data: {
+              username: 'admin',
+              email: 'admin@restaurant.com',
+              passwordHash: adminHash,
+              fullName: 'System Admin',
+              phone: '0987654321',
+              role: 'owner',
+              department: 'IT',
+              isActive: true,
+              emailVerified: true,
+              language: 'vi',
+              timezone: 'Asia/Ho_Chi_Minh'
+            }
+          });
+
+          (healthData as any).message = '✅ Admin user created successfully!';
+          (healthData as any).adminCreated = {
+            username: 'admin',
+            password: 'admin123',
+            email: 'admin@restaurant.com',
+            id: adminUser.id
+          };
+        } catch (setupError) {
+          (healthData as any).setupError = setupError.message;
+          (healthData as any).message = '❌ Failed to create admin user';
+        }
+      }
+      
+      // If setup=true query param, create admin users (only if none exist)
       if (req.query.setup === 'true') {
         try {
           const bcrypt = require('bcryptjs');
@@ -267,17 +314,17 @@ async function startServer() {
               }
             });
 
-            healthData.message = 'Admin users created successfully!';
-            healthData.credentials = [
+            (healthData as any).message = 'Admin users created successfully!';
+            (healthData as any).credentials = [
               { username: 'admin', password: 'admin123' },
               { username: 'owner', password: '1234' }
             ];
           } else {
-            healthData.message = 'Users already exist';
-            healthData.userCount = userCount;
+            (healthData as any).message = 'Users already exist';
+            (healthData as any).userCount = userCount;
           }
         } catch (setupError) {
-          healthData.setupError = setupError.message;
+          (healthData as any).setupError = setupError.message;
         }
       }
       

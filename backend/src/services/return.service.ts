@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { ReturnData, ReturnItem, ReturnStatus, ReturnValidationError, ItemCondition } from '../types/return';
 import RedisService from './redis.service';
+import { Request } from 'express';
 import fs from 'fs';
 import path from 'path';
 
@@ -13,7 +14,7 @@ class ReturnService {
     this.redis = RedisService.getInstance();
   }
 
-  async addAttachment(id: number, file: Express.Multer.File) {
+  async addAttachment(id: number, file: any) {
     const returnData = await this.prisma.return.findUnique({
       where: { id }
     });

@@ -12,6 +12,25 @@ echo "   Working Directory: $(pwd)"
 echo "   NODE_ENV: ${NODE_ENV:-not set}"
 echo "   PORT: ${PORT:-not set}"
 
+# DEBUG: Check file structure
+echo ""
+echo "🔍 DEBUG: Checking file structure..."
+echo "   Current directory: $(pwd)"
+echo "   package.json: $(test -f package.json && echo 'EXISTS' || echo 'MISSING')"
+echo "   prisma/schema.prisma: $(test -f prisma/schema.prisma && echo 'EXISTS' || echo 'MISSING')"
+echo "   setup-prisma-for-render.js: $(test -f setup-prisma-for-render.js && echo 'EXISTS' || echo 'MISSING')"
+echo "   debug-startup.js: $(test -f debug-startup.js && echo 'EXISTS' || echo 'MISSING')"
+
+echo ""
+echo "📂 Current directory contents:"
+ls -la
+
+if [ -d "prisma" ]; then
+    echo ""
+    echo "📂 Prisma directory contents:"
+    ls -la prisma/
+fi
+
 # Verify we're in the right place
 if [ ! -f "package.json" ]; then
     echo "❌ package.json not found! Are we in the backend directory?"
@@ -32,11 +51,40 @@ echo "✅ DATABASE_URL is configured"
 # Run comprehensive Prisma setup with debug
 echo ""
 echo "🔧 Running comprehensive Prisma setup with debug..."
-if node debug-startup.js; then
-    echo "✅ Prisma setup completed successfully"
+
+# Check if debug script exists, if not use inline setup
+if [ -f "debug-startup.js" ]; then
+    echo "📋 Using debug-startup.js..."
+    if node debug-startup.js; then
+        echo "✅ Prisma setup completed successfully"
+    else
+        echo "❌ Prisma setup failed!"
+        exit 1
+    fi
 else
-    echo "❌ Prisma setup failed!"
-    exit 1
+    echo "⚠️ debug-startup.js not found, using inline setup..."
+    
+    # Inline Prisma setup
+    echo "🔧 Generating Prisma client..."
+    if npx prisma generate; then
+        echo "✅ Prisma client generated"
+    else
+        echo "❌ Failed to generate Prisma client"
+        exit 1
+    fi
+    
+    echo "🔄 Running database migrations..."
+    if npx prisma migrate deploy; then
+        echo "✅ Migrations deployed"
+    else
+        echo "⚠️ Migrate deploy failed, trying db push..."
+        if npx prisma db push --accept-data-loss; then
+            echo "✅ Schema pushed"
+        else
+            echo "❌ Both migration methods failed"
+            exit 1
+        fi
+    fi
 fi
 
 # Verify compiled server exists

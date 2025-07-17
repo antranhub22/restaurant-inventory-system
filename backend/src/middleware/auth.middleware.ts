@@ -40,6 +40,7 @@ export const authMiddleware = async (
         return;
       }
 
+      // @ts-ignore
       req.user = {
         userId: decoded.userId,
         email: decoded.email,
@@ -69,11 +70,13 @@ export const checkRole = (allowedRoles: Role[]) => {
     next: NextFunction
   ): Promise<void> => {
     try {
+      // @ts-ignore
       if (!req.user) {
         res.status(401).json({ message: 'Chưa xác thực người dùng' });
         return;
       }
 
+      // @ts-ignore
       if (!allowedRoles.includes(req.user.role)) {
         res.status(403).json({ message: 'Không có quyền thực hiện thao tác này' });
         return;

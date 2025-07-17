@@ -25,7 +25,7 @@ import ocrRoutes from './routes/ocr';
 import ocrFormRoutes from './routes/ocr-form.routes';
 import formTemplateRoutes from './routes/form-template.routes';
 
-const app = express.default() as Application;
+const app: Application = express();
 const prisma = new PrismaClient();
 
 // Middleware

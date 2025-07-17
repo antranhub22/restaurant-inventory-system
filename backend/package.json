@@ -8,11 +8,12 @@
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "test": "jest",
-    "seed": "prisma db seed",
+    "seed": "node seed-production.js",
+    "seed:ts": "ts-node prisma/seed.ts",
     "setup:admin": "node setup-admin.js",
     "db:check": "node check-database.js",
-    "db:setup": "npx prisma db push && npx prisma db seed",
-    "db:reset": "npx prisma db push --force-reset && npx prisma db seed",
+    "db:setup": "npx prisma db push && npm run seed",
+    "db:reset": "npx prisma db push --force-reset && npm run seed",
     "db:admin": "npx prisma db push && node setup-admin.js",
     "migration:enable": "./auto-migration.sh enable",
     "migration:disable": "./auto-migration.sh disable",
@@ -21,7 +22,7 @@
     "migration:backup": "./auto-migration.sh backup"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "node seed-production.js"
   },
   "keywords": [],
   "author": "",
@@ -54,6 +55,8 @@
     "redis": "^5.5.6",
     "sharp": "^0.34.2",
     "tesseract.js": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
     "uuid": "^11.1.0",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0",
@@ -80,8 +83,6 @@
     "jest": "^29.7.0",
     "supertest": "^6.3.4",
     "ts-jest": "^29.4.0",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.3.3"
+    "ts-node-dev": "^2.0.0"
   }
 }

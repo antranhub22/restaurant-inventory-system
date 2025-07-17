@@ -10,7 +10,7 @@ import {
 } from '../middleware/validation.middleware';
 import { ocrRateLimit, apiRateLimit } from '../middleware/rate-limit.middleware';
 
-const router = Router();
+const router: Router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {

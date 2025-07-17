@@ -1,7 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 const prisma = new PrismaClient();
 
 // Get dashboard metrics

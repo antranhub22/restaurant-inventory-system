@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
 import ItemList from './pages/ItemList';
 import ItemDetail from './pages/ItemDetail';

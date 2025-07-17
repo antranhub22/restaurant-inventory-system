@@ -17,7 +17,7 @@ services:
     plan: starter # hoặc free
     region: singapore # gần Việt Nam
     buildCommand: ./render-build.sh
-    startCommand: npm start
+    startCommand: cd backend && ./render-start.sh
     envVars:
       - key: NODE_ENV
         value: production

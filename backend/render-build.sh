@@ -29,7 +29,7 @@ console.log('✅ All critical packages present');
 "
 
 echo "📦 Generating Prisma Client..."
-npx prisma generate
+npx prisma generate --schema=./prisma/schema.prisma
 
 echo "🔍 Database connection check..."
 # Check if DATABASE_URL is available
@@ -116,7 +116,7 @@ npm ci --only=production
 echo "🗄️ Running database migrations..."
 if [ -n "$DATABASE_URL" ]; then
     echo "   📊 DATABASE_URL detected, running migrations..."
-    node force-migrate.js || echo "   ⚠️ Migration failed, will retry at startup"
+    npx prisma migrate deploy --schema=./prisma/schema.prisma || echo "   ⚠️ Migration failed, will retry at startup"
 else
     echo "   ⚠️ DATABASE_URL not set, migrations will run at startup"
 fi

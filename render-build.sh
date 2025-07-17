@@ -10,7 +10,14 @@ echo "   Node version: $(node --version)"
 echo "   NPM version: $(npm --version)"
 echo "   Working Directory: $(pwd)"
 
-# Install backend dependencies and build
+# Check if we're in the right directory and navigate to backend
+if [ ! -d "backend" ]; then
+    echo "❌ Backend directory not found in $(pwd)"
+    echo "📂 Available directories:"
+    ls -la
+    exit 1
+fi
+
 echo ""
 echo "📦 Installing Backend Dependencies..."
 cd backend
@@ -18,7 +25,7 @@ npm ci
 
 echo ""
 echo "🔧 Generating Prisma Client..."
-npx prisma generate
+npx prisma generate --schema=./prisma/schema.prisma
 
 echo ""
 echo "🏗️ Building TypeScript..."

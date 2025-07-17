@@ -9,7 +9,7 @@ import {
 } from '../types/variance';
 
 class VarianceService {
-  private baseUrl = '/api/variance';
+  private baseUrl = '/api/reconciliation';
 
   /**
    * Get variance report with filters
@@ -90,7 +90,7 @@ class VarianceService {
    */
   async getReconciliationVariances(filters: VarianceFilter): Promise<VarianceData[]> {
     try {
-      const response = await api.get<{ success: boolean; data: VarianceData[] }>(`/api/reconciliation/variances`, {
+      const response = await api.get<{ success: boolean; data: VarianceData[] }>(`${this.baseUrl}/variances`, {
         params: filters
       });
       

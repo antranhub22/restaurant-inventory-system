@@ -5,7 +5,7 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import sampleData from '../data/sample_data.json';
 import { SampleData } from '../types/sample_data';
-import axios from 'axios';
+import api from '../utils/api';
 
 const data = sampleData as SampleData;
 const transactions = data.sample_transactions;
@@ -113,13 +113,13 @@ const TransactionHistory: React.FC = () => {
       const formData = new FormData();
       formData.append('image', blob, 'receipt.jpg');
 
-      const response = await axios.post<{ data: OcrResult }>('/api/ocr/process-receipt', formData, {
+      const response = await api.post<{ data: OcrResult }>('/ocr/process-receipt', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       setOcrResult(response.data.data);
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
+    } catch (err: any) {
+      if (err.response) {
         setError(err.response?.data?.error?.message || 'Lỗi khi xử lý OCR.');
       } else {
         setError('Lỗi không xác định khi xử lý OCR.');

@@ -4,25 +4,25 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "test": "jest",
-    "seed": "node seed-production.js",
-    "seed:ts": "ts-node prisma/seed.ts",
-    "setup:admin": "node setup-admin.js",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "db:migrate": "npx prisma migrate dev",
+    "db:reset": "npx prisma migrate reset",
+    "db:seed": "npx prisma db seed",
+    "db:studio": "npx prisma studio",
     "db:check": "node check-database.js",
-    "db:setup": "npx prisma db push && npm run seed",
-    "db:reset": "npx prisma db push --force-reset && npm run seed",
-    "db:admin": "npx prisma db push && node setup-admin.js",
-    "migration:enable": "./auto-migration.sh enable",
-    "migration:disable": "./auto-migration.sh disable",
-    "migration:status": "./auto-migration.sh status",
-    "migration:trigger": "./auto-migration.sh trigger",
-    "migration:backup": "./auto-migration.sh backup"
+    "db:setup": "npx prisma db push && npm run db:seed",
+    "setup:admin": "node setup-admin.js",
+    "db:debug": "node debug-database.js",
+    "health:check": "curl -f http://localhost:${PORT:-4000}/api/health || exit 1"
   },
   "prisma": {
-    "seed": "node seed-production.js"
+    "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",

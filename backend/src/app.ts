@@ -53,27 +53,75 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/ocr', ocrRateLimit);
 app.use('/api', apiRateLimit);
 
-// Health check endpoint
+// Enhanced health check endpoint for Render monitoring
 app.get('/api/health', async (req: Request, res: Response) => {
+  const healthCheck = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    database: {
+      status: 'unknown',
+      provider: 'unknown',
+      lastChecked: new Date().toISOString()
+    },
+    services: {
+      redis: false
+    }
+  };
+
   try {
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
+    // Test database connection with timeout
+    console.log('🔍 Health check: Testing database...');
     
-    res.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      database: 'connected',
-      uptime: process.uptime()
-    });
-  } catch (error) {
-    res.status(503).json({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      database: 'disconnected',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      uptime: process.uptime()
-    });
+    const dbPromise = prisma.$queryRaw`SELECT 
+      version() as version, 
+      current_database() as database,
+      current_user as user,
+      now() as current_time`;
+    
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database timeout')), 5000)
+    );
+    
+    const result: any = await Promise.race([dbPromise, timeoutPromise]);
+    
+    healthCheck.database = {
+      status: 'connected',
+      provider: result[0]?.version?.includes('PostgreSQL') ? 'PostgreSQL' : 'Unknown',
+      version: result[0]?.version?.split(' ')[1] || 'Unknown',
+      database: result[0]?.database || 'Unknown',
+      user: result[0]?.user || 'Unknown',
+      lastChecked: new Date().toISOString()
+    };
+    
+    console.log('✅ Health check: Database connected');
+    
+  } catch (error: any) {
+    console.error('❌ Health check: Database failed:', error?.message);
+    
+    healthCheck.status = 'unhealthy';
+    healthCheck.database = {
+      status: 'disconnected',
+      provider: 'PostgreSQL',
+      error: error?.message || 'Connection failed',
+      errorCode: error?.code || 'Unknown',
+      lastChecked: new Date().toISOString()
+    };
   }
+
+  // Check Redis connection (optional)
+  try {
+    // This is a simple check - you can expand it if using Redis
+    healthCheck.services.redis = !!process.env.REDIS_URL;
+  } catch (error) {
+    healthCheck.services.redis = false;
+  }
+
+  // Return appropriate status code
+  const statusCode = healthCheck.status === 'healthy' ? 200 : 503;
+  
+  res.status(statusCode).json(healthCheck);
 });
 
 // Routes

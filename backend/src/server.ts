@@ -1,96 +1,165 @@
 import app from './app';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+  log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+});
+
 const PORT = process.env.PORT || 4000;
 
-// Test database connection
-async function connectDatabase() {
-  try {
-    // Debug database URL
-    console.log('=== DATABASE DEBUG ===');
-    console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
-    if (process.env.DATABASE_URL) {
-      try {
-        const url = new URL(process.env.DATABASE_URL);
-        console.log('Database host:', url.hostname);
-        console.log('Database port:', url.port || '5432');
-        if (url.hostname.includes('neon.tech')) {
-          console.log('Provider: Neon.tech');
-        } else if (url.hostname.startsWith('dpg-')) {
-          console.log('Provider: Render PostgreSQL ✅');
+// Enhanced database connection with retry mechanism for Render
+async function connectDatabase(): Promise<boolean> {
+  const MAX_RETRIES = 5;
+  const RETRY_DELAY = 3000; // 3 seconds
+  
+  console.log('=== RENDER POSTGRESQL CONNECTION ===');
+  console.log('Environment:', process.env.NODE_ENV || 'development');
+  console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+  
+  if (process.env.DATABASE_URL) {
+    try {
+      const url = new URL(process.env.DATABASE_URL);
+      console.log('📊 Database Configuration:');
+      console.log('   Host:', url.hostname);
+      console.log('   Port:', url.port || '5432');
+      console.log('   Database:', url.pathname.slice(1));
+      console.log('   SSL Mode:', url.searchParams.get('sslmode') || 'prefer');
+      
+      if (url.hostname.startsWith('dpg-') && url.hostname.includes('render')) {
+        console.log('   Provider: ✅ Render PostgreSQL');
+      } else if (url.hostname.includes('neon.tech')) {
+        console.log('   Provider: Neon.tech');
+      } else {
+        console.log('   Provider: Custom PostgreSQL');
+      }
+    } catch (e) {
+      console.error('❌ Invalid DATABASE_URL format:', e);
+      return false;
+    }
+  } else {
+    console.error('❌ DATABASE_URL not set');
+    return false;
+  }
+  
+  console.log('=====================================');
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`🔄 Database connection attempt ${attempt}/${MAX_RETRIES}...`);
+      
+      // Test basic connection
+      await prisma.$connect();
+      console.log('✅ Database connected successfully');
+      
+      // Test query execution
+      console.log('🔍 Testing database query...');
+      const result = await prisma.$queryRaw`SELECT version() as version, now() as current_time`;
+      console.log('✅ Database query successful');
+      
+      // Check schema
+      console.log('📊 Checking database schema...');
+      const userCount = await prisma.user.count();
+      const itemCount = await prisma.item.count();
+      console.log(`📈 Database ready - Users: ${userCount}, Items: ${itemCount}`);
+      
+      return true;
+      
+    } catch (error: any) {
+      console.error(`❌ Connection attempt ${attempt} failed:`, error?.message || error);
+      
+      // Enhanced error handling with specific guidance
+      if (error?.code === 'P1001') {
+        console.error('💡 Database server unreachable. Common causes:');
+        console.error('   - Database service is still starting (wait 2-3 minutes)');
+        console.error('   - Wrong DATABASE_URL (check Internal vs External URL)');
+        console.error('   - Network/region mismatch (ensure same region)');
+        console.error('   - Database service failed to start');
+      } else if (error?.code === 'P1000') {
+        console.error('💡 Authentication failed. Check:');
+        console.error('   - Username/password in DATABASE_URL');
+        console.error('   - Database credentials are correct');
+      } else if (error?.code === 'P1003') {
+        console.error('💡 Database does not exist. Check:');
+        console.error('   - Database name in URL');
+        console.error('   - Database service completed setup');
+      } else {
+        console.error('💡 Unexpected error:', error?.code || 'Unknown');
+      }
+      
+      if (attempt < MAX_RETRIES) {
+        console.log(`⏳ Waiting ${RETRY_DELAY/1000}s before retry...`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      } else {
+        console.error('💀 All database connection attempts failed!');
+        
+        // In production, log error but don't crash - let health check handle it
+        if (process.env.NODE_ENV === 'production') {
+          console.error('🚨 Production mode: Server will start but mark as unhealthy');
+          return false;
         } else {
-          console.log('Provider: Custom PostgreSQL');
+          process.exit(1);
         }
-      } catch (e) {
-        console.log('Invalid DATABASE_URL format');
       }
     }
-    console.log('======================');
-    
-    console.log('🔄 Testing database connection...');
-    await prisma.$connect();
-    console.log('✅ Database connected successfully');
-    
-    // Test a simple query
-    const userCount = await prisma.user.count();
-    console.log(`📊 Database ready - Found ${userCount} users`);
-  } catch (error: any) {
-    console.error('❌ Database connection failed:', error);
-    console.error('Error code:', error?.code);
-    console.error('Error message:', error?.message);
-    
-    // Provide helpful troubleshooting info
-    if (error?.code === 'P1001') {
-      console.error('💡 Database server unreachable. Please check:');
-      console.error('   - Database service is running');
-      console.error('   - Network connectivity');
-      console.error('   - DATABASE_URL is correct');
-    }
-    
-    console.error('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
-    
-    // In production, retry connection instead of exiting
-    if (process.env.NODE_ENV === 'production') {
-      console.log('🔄 Production mode: Will retry database connection...');
-      // Don't exit, let the server start and handle requests with health check endpoint
-    } else {
-      process.exit(1);
-    }
   }
-}
-
-// Enable detailed logging in development
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔍 Running in development mode with detailed logging');
-}
-
-// Start server with database connection
-async function startServer() {
-  await connectDatabase();
   
-  app.listen(PORT, () => {
-    console.log(`\n🚀 Server running on port ${PORT}`);
+  return false;
+}
+
+// Enhanced server startup
+async function startServer() {
+  console.log('🚀 Starting Restaurant Inventory Backend...');
+  
+  const dbConnected = await connectDatabase();
+  
+  if (!dbConnected && process.env.NODE_ENV === 'production') {
+    console.log('⚠️ Starting server without database connection (will retry)');
+  }
+  
+  const server = app.listen(PORT, () => {
+    console.log(`\n🌐 Server running on port ${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🌐 CORS origin: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+    console.log(`🌍 CORS origin: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+    console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
+    
+    if (dbConnected) {
+      console.log(`✅ Database: Connected and ready`);
+    } else {
+      console.log(`⚠️ Database: Not connected (check health endpoint)`);
+    }
+    
     console.log(`\n💡 Ready to handle requests...`);
   });
+
+  // Enhanced graceful shutdown
+  const gracefulShutdown = async (signal: string) => {
+    console.log(`\n🛑 ${signal} received, shutting down gracefully...`);
+    
+    server.close(async () => {
+      console.log('🔌 HTTP server closed');
+      
+      try {
+        await prisma.$disconnect();
+        console.log('🗄️ Database disconnected');
+      } catch (error) {
+        console.error('❌ Error disconnecting database:', error);
+      }
+      
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
+// Start the server
 startServer().catch((error) => {
-  console.error('❌ Failed to start server:', error);
+  console.error('💀 Failed to start server:', error);
   process.exit(1);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 SIGTERM received, shutting down gracefully');
-  await prisma.$disconnect();
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('\n🛑 SIGINT received, shutting down gracefully');
-  await prisma.$disconnect();
-  process.exit(0);
 }); 

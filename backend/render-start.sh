@@ -1,109 +1,113 @@
 #!/usr/bin/env bash
-# Ultra-simplified Render startup script using dedicated Prisma setup
+# Simplified Render startup script - direct approach
 set -e
 
-echo "🚀 Starting Restaurant Inventory System on Render..."
-echo "=================================================="
+echo "🚀 STARTING RESTAURANT INVENTORY SYSTEM"
+echo "======================================="
 
-# Environment check
-echo "📊 Environment Information:"
-echo "   Node version: $(node --version)"
-echo "   Working Directory: $(pwd)"
+# Basic environment check
+echo "📊 Environment:"
+echo "   PWD: $(pwd)"
 echo "   NODE_ENV: ${NODE_ENV:-not set}"
-echo "   PORT: ${PORT:-not set}"
+echo "   DATABASE_URL: $(test -n "$DATABASE_URL" && echo 'configured' || echo 'MISSING')"
 
-# DEBUG: Check file structure
-echo ""
-echo "🔍 DEBUG: Checking file structure..."
-echo "   Current directory: $(pwd)"
-echo "   package.json: $(test -f package.json && echo 'EXISTS' || echo 'MISSING')"
-echo "   prisma/schema.prisma: $(test -f prisma/schema.prisma && echo 'EXISTS' || echo 'MISSING')"
-echo "   setup-prisma-for-render.js: $(test -f setup-prisma-for-render.js && echo 'EXISTS' || echo 'MISSING')"
-echo "   debug-startup.js: $(test -f debug-startup.js && echo 'EXISTS' || echo 'MISSING')"
+# Exit if no DATABASE_URL
+if [ -z "$DATABASE_URL" ]; then
+    echo "❌ DATABASE_URL not configured"
+    exit 1
+fi
 
+# Debug: Show file structure 
 echo ""
-echo "📂 Current directory contents:"
+echo "📂 CURRENT DIRECTORY STRUCTURE:"
 ls -la
+echo ""
 
+# Check for schema in multiple locations
+echo "🔍 SEARCHING FOR PRISMA SCHEMA:"
+SCHEMA_FOUND=""
+
+if [ -f "prisma/schema.prisma" ]; then
+    echo "✅ Found: ./prisma/schema.prisma"
+    SCHEMA_FOUND="./prisma/schema.prisma"
+elif [ -f "dist/prisma/schema.prisma" ]; then
+    echo "✅ Found: ./dist/prisma/schema.prisma"
+    SCHEMA_FOUND="./dist/prisma/schema.prisma"
+    # Copy it to expected location
+    mkdir -p prisma
+    cp dist/prisma/schema.prisma prisma/
+    cp -r dist/prisma/migrations prisma/ 2>/dev/null || true
+    echo "✅ Copied schema to ./prisma/"
+else
+    echo "❌ Schema not found, searching..."
+    find . -name "schema.prisma" -type f 2>/dev/null || true
+fi
+
+# Show prisma directory if exists
 if [ -d "prisma" ]; then
     echo ""
-    echo "📂 Prisma directory contents:"
+    echo "📂 PRISMA DIRECTORY:"
     ls -la prisma/
 fi
 
-# Verify we're in the right place
-if [ ! -f "package.json" ]; then
-    echo "❌ package.json not found! Are we in the backend directory?"
-    echo "📂 Current directory contents:"
-    ls -la
-    exit 1
-fi
-
-# Verify DATABASE_URL
+# Generate Prisma client
 echo ""
-echo "🗄️ Database Configuration:"
-if [ -z "$DATABASE_URL" ]; then
-    echo "❌ DATABASE_URL not set!"
-    exit 1
-fi
-echo "✅ DATABASE_URL is configured"
-
-# Run comprehensive Prisma setup with debug
-echo ""
-echo "🔧 Running comprehensive Prisma setup with debug..."
-
-# Check if debug script exists, if not use inline setup
-if [ -f "debug-startup.js" ]; then
-    echo "📋 Using debug-startup.js..."
-    if node debug-startup.js; then
-        echo "✅ Prisma setup completed successfully"
-    else
-        echo "❌ Prisma setup failed!"
-        exit 1
-    fi
+echo "🔧 GENERATING PRISMA CLIENT:"
+if npx prisma generate; then
+    echo "✅ Prisma client generated"
 else
-    echo "⚠️ debug-startup.js not found, using inline setup..."
-    
-    # Inline Prisma setup
-    echo "🔧 Generating Prisma client..."
-    if npx prisma generate; then
-        echo "✅ Prisma client generated"
+    echo "❌ Failed to generate client"
+    exit 1
+fi
+
+# Test database connection
+echo ""
+echo "🔍 TESTING DATABASE CONNECTION:"
+node -e "
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+prisma.\$connect()
+  .then(() => { 
+    console.log('✅ Database connection OK'); 
+    return prisma.\$disconnect(); 
+  })
+  .catch(e => { 
+    console.log('❌ Database connection failed:', e.message); 
+    process.exit(1); 
+  });
+" || exit 1
+
+# Run migrations
+echo ""
+echo "🔄 SETTING UP DATABASE SCHEMA:"
+if npx prisma migrate deploy 2>/dev/null; then
+    echo "✅ Migrations deployed"
+else
+    echo "⚠️ Migrate deploy failed, trying db push..."
+    if npx prisma db push --accept-data-loss; then
+        echo "✅ Schema pushed with db push"
     else
-        echo "❌ Failed to generate Prisma client"
-        exit 1
-    fi
-    
-    echo "🔄 Running database migrations..."
-    if npx prisma migrate deploy; then
-        echo "✅ Migrations deployed"
-    else
-        echo "⚠️ Migrate deploy failed, trying db push..."
-        if npx prisma db push --accept-data-loss; then
-            echo "✅ Schema pushed"
-        else
-            echo "❌ Both migration methods failed"
-            exit 1
-        fi
+        echo "⚠️ Migration failed, but continuing..."
     fi
 fi
 
-# Verify compiled server exists
+# Verify server file exists
 echo ""
-echo "🔍 Checking application files..."
-if [ ! -f "dist/server.js" ]; then
-    echo "❌ Compiled server not found at dist/server.js!"
-    echo "📂 Available files in dist:"
+echo "🔍 CHECKING SERVER FILE:"
+if [ -f "dist/server.js" ]; then
+    echo "✅ Server file exists: dist/server.js"
+else
+    echo "❌ dist/server.js not found"
+    echo "📂 dist/ contents:"
     ls -la dist/ 2>/dev/null || echo "No dist directory"
     exit 1
 fi
 
-echo "✅ dist/server.js found"
-
-# Start the application
+# Start the server
 echo ""
-echo "🚀 Starting the application..."
-echo "   Entry point: dist/server.js"
-echo "   PORT: ${PORT:-4000}"
+echo "🚀 STARTING SERVER..."
+echo "   File: dist/server.js"
+echo "   Port: ${PORT:-4000}"
 echo ""
 
 exec node dist/server.js 

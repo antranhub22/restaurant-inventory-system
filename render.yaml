@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: starter # hoặc free
     region: oregon # Match với database region (US West)
-    buildCommand: cd backend && ./render-build.sh
+    buildCommand: cd backend && npm ci && npx prisma generate && npx tsc && cp -r prisma dist/
     startCommand: cd backend && ./render-start.sh
     envVars:
       - key: NODE_ENV

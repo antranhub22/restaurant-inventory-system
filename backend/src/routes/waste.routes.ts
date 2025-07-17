@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
 import wasteController from '../controllers/waste.controller';
 
-const router = Router();
+const router: Router = Router();
 
 router.use(authMiddleware);
 

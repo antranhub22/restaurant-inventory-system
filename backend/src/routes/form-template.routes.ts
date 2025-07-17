@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import formTemplateController from '../controllers/form-template.controller';
 
-const router = Router();
+const router: Router = Router();
 
 // Form mẫu routes
 router.get('/templates/:type/default', formTemplateController.getDefaultTemplate);

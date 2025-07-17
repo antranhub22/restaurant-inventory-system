@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { PrismaClient, Inventory, Item, Category } from '@prisma/client';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 const prisma = new PrismaClient();
 
 interface InventoryWithRelations extends Inventory {

@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response, NextFunction, Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient, Role } from '@prisma/client';
@@ -26,7 +26,7 @@ interface AuthResponse {
   user: UserResponse;
 }
 
-const router = express.Router();
+const router: Router = express.Router();
 const prisma = new PrismaClient();
 
 // Login

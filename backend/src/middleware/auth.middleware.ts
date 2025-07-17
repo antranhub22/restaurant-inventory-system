@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express-serve-static-core';
+import type { Request, Response, NextFunction } from 'express';
 import { JwtPayload as BaseJwtPayload } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
 import { Role } from '@prisma/client';

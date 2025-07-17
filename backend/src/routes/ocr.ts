@@ -3,7 +3,7 @@ import multer from 'multer';
 import { authMiddleware } from '../middleware/auth.middleware';
 import ocrController from '../controllers/ocr.controller';
 
-const router = Router();
+const router: Router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {

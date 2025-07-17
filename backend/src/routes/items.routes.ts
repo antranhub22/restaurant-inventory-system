@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
 import itemsController from '../controllers/items.controller';
 
-const router = Router();
+const router: Router = Router();
 
 // Apply authentication middleware to all routes
 router.use(authMiddleware);

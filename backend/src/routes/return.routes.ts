@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
 import returnController from '../controllers/return.controller';
 
-const router = Router();
+const router: Router = Router();
 
 router.use(authMiddleware);
 

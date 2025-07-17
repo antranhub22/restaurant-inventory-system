@@ -28,6 +28,11 @@ import formTemplateRoutes from './routes/form-template.routes';
 const app: Application = express();
 const prisma = new PrismaClient();
 
+// Trust proxy for Render deployment
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', true);
+}
+
 // Middleware
 app.use(helmet());
 app.use(compression());

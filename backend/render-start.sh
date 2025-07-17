@@ -42,6 +42,8 @@ fi
 # Generate Prisma client
 echo ""
 echo "🔧 Generating Prisma client..."
+# Change to backend directory to ensure relative paths work
+cd /app 2>/dev/null || cd $(dirname $0)
 npx prisma generate --schema="$SCHEMA_PATH"
 
 # Database setup

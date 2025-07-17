@@ -1,21 +1,10 @@
 services:
-  # PostgreSQL Database Service
-  - type: pserv
-    name: restaurant-inventory-database
-    plan: starter # hoặc free
-    region: singapore
-    env: 
-      - key: POSTGRES_DB
-        value: restaurant_inventory
-      - key: POSTGRES_USER
-        value: restaurant_user
-
   # Backend API Service
   - type: web
     name: restaurant-inventory-backend
     runtime: node
     plan: starter # hoặc free
-    region: singapore # gần Việt Nam
+    region: oregon # Match với database region (US West)
     buildCommand: ./render-build.sh
     startCommand: cd backend && ./render-start.sh
     envVars:
@@ -24,9 +13,7 @@ services:
       - key: PORT
         value: 4000
       - key: DATABASE_URL
-        fromDatabase:
-          name: restaurant-inventory-database
-          property: connectionString
+        value: postgresql://restaurantinventory_user:I1IzTmtKbqZ0rkZTo4HtMDJtJvcoMV7q@dpg-d1sf2ajulbrs73ac9r30-a.oregon-postgres.render.com/restaurantinventory
       - key: JWT_SECRET
         generateValue: true # Render tự generate
       - key: REDIS_URL
@@ -64,9 +51,9 @@ services:
     autoDeploy: true
 
 # HƯỚNG DẪN SETUP DATABASE VỚI RENDER POSTGRESQL:
-# 1. PostgreSQL service sẽ được tự động tạo từ file này
-# 2. DATABASE_URL sẽ được tự động cấu hình từ PostgreSQL service
-# 3. Render tự động thêm SSL cho PostgreSQL connections
+# 1. Sử dụng existing PostgreSQL database: restaurantinventory
+# 2. DATABASE_URL được hard-coded với connection string từ existing database
+# 3. Database region: Oregon (US West) - Backend cũng deploy tại Oregon
 # 4. Database migration sẽ tự động chạy trong build process
 #
 # ENTRY POINT CONFIGURATION:
@@ -86,8 +73,9 @@ services:
 # Copy REDIS_URL và paste vào Render environment variables
 #
 # LƯU Ý:
-# - PostgreSQL service format: postgresql://user:pass@host:port/database?sslmode=require
-# - Internal Render connections sử dụng private network
-# - Database cần time để khởi động (~2-3 phút cho lần đầu)
+# - Sử dụng existing database: restaurantinventory tại Oregon region
+# - Database connection string đã include SSL mode
+# - Backend và database cùng region Oregon để optimize latency
 # - Backend có comprehensive error handling và fallback mechanisms 
-# - Root-level index.js handles entry point redirection 
+# - Root-level index.js handles entry point redirection
+# - Database đã sẵn sàng, không cần thời gian khởi động 

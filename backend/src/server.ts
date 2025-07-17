@@ -159,7 +159,7 @@ async function startServer() {
     console.log('⚠️ Starting server without database connection (will retry)');
   }
   
-  // Add health endpoint directly
+  // Add health endpoint directly with setup capability
   app.get('/api/health', async (req, res) => {
     const healthData = {
       status: 'healthy',
@@ -172,6 +172,65 @@ async function startServer() {
     try {
       await prisma.$queryRaw`SELECT 1`;
       healthData.status = 'healthy';
+      
+      // If setup=true query param, create admin users
+      if (req.query.setup === 'true') {
+        try {
+          const bcrypt = require('bcryptjs');
+          
+          // Check if users exist
+          const userCount = await prisma.user.count();
+          if (userCount === 0) {
+            // Create admin users
+            const adminHash = await bcrypt.hash('admin123', 10);
+            const ownerHash = await bcrypt.hash('1234', 10);
+            
+            await prisma.user.create({
+              data: {
+                username: 'admin',
+                email: 'admin@restaurant.com',
+                passwordHash: adminHash,
+                fullName: 'System Admin',
+                phone: '0987654321',
+                role: 'owner',
+                department: 'IT',
+                isActive: true,
+                emailVerified: true,
+                language: 'vi',
+                timezone: 'Asia/Ho_Chi_Minh'
+              }
+            });
+
+            await prisma.user.create({
+              data: {
+                username: 'owner',
+                email: 'owner@restaurant.com',
+                passwordHash: ownerHash,
+                fullName: 'Chủ Nhà Hàng',
+                phone: '0123456789',
+                role: 'owner',
+                department: 'Quản lý',
+                isActive: true,
+                emailVerified: true,
+                language: 'vi',
+                timezone: 'Asia/Ho_Chi_Minh'
+              }
+            });
+
+            healthData.message = 'Admin users created successfully!';
+            healthData.credentials = [
+              { username: 'admin', password: 'admin123' },
+              { username: 'owner', password: '1234' }
+            ];
+          } else {
+            healthData.message = 'Users already exist';
+            healthData.userCount = userCount;
+          }
+        } catch (setupError) {
+          healthData.setupError = setupError.message;
+        }
+      }
+      
       res.status(200).json(healthData);
     } catch (error) {
       healthData.status = 'unhealthy';

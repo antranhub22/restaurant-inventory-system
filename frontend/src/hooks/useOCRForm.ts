@@ -55,7 +55,7 @@ const useOCRForm = (): UseOCRFormReturn => {
       formData.append('image', imageFile);
       formData.append('formType', formType);
 
-      const response = await api.post('/ocr-forms/process', formData, {
+      const response = await api.post('/ocr-form/process', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -82,7 +82,7 @@ const useOCRForm = (): UseOCRFormReturn => {
     setError(null);
 
     try {
-      const response = await api.post('/ocr-forms/confirm', {
+      const response = await api.post('/ocr-form/confirm', {
         formId,
         corrections,
       });

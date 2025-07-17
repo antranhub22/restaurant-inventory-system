@@ -82,10 +82,25 @@ async function connectDatabase(): Promise<boolean> {
         if (process.env.NODE_ENV === 'production') {
           try {
             console.log('🔄 Attempting to run database migrations...');
-            // This will be handled by the migration script
-            console.log('ℹ️ Migrations should be run manually or via deploy script');
+            const { execSync } = require('child_process');
+            
+            // First try migrate deploy
+            try {
+              execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+              console.log('✅ Migrations completed successfully');
+            } catch (migrateError) {
+              console.log('⚠️ Migrate deploy failed, trying db push...');
+              execSync('npx prisma db push', { stdio: 'inherit' });
+              console.log('✅ Schema pushed successfully');
+            }
+            
+            // Generate client
+            execSync('npx prisma generate', { stdio: 'inherit' });
+            console.log('✅ Prisma client generated');
+            
           } catch (migrationError) {
             console.error('❌ Migration failed:', migrationError);
+            console.log('⚠️ Application will continue but database operations may fail');
           }
         }
       }

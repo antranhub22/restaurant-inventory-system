@@ -21,7 +21,9 @@
       "./src/types"
     ],
     "types": [
-      "node"
+      "node",
+      "express",
+      "jest"
     ],
     "noImplicitAny": false,
     "strictPropertyInitialization": false,

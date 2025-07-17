@@ -1,143 +1,70 @@
 #!/usr/bin/env bash
-# Enhanced Render build script with comprehensive error handling
-set -e  # Exit on any error
+# Enhanced Render build script
+set -e
 
-echo "🧹 Cleaning up old dependencies and build..."
-rm -rf node_modules dist
-rm -f package-lock.json
+echo "🔨 Building Restaurant Inventory System..."
+echo "========================================"
 
-echo "🔧 Installing dependencies..."
-npm ci --include=dev
-
-echo "📦 Verifying critical installations..."
+# Environment info
+echo "📊 Build Environment:"
 echo "   Node version: $(node --version)"
 echo "   NPM version: $(npm --version)"
-echo "   TypeScript: $(npx tsc --version)"
+echo "   Working directory: $(pwd)"
 
-# Verify essential packages
-echo "   Checking critical packages..."
-node -e "
-const fs = require('fs');
-const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-const critical = ['typescript', 'tsx', '@prisma/client', 'express'];
-const missing = critical.filter(p => !pkg.dependencies[p] && !pkg.devDependencies[p]);
-if (missing.length > 0) {
-  console.log('❌ Missing critical packages:', missing.join(', '));
-  process.exit(1);
-}
-console.log('✅ All critical packages present');
-"
+# Install dependencies
+echo ""
+echo "📦 Installing dependencies..."
+npm ci
 
-echo "📦 Generating Prisma Client..."
-npx prisma generate --schema=./prisma/schema.prisma
-
-echo "🔍 Database connection check..."
-# Check if DATABASE_URL is available
-if [ -z "$DATABASE_URL" ]; then
-    echo "⚠️ DATABASE_URL not set - skipping database operations"
-    echo "💡 Database will be set up on first run"
-else
-    echo "✅ DATABASE_URL is set"
-    
-    # Parse DATABASE_URL to check provider
-    if [[ $DATABASE_URL == *"dpg-"*".render"* ]]; then
-        echo "🎯 Render PostgreSQL detected"
-    elif [[ $DATABASE_URL == *"render.com"* ]]; then
-  echo "🎯 Render PostgreSQL detected" 
-    else
-        echo "🎯 Custom PostgreSQL detected"
-    fi
-    
-    # Test database connection with timeout
-    echo "⏳ Testing database connection..."
-    if timeout 20 node -e "
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
-        prisma.\$connect()
-          .then(() => { 
-            console.log('✅ Database connected successfully'); 
-            return prisma.\$disconnect();
-          })
-          .then(() => process.exit(0))
-          .catch((e) => { 
-            console.log('⚠️ Database connection failed (will retry at runtime):', e.message); 
-            process.exit(0); // Don't fail build for connection issues
-          });
-    " 2>/dev/null; then
-        echo "✅ Database connection verified"
-    else
-        echo "⚠️ Database not ready (will setup on startup)"
-    fi
-fi
-
-echo "🏗️ Building TypeScript..."
-npm run build
-
-echo "📁 Copying Prisma files to dist..."
-if [ -d "prisma" ]; then
+# Copy Prisma schema to ensure it's available
+echo ""
+echo "📋 Ensuring Prisma schema is in correct location..."
+if [ -f "prisma/schema.prisma" ]; then
+    echo "✅ Prisma schema found"
+    # Ensure prisma directory exists in dist
     mkdir -p dist/prisma
-    cp -r prisma/* dist/prisma/
-    echo "✅ Prisma files copied to dist/prisma"
+    cp -r prisma/* dist/prisma/ 2>/dev/null || true
+    echo "✅ Copied Prisma schema to dist/prisma/"
 else
-    echo "⚠️ Prisma directory not found to copy"
-fi
-
-echo "🔍 Verifying build output..."
-if [ -f "dist/server.js" ]; then
-    echo "✅ dist/server.js created successfully"
-    echo "   📦 Size: $(ls -lh dist/server.js | awk '{print $5}')"
-else
-    echo "❌ dist/server.js not found after build!"
-    echo "📂 Build output contents:"
-    ls -la dist/ 2>/dev/null || echo "❌ No dist/ directory created"
-    
-    # Try to identify the issue
-    echo "🔍 Investigating build failure..."
-    echo "📂 TypeScript source files:"
-    find src/ -name "*.ts" | head -5
-    
-    echo "📄 TypeScript config check:"
-    if [ -f "tsconfig.json" ]; then
-        echo "✅ tsconfig.json exists"
-        node -e "
-        const ts = JSON.parse(require('fs').readFileSync('tsconfig.json', 'utf8'));
-        console.log('   outDir:', ts.compilerOptions?.outDir || 'not set');
-        console.log('   rootDir:', ts.compilerOptions?.rootDir || 'not set');
-        "
-    else
-        echo "❌ tsconfig.json missing"
-    fi
-    
+    echo "❌ Prisma schema not found!"
     exit 1
 fi
 
-# Verify other important files
+# Generate Prisma Client with explicit schema path
+echo ""
+echo "🔧 Generating Prisma Client..."
+npx prisma generate --schema=./prisma/schema.prisma
+
+# Build TypeScript
+echo ""
+echo "🏗️ Building TypeScript..."
+npm run build
+
+# Verify build output
+echo ""
+echo "✅ Build verification:"
+if [ -f "dist/server.js" ]; then
+    echo "   ✓ dist/server.js exists"
+else
+    echo "   ✗ dist/server.js missing!"
+    exit 1
+fi
+
 if [ -f "dist/app.js" ]; then
-    echo "✅ dist/app.js also created"
+    echo "   ✓ dist/app.js exists"
 else
-    echo "⚠️ dist/app.js not found (not critical if server.js exists)"
+    echo "   ✗ dist/app.js missing!"
 fi
 
-echo "🧹 Cleaning up dev dependencies..."
-rm -rf node_modules
-npm ci --only=production
+# Copy additional files needed for runtime
+echo ""
+echo "📁 Copying runtime files..."
+cp -r prisma dist/ 2>/dev/null || echo "   ⚠️ Prisma directory already exists in dist"
 
-echo "🗄️ Running database migrations..."
-if [ -n "$DATABASE_URL" ]; then
-    echo "   📊 DATABASE_URL detected, running migrations..."
-    npx prisma migrate deploy --schema=./prisma/schema.prisma || echo "   ⚠️ Migration failed, will retry at startup"
-else
-    echo "   ⚠️ DATABASE_URL not set, migrations will run at startup"
-fi
-
-echo "📊 Final build verification..."
-echo "   📂 Build output:"
+# List final structure
+echo ""
+echo "📂 Final build structure:"
 ls -la dist/
-echo "   📦 Production dependencies installed: $(ls node_modules | wc -l) packages"
-echo "   💾 Total size: $(du -sh . | cut -f1)"
 
+echo ""
 echo "✅ Build completed successfully!"
-echo "🎯 Entry points available:"
-[ -f "dist/server.js" ] && echo "   - dist/server.js (primary)"
-[ -f "dist/app.js" ] && echo "   - dist/app.js (secondary)" 
-[ -f "src/server.ts" ] && echo "   - src/server.ts (fallback)"

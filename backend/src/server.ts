@@ -179,6 +179,65 @@ async function startServer() {
     }
   });
 
+  // Quick setup admin endpoint
+  app.post('/api/setup-admin', async (req, res) => {
+    try {
+      const bcrypt = require('bcryptjs');
+      
+      // Check if users exist
+      const userCount = await prisma.user.count();
+      if (userCount > 0) {
+        return res.status(400).json({ error: 'Users already exist' });
+      }
+
+      // Create admin users
+      const adminHash = await bcrypt.hash('admin123', 10);
+      const ownerHash = await bcrypt.hash('1234', 10);
+      
+      await prisma.user.create({
+        data: {
+          username: 'admin',
+          email: 'admin@restaurant.com',
+          passwordHash: adminHash,
+          fullName: 'System Admin',
+          phone: '0987654321',
+          role: 'owner',
+          department: 'IT',
+          isActive: true,
+          emailVerified: true,
+          language: 'vi',
+          timezone: 'Asia/Ho_Chi_Minh'
+        }
+      });
+
+      await prisma.user.create({
+        data: {
+          username: 'owner',
+          email: 'owner@restaurant.com',
+          passwordHash: ownerHash,
+          fullName: 'Chủ Nhà Hàng',
+          phone: '0123456789',
+          role: 'owner',
+          department: 'Quản lý',
+          isActive: true,
+          emailVerified: true,
+          language: 'vi',
+          timezone: 'Asia/Ho_Chi_Minh'
+        }
+      });
+
+      res.status(201).json({
+        message: 'Admin users created',
+        credentials: [
+          { username: 'admin', password: 'admin123' },
+          { username: 'owner', password: '1234' }
+        ]
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Setup failed', details: error.message });
+    }
+  });
+
   const server = app.listen(PORT, () => {
     console.log(`\n🌐 Server running on port ${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);

@@ -238,62 +238,57 @@ async function startServer() {
     }
   });
 
-  // Quick setup admin endpoint
-  app.post('/api/setup-admin', async (req, res) => {
+  // Simple login endpoint directly in server.ts
+  app.get('/api/login', async (req, res) => {
     try {
-      const bcrypt = require('bcryptjs');
+      const { email, password } = req.query;
       
-      // Check if users exist
-      const userCount = await prisma.user.count();
-      if (userCount > 0) {
-        return res.status(400).json({ error: 'Users already exist' });
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password required' });
       }
 
-      // Create admin users
-      const adminHash = await bcrypt.hash('admin123', 10);
-      const ownerHash = await bcrypt.hash('1234', 10);
+      const bcrypt = require('bcryptjs');
+      const jwt = require('jsonwebtoken');
       
-      await prisma.user.create({
-        data: {
-          username: 'admin',
-          email: 'admin@restaurant.com',
-          passwordHash: adminHash,
-          fullName: 'System Admin',
-          phone: '0987654321',
-          role: 'owner',
-          department: 'IT',
-          isActive: true,
-          emailVerified: true,
-          language: 'vi',
-          timezone: 'Asia/Ho_Chi_Minh'
+      // Find user
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: email as string },
+            { username: email as string }
+          ]
         }
       });
 
-      await prisma.user.create({
-        data: {
-          username: 'owner',
-          email: 'owner@restaurant.com',
-          passwordHash: ownerHash,
-          fullName: 'Chủ Nhà Hàng',
-          phone: '0123456789',
-          role: 'owner',
-          department: 'Quản lý',
-          isActive: true,
-          emailVerified: true,
-          language: 'vi',
-          timezone: 'Asia/Ho_Chi_Minh'
-        }
-      });
+      if (!user) {
+        return res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
+      }
 
-      res.status(201).json({
-        message: 'Admin users created',
-        credentials: [
-          { username: 'admin', password: 'admin123' },
-          { username: 'owner', password: '1234' }
-        ]
+      // Check password
+      const validPassword = await bcrypt.compare(password as string, user.passwordHash);
+      if (!validPassword) {
+        return res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
+      }
+
+      // Create JWT token
+      const token = jwt.sign(
+        { userId: user.id, role: user.role },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '24h' }
+      );
+
+      res.status(200).json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role
+        }
       });
     } catch (error) {
-      res.status(500).json({ error: 'Setup failed', details: error.message });
+      res.status(500).json({ error: 'Login failed', details: error.message });
     }
   });
 

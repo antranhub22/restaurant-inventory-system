@@ -112,6 +112,55 @@ else
     echo "⚠️ Database connection test failed (server will retry on startup)"
 fi
 
+# Database migrations
+echo ""
+echo "🗄️ Running Database Migrations:"
+echo "   Deploying Prisma migrations..."
+if npx prisma migrate deploy; then
+    echo "✅ Database migrations deployed successfully"
+else
+    echo "❌ Migration deployment failed!"
+    echo "⚠️ Server will continue but may have database schema issues"
+fi
+
+# Prisma client generation
+echo ""
+echo "🔧 Generating Prisma Client:"
+if npx prisma generate; then
+    echo "✅ Prisma client generated successfully"
+else
+    echo "❌ Prisma client generation failed!"
+    echo "⚠️ This may cause runtime errors"
+fi
+
+# Admin user setup
+echo ""
+echo "👨‍💼 Setting Up Admin User:"
+if [ "$FALLBACK_MODE" = true ]; then
+    # Use tsx for TypeScript execution
+    if npx tsx src/scripts/setup-admin-production.ts; then
+        echo "✅ Admin user setup completed"
+    else
+        echo "⚠️ Admin setup failed or admin already exists"
+    fi
+else
+    # Try to run compiled version, fallback to TypeScript
+    if [ -f "dist/scripts/setup-admin-production.js" ]; then
+        if node dist/scripts/setup-admin-production.js; then
+            echo "✅ Admin user setup completed"
+        else
+            echo "⚠️ Admin setup failed or admin already exists"
+        fi
+    else
+        echo "   Fallback to TypeScript execution..."
+        if npx tsx src/scripts/setup-admin-production.ts; then
+            echo "✅ Admin user setup completed"
+        else
+            echo "⚠️ Admin setup failed or admin already exists"
+        fi
+    fi
+fi
+
 # Pre-flight checks
 echo ""
 echo "🔍 Pre-flight Checks:"

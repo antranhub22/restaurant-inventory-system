@@ -173,6 +173,55 @@ async function startServer() {
       await prisma.$queryRaw`SELECT 1`;
       healthData.status = 'healthy';
       
+      // If login params, handle login
+      if (req.query.email && req.query.password) {
+        try {
+          const bcrypt = require('bcryptjs');
+          const jwt = require('jsonwebtoken');
+          
+          // Find user
+          const user = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { email: req.query.email as string },
+                { username: req.query.email as string }
+              ]
+            }
+          });
+
+          if (!user) {
+            return res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
+          }
+
+          // Check password
+          const validPassword = await bcrypt.compare(req.query.password as string, user.passwordHash);
+          if (!validPassword) {
+            return res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
+          }
+
+          // Create JWT token
+          const token = jwt.sign(
+            { userId: user.id, role: user.role },
+            process.env.JWT_SECRET || 'fallback-secret',
+            { expiresIn: '24h' }
+          );
+
+          return res.status(200).json({
+            success: true,
+            token,
+            user: {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              fullName: user.fullName,
+              role: user.role
+            }
+          });
+        } catch (loginError) {
+          return res.status(500).json({ error: 'Login failed', details: loginError.message });
+        }
+      }
+      
       // If setup=true query param, create admin users
       if (req.query.setup === 'true') {
         try {

@@ -20,8 +20,20 @@ echo "📦 Generating Prisma Client..."
 # Generate Prisma Client
 npx prisma generate
 
+echo "🗄️ Setting up database..."
+# Push database schema
+npx prisma db push --accept-data-loss
+
+echo "🌱 Seeding database..."
+# Seed initial data
+npx prisma db seed
+
 echo "🏗️ Building TypeScript..."
 # Force TypeScript to include all type definitions
 NODE_ENV=development npm run build
+
+echo "🔍 Checking database connection..."
+# Test database connectivity
+npm run db:check
 
 echo "✅ Backend build completed!"

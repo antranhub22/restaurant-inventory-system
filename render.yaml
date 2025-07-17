@@ -13,11 +13,11 @@ services:
   # Backend API Service
   - type: web
     name: restaurant-inventory-backend
-    runtime: docker
+    runtime: node
     plan: starter # hoặc free
     region: singapore # gần Việt Nam
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    buildCommand: ./render-build.sh
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -67,17 +67,17 @@ services:
 # 1. PostgreSQL service sẽ được tự động tạo từ file này
 # 2. DATABASE_URL sẽ được tự động cấu hình từ PostgreSQL service
 # 3. Render tự động thêm SSL cho PostgreSQL connections
-# 4. Database migration sẽ tự động chạy trong Docker build
+# 4. Database migration sẽ tự động chạy trong build process
 #
 # ENTRY POINT CONFIGURATION:
-# - Backend sử dụng Docker với ./backend/Dockerfile
-# - Entry point: dist/server.js (compiled từ src/server.ts)
-# - Fallback: src/server.ts với tsx (nếu build fail)
+# - Backend sử dụng Node.js runtime với ./render-build.sh
+# - Entry point: index.js (redirect to backend/dist/server.js)
+# - Fallback: backend/index.js với tsx (nếu build fail)
 # - Health check: /api/health endpoint
 #
-# LỖI THƯỜNG GẶP:
-# - MODULE_NOT_FOUND: Fixed với đúng entry point trong package.json
-# - Build fails: Enhanced build verification trong Dockerfile
+# LỖI ĐÃ SỬA:
+# - MODULE_NOT_FOUND: Fixed với root-level index.js
+# - Build fails: Enhanced build script với verification
 # - Database connection: Retry logic trong server startup
 # - TypeScript issues: Fallback sang tsx execution
 #
@@ -90,3 +90,4 @@ services:
 # - Internal Render connections sử dụng private network
 # - Database cần time để khởi động (~2-3 phút cho lần đầu)
 # - Backend có comprehensive error handling và fallback mechanisms 
+# - Root-level index.js handles entry point redirection 

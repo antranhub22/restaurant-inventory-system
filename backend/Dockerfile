@@ -38,7 +38,7 @@ RUN echo "🔍 Verifying build output..." && \
 RUN npm ci --only=production && npm cache clean --force
 
 # Make scripts executable
-RUN chmod +x render-start.sh render-build.sh index.js
+RUN chmod +x render-start.sh render-build.sh
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser

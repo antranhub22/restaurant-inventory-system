@@ -6,9 +6,7 @@ import { useAuthStore } from '../store';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { Workbook, downloadExcelFile } from 'excel-builder-vanilla';
 import { LossAnalysis, DepartmentPerformance } from '../types/reports';
 
 // Clean report data structure
@@ -58,42 +56,63 @@ function getReportData(type: string) {
 }
 
 function exportExcel(type: string) {
-  const data = getReportData(type);
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Báo cáo');
-  XLSX.writeFile(wb, `bao_cao_${type}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  try {
+    const data = getReportData(type);
+    const workbook = new Workbook();
+    const worksheet = workbook.createWorksheet({ name: 'Báo cáo' });
+    
+    // Set data to worksheet
+    worksheet.setData(data);
+    workbook.addWorksheet(worksheet);
+    
+    // Download file
+    const filename = `bao_cao_${type}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    downloadExcelFile(workbook, filename);
+  } catch (error) {
+    console.error('Error exporting Excel:', error);
+    alert('Có lỗi khi xuất file Excel. Vui lòng thử lại.');
+  }
 }
 
 function exportCSV(type: string) {
-  const data = getReportData(type);
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  const csv = XLSX.utils.sheet_to_csv(ws, { FS: ',', RS: '\r\n' });
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `bao_cao_${type}_${new Date().toISOString().slice(0,10)}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  try {
+    const data = getReportData(type);
+    
+    // Convert array of arrays to CSV format
+    const csvContent = data
+      .map(row => 
+        row.map(field => 
+          // Escape quotes and wrap in quotes if needed
+          typeof field === 'string' && (field.includes(',') || field.includes('"') || field.includes('\n'))
+            ? `"${field.replace(/"/g, '""')}"`
+            : field
+        ).join(',')
+      )
+      .join('\r\n');
+    
+    // Add BOM for UTF-8 to ensure Vietnamese characters display correctly
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Create download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `bao_cao_${type}_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error exporting CSV:', error);
+    alert('Có lỗi khi xuất file CSV. Vui lòng thử lại.');
+  }
 }
 
-function exportPDF(type: string) {
-  const data = getReportData(type);
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-  doc.setFont('Helvetica', 'normal');
-  doc.text(`BÁO CÁO: ${quickReports.find(q => q.key === type)?.label || ''}`, 40, 40);
-  // @ts-ignore
-  doc.autoTable({
-    startY: 60,
-    head: [data[0]],
-    body: data.slice(1),
-    styles: { font: 'helvetica', fontSize: 10 },
-    headStyles: { fillColor: [41,128,185] },
-    margin: { left: 40, right: 40 },
-  });
-  doc.save(`bao_cao_${type}_${new Date().toISOString().slice(0,10)}.pdf`);
+function exportPDF(_type: string) {
+  // PDF export functionality temporarily disabled
+  // Will be implemented with a secure PDF library later
+  alert('Tính năng xuất PDF đang được cập nhật. Vui lòng sử dụng Excel hoặc CSV thay thế.');
 }
 
 const ReportsDashboard: React.FC = () => {

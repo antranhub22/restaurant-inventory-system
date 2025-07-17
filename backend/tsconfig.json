@@ -21,8 +21,7 @@
       "./src/types"
     ],
     "types": [
-      "node",
-      "jest"
+      "node"
     ],
     "noImplicitAny": false,
     "strictPropertyInitialization": false,
@@ -39,5 +38,5 @@
     "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "src/tests", "jest.config.ts"]
 }

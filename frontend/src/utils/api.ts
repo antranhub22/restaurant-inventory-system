@@ -52,9 +52,10 @@ api.interceptors.response.use(
     // Handle different error scenarios
     if (error.response?.status === 401) {
       // Token expired hoặc invalid
-      console.warn('401 Unauthorized - logging out');
-      useAuthStore.getState().logout();
-      window.location.href = '/login';
+      console.warn('401 Unauthorized - but letting component handle it');
+      // Don't auto-logout for OCR operations, let the calling component decide
+      // useAuthStore.getState().logout();
+      // window.location.href = '/login';
     } else if (error.response?.status === 403) {
       // Forbidden - insufficient permissions
       console.warn('403 Forbidden - insufficient permissions');

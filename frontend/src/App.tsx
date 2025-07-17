@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import Dashboard from './pages/Dashboard';
 import ItemList from './pages/ItemList';
 import ItemDetail from './pages/ItemDetail';
@@ -33,9 +34,24 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected Route component
+// Auth Loading Component
+const AuthLoading: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">Đang tải...</p>
+    </div>
+  </div>
+);
+
+// Protected Route component with hydration support
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const token = useAuthStore.getState().token;
+  const { token, isHydrated } = useAuthStore();
+  
+  // Wait for hydration to complete
+  if (!isHydrated) {
+    return <AuthLoading />;
+  }
   
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -44,12 +60,45 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Auth Guard for login page (prevent access if already logged in)
+const AuthGuard = ({ children }: { children: React.ReactNode }) => {
+  const { token, isHydrated } = useAuthStore();
+  
+  // Wait for hydration to complete
+  if (!isHydrated) {
+    return <AuthLoading />;
+  }
+  
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 function App() {
+  const { isHydrated, setHydrated } = useAuthStore();
+
+  // Ensure hydration is marked as complete on mount
+  useEffect(() => {
+    if (!isHydrated) {
+      // Small delay to ensure zustand persist has completed
+      const timer = setTimeout(() => {
+        setHydrated();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isHydrated, setHydrated]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={
+            <AuthGuard>
+              <Login />
+            </AuthGuard>
+          } />
           
           <Route path="/dashboard" element={
             <ProtectedRoute>

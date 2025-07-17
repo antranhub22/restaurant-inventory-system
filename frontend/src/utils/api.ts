@@ -8,33 +8,106 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 });
 
-// Request interceptor để thêm token
+// Request interceptor để thêm token và validate
 api.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().token;
+    const { token } = useAuthStore.getState();
+    
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      // Check if token is expired before making request
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp * 1000 < Date.now()) {
+          console.warn('Token expired, logging out');
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
+          return Promise.reject(new Error('Token expired'));
+        }
+        
+        config.headers.Authorization = `Bearer ${token}`;
+      } catch (error) {
+        console.warn('Invalid token format, logging out');
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+        return Promise.reject(new Error('Invalid token'));
+      }
     }
+    
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
 
-// Response interceptor để handle errors
+// Response interceptor để handle errors với retry mechanism
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // Handle different error scenarios
     if (error.response?.status === 401) {
       // Token expired hoặc invalid
+      console.warn('401 Unauthorized - logging out');
       useAuthStore.getState().logout();
       window.location.href = '/login';
+    } else if (error.response?.status === 403) {
+      // Forbidden - insufficient permissions
+      console.warn('403 Forbidden - insufficient permissions');
+      // Could show a permission denied modal instead of redirecting
+    } else if (error.response?.status >= 500) {
+      // Server error - could implement retry logic here
+      console.error('Server error:', error.response?.status, error.response?.data);
+      
+      // Simple retry mechanism for server errors (max 1 retry)
+      if (!originalRequest._retry && originalRequest.method?.toLowerCase() === 'get') {
+        originalRequest._retry = true;
+        console.log('Retrying request due to server error...');
+        return api(originalRequest);
+      }
+    } else if (error.code === 'ECONNABORTED') {
+      // Timeout error
+      console.error('Request timeout');
+    } else if (!error.response) {
+      // Network error
+      console.error('Network error:', error.message);
     }
+    
     return Promise.reject(error);
   }
 );
+
+// Utility function to check API health
+export const checkApiHealth = async (): Promise<boolean> => {
+  try {
+    const response = await api.get('/health', { timeout: 5000 });
+    return response.status === 200;
+  } catch (error) {
+    console.error('API health check failed:', error);
+    return false;
+  }
+};
+
+// Utility function to make authenticated requests
+export const makeAuthenticatedRequest = async (config: any) => {
+  const { token } = useAuthStore.getState();
+  
+  if (!token) {
+    throw new Error('No authentication token available');
+  }
+  
+  return api({
+    ...config,
+    headers: {
+      ...config.headers,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
 
 export default api;

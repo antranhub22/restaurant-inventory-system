@@ -12,11 +12,13 @@ const prisma = new PrismaClient({
 
 const PORT = process.env.PORT || 4000;
 
-// Enhanced database connection with retry mechanism for Render
+// Enhanced connection settings
+const MAX_RETRIES = 10; // Increased from 5 for better production reliability
+const INITIAL_RETRY_DELAY = 2000; // Start with 2 seconds
+const MAX_RETRY_DELAY = 30000; // Max 30 seconds between attempts
+const CONNECTION_TIMEOUT = 15000; // 15 second timeout per attempt
+
 async function connectDatabase(): Promise<boolean> {
-  const MAX_RETRIES = 5;
-  const RETRY_DELAY = 3000; // 3 seconds
-  
   console.log('=== RENDER POSTGRESQL CONNECTION ===');
   console.log('Environment:', process.env.NODE_ENV || 'development');
   console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
@@ -40,7 +42,7 @@ async function connectDatabase(): Promise<boolean> {
       if (url.hostname.startsWith('dpg-') && url.hostname.includes('render')) {
         console.log('   Provider: ✅ Render PostgreSQL');
       } else if (url.hostname.includes('render.com')) {
-  console.log('   Provider: Render PostgreSQL');
+        console.log('   Provider: Render PostgreSQL');
       } else {
         console.log('   Provider: Custom PostgreSQL');
       }
@@ -55,17 +57,28 @@ async function connectDatabase(): Promise<boolean> {
   
   console.log('=====================================');
 
+  // Exponential backoff retry logic
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       console.log(`🔄 Database connection attempt ${attempt}/${MAX_RETRIES}...`);
       
-      // Test basic connection
-      await prisma.$connect();
+      // Test basic connection with timeout
+      const connectPromise = prisma.$connect();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Connection timeout')), CONNECTION_TIMEOUT)
+      );
+      
+      await Promise.race([connectPromise, timeoutPromise]);
       console.log('✅ Database connected successfully');
       
-      // Test query execution
+      // Test query execution with timeout
       console.log('🔍 Testing database query...');
-      const result = await prisma.$queryRaw`SELECT version() as version, now() as current_time`;
+      const queryPromise = prisma.$queryRaw`SELECT version() as version, now() as current_time`;
+      const queryTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Query timeout')), 5000)
+      );
+      
+      const result = await Promise.race([queryPromise, queryTimeout]);
       console.log('✅ Database query successful');
       
       // Check schema safely
@@ -86,17 +99,33 @@ async function connectDatabase(): Promise<boolean> {
             
             // First try migrate deploy
             try {
-              execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+              execSync('npx prisma migrate deploy', { 
+                stdio: 'inherit', 
+                timeout: 60000, // 1 minute timeout for migrations
+                cwd: process.cwd()
+              });
               console.log('✅ Migrations completed successfully');
             } catch (migrateError) {
               console.log('⚠️ Migrate deploy failed, trying db push...');
-              execSync('npx prisma db push', { stdio: 'inherit' });
+              execSync('npx prisma db push --force-reset', { 
+                stdio: 'inherit', 
+                timeout: 60000,
+                cwd: process.cwd()
+              });
               console.log('✅ Schema pushed successfully');
             }
             
             // Generate client
-            execSync('npx prisma generate', { stdio: 'inherit' });
+            execSync('npx prisma generate', { 
+              stdio: 'inherit', 
+              timeout: 30000,
+              cwd: process.cwd()
+            });
             console.log('✅ Prisma client generated');
+            
+            // Verify schema after migration
+            const postMigrationCount = await prisma.user.count();
+            console.log(`✅ Post-migration verification - Users: ${postMigrationCount}`);
             
           } catch (migrationError) {
             console.error('❌ Migration failed:', migrationError);
@@ -117,36 +146,49 @@ async function connectDatabase(): Promise<boolean> {
         console.error('   - Wrong DATABASE_URL (check Internal vs External URL)');
         console.error('   - Network/region mismatch (ensure same region)');
         console.error('   - Database service failed to start');
+        console.error('   - Database host/port incorrect');
       } else if (error?.code === 'P1000') {
-        console.error('💡 Authentication failed. Check:');
-        console.error('   - Username/password in DATABASE_URL');
-        console.error('   - Database credentials are correct');
+        console.error('💡 Authentication failed:');
+        console.error('   - Wrong username/password in DATABASE_URL');
+        console.error('   - Database user permissions insufficient');
       } else if (error?.code === 'P1003') {
-        console.error('💡 Database does not exist. Check:');
-        console.error('   - Database name in URL');
-        console.error('   - Database service completed setup');
+        console.error('💡 Database does not exist:');
+        console.error('   - Database name in URL is incorrect');
+        console.error('   - Database service not properly initialized');
+      } else if (error?.message?.includes('timeout')) {
+        console.error('💡 Connection timeout:');
+        console.error('   - Database server is overloaded');
+        console.error('   - Network latency issues');
+        console.error('   - Consider increasing timeout values');
+      } else if (error?.message?.includes('ENOTFOUND')) {
+        console.error('💡 DNS resolution failed:');
+        console.error('   - Database hostname is incorrect');
+        console.error('   - Network connectivity issues');
       } else {
         console.error('💡 Unexpected error:', error?.code || 'Unknown');
       }
       
       if (attempt < MAX_RETRIES) {
-        console.log(`⏳ Waiting ${RETRY_DELAY/1000}s before retry...`);
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      } else {
-        console.error('💀 All database connection attempts failed!');
-        
-        // In production, log error but don't crash - let health check handle it
-        if (process.env.NODE_ENV === 'production') {
-          console.error('🚨 Production mode: Server will start but mark as unhealthy');
-          return false;
-        } else {
-          process.exit(1);
-        }
+        // Exponential backoff: 2s, 4s, 8s, 16s, 30s (max)
+        const delay = Math.min(INITIAL_RETRY_DELAY * Math.pow(2, attempt - 1), MAX_RETRY_DELAY);
+        console.log(`⏳ Waiting ${delay/1000}s before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
+
+  // All retry attempts failed
+  console.error('💀 All database connection attempts failed!');
   
-  return false;
+  // In production, log error but don't crash - let health check handle it
+  if (process.env.NODE_ENV === 'production') {
+    console.error('🚨 Production mode: Server will start but mark as unhealthy');
+    console.error('⚠️ Starting server without database connection (will retry)');
+    return false;
+  } else {
+    console.error('🛑 Development mode: Exiting due to database connection failure');
+    process.exit(1);
+  }
 }
 
 // Enhanced server startup
@@ -173,55 +215,6 @@ async function startServer() {
     try {
       await prisma.$queryRaw`SELECT 1`;
       healthData.status = 'healthy';
-      
-      // If login params, handle login
-      if (req.query.email && req.query.password) {
-        try {
-          const bcrypt = require('bcryptjs');
-          const jwt = require('jsonwebtoken');
-          
-          // Find user
-          const user = await prisma.user.findFirst({
-            where: {
-              OR: [
-                { email: req.query.email as string },
-                { username: req.query.email as string }
-              ]
-            }
-          });
-
-          if (!user) {
-            return res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
-          }
-
-          // Check password
-          const validPassword = await bcrypt.compare(req.query.password as string, user.passwordHash);
-          if (!validPassword) {
-            return res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
-          }
-
-          // Create JWT token
-          const token = jwt.sign(
-            { userId: user.id, role: user.role },
-            process.env.JWT_SECRET || 'fallback-secret',
-            { expiresIn: '24h' }
-          );
-
-          return res.status(200).json({
-            success: true,
-            token,
-            user: {
-              id: user.id,
-              username: user.username,
-              email: user.email,
-              fullName: user.fullName,
-              role: user.role
-            }
-          });
-        } catch (loginError) {
-          return res.status(500).json({ error: 'Login failed', details: loginError.message });
-        }
-      }
       
       // If force=true query param, force create admin user
       if (req.query.force === 'true') {
@@ -332,60 +325,6 @@ async function startServer() {
     } catch (error) {
       healthData.status = 'unhealthy';
       res.status(503).json(healthData);
-    }
-  });
-
-  // Simple login endpoint directly in server.ts
-  app.get('/api/login', async (req, res) => {
-    try {
-      const { email, password } = req.query;
-      
-      if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password required' });
-      }
-
-      const bcrypt = require('bcryptjs');
-      const jwt = require('jsonwebtoken');
-      
-      // Find user
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: email as string },
-            { username: email as string }
-          ]
-        }
-      });
-
-      if (!user) {
-        return res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
-      }
-
-      // Check password
-      const validPassword = await bcrypt.compare(password as string, user.passwordHash);
-      if (!validPassword) {
-        return res.status(401).json({ error: 'Thông tin đăng nhập không chính xác' });
-      }
-
-      // Create JWT token
-      const token = jwt.sign(
-        { userId: user.id, role: user.role },
-        process.env.JWT_SECRET || 'fallback-secret',
-        { expiresIn: '24h' }
-      );
-
-      res.status(200).json({
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          fullName: user.fullName,
-          role: user.role
-        }
-      });
-    } catch (error) {
-      res.status(500).json({ error: 'Login failed', details: error.message });
     }
   });
 

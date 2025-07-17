@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { WasteData, WasteItem, WasteStatus, WasteValidationError, WasteReport } from '../types/waste';
 import RedisService from './redis.service';
+import { Request } from 'express';
 import fs from 'fs';
 import path from 'path';
 
@@ -242,7 +243,7 @@ class WasteService {
     });
   }
 
-  async addAttachment(id: number, file: Express.Multer.File) {
+  async addAttachment(id: number, file: any) {
     const waste = await this.prisma.waste.findUnique({
       where: { id }
     });

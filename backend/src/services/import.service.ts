@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { ImportData, ImportItem, ImportStatus, ImportValidationError } from '../types/import';
 import RedisService from './redis.service';
+import { Request } from 'express';
 import fs from 'fs';
 import path from 'path';
 
@@ -191,7 +192,7 @@ class ImportService {
     });
   }
 
-  async addAttachment(id: number, file: Express.Multer.File) {
+  async addAttachment(id: number, file: any) {
     const importData = await this.prisma.import.findUnique({
       where: { id }
     });

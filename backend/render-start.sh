@@ -1,198 +1,233 @@
 #!/usr/bin/env bash
-set -e  # Exit on any error
+# Enhanced Render startup script with comprehensive database setup
+set -e
 
-echo "🚀 Starting Restaurant Inventory Backend on Render..."
-echo "============================================="
+echo "🚀 Starting Restaurant Inventory System on Render..."
+echo "=================================================="
 
 # Environment check
 echo "📊 Environment Information:"
 echo "   Node version: $(node --version)"
-echo "   NPM version: $(npm --version)"
-echo "   Environment: ${NODE_ENV:-development}"
-echo "   Port: ${PORT:-4000}"
-echo "   Frontend URL: ${FRONTEND_URL:-not-set}"
+echo "   NPM version: $(npm --version)"  
 echo "   Working Directory: $(pwd)"
+echo "   Process ID: $$"
 
-# File system check and build verification
-echo ""
-echo "🗂️ File System & Build Check:"
-echo "   Current directory contents:"
-ls -la
-
-echo ""
-echo "   Checking build output:"
-if [ -f "dist/server.js" ]; then
-    echo "   ✅ dist/server.js exists"
-    ENTRY_POINT="dist/server.js"
-    echo "   📦 Build verification: $(ls -lh dist/server.js)"
-elif [ -f "dist/app.js" ]; then
-    echo "   ✅ dist/app.js exists"
-    ENTRY_POINT="dist/app.js"
-    echo "   📦 Build verification: $(ls -lh dist/app.js)"
-else
-    echo "   ❌ No compiled JavaScript files found!"
-    echo "   📂 Contents of dist/ directory:"
-    ls -la dist/ 2>/dev/null || echo "   ❌ dist/ directory doesn't exist!"
-    
-    echo ""
-    echo "   🔧 Attempting to rebuild..."
-    if npm run build; then
-        echo "   ✅ Rebuild successful"
-        if [ -f "dist/server.js" ]; then
-            ENTRY_POINT="dist/server.js"
-        elif [ -f "dist/app.js" ]; then
-            ENTRY_POINT="dist/app.js"
-        else
-            echo "   ❌ Rebuild failed to create expected files"
-            echo "   📂 Post-build dist/ contents:"
-            ls -la dist/ 2>/dev/null || echo "   ❌ Still no dist/ directory"
-            
-            echo "   🆘 Falling back to TypeScript execution"
-            if [ -f "src/server.ts" ]; then
-                ENTRY_POINT="src/server.ts"
-                FALLBACK_MODE=true
-            else
-                echo "   ❌ No fallback options available!"
-                echo "   Available TypeScript files:"
-                find src/ -name "*.ts" | head -5 2>/dev/null || echo "   ❌ No TypeScript files found"
-                exit 1
-            fi
-        fi
-    else
-        echo "   ❌ Rebuild failed!"
-        exit 1
-    fi
+# Check if we're in the right directory
+if [ ! -f "package.json" ]; then
+    echo "❌ package.json not found in current directory"
+    echo "📂 Current directory contents:"
+    ls -la
+    exit 1
 fi
 
-# Database environment check
+# Verify Prisma setup
 echo ""
-echo "🗄️ Database Configuration:"
+echo "🔍 Checking Prisma setup..."
+if [ -f "prisma/schema.prisma" ]; then
+    echo "✅ Prisma schema found at prisma/schema.prisma"
+    SCHEMA_PATH="./prisma/schema.prisma"
+elif [ -f "../prisma/schema.prisma" ]; then
+    echo "✅ Prisma schema found at ../prisma/schema.prisma"
+    SCHEMA_PATH="../prisma/schema.prisma"
+else
+    echo "❌ Prisma schema not found!"
+    echo "📂 Searching for schema files..."
+    find . -name "schema.prisma" -type f 2>/dev/null || echo "   No schema.prisma files found"
+    exit 1
+fi
+
+# Generate Prisma client
+echo ""
+echo "🔧 Generating Prisma client..."
+npx prisma generate --schema="$SCHEMA_PATH"
+
+# Database setup
+echo ""
+echo "🗄️ Setting up database..."
 if [ -z "$DATABASE_URL" ]; then
     echo "❌ DATABASE_URL not set!"
-    echo "💡 Please set DATABASE_URL in Render environment variables"
-    echo "   Format: postgresql://user:pass@host:port/database"
     exit 1
-else
-    echo "✅ DATABASE_URL is configured"
-    
-    # Parse and display database info (safely)
-    if [[ $DATABASE_URL == postgresql://* ]]; then
-        # Extract hostname safely
-        DB_HOST=$(echo "$DATABASE_URL" | sed -n 's#.*@\([^:]*\):.*#\1#p')
-        if [[ $DB_HOST == dpg-*render* ]]; then
-            echo "   Provider: ✅ Render PostgreSQL"
-        elif [[ $DB_HOST == *neon.tech* ]]; then
-            echo "   Provider: Neon.tech"  
-        else
-            echo "   Provider: Custom PostgreSQL"
-        fi
-        echo "   Host: $DB_HOST"
-    fi
 fi
 
-# Database connection test
+echo "✅ DATABASE_URL is configured"
+
+# Parse database provider
+if [[ $DATABASE_URL == *"postgresql"* ]]; then
+    echo "🎯 PostgreSQL database detected"
+elif [[ $DATABASE_URL == *"mysql"* ]]; then
+    echo "🎯 MySQL database detected"
+else
+    echo "🎯 Database type: $(echo $DATABASE_URL | cut -d: -f1)"
+fi
+
+# Wait for database to be ready
 echo ""
-echo "🔧 Database Connection Test:"
-if timeout 30 node -e "
+echo "⏳ Waiting for database to be ready..."
+MAX_RETRIES=30
+RETRY_COUNT=0
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if node -e "
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        prisma.\$connect()
+          .then(() => { 
+            console.log('✅ Database connection successful'); 
+            return prisma.\$disconnect();
+          })
+          .then(() => process.exit(0))
+          .catch((e) => { 
+            console.log('⚠️ Database not ready:', e.message);
+            process.exit(1);
+          });
+    " 2>/dev/null; then
+        echo "✅ Database is ready!"
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "   Attempt $RETRY_COUNT/$MAX_RETRIES - retrying in 5 seconds..."
+        sleep 5
+    fi
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+    echo "❌ Database connection failed after $MAX_RETRIES attempts"
+    exit 1
+fi
+
+# Check if database has tables
+echo ""
+echo "🔍 Checking database schema..."
+TABLE_CHECK=$(node -e "
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-prisma.\$connect()
-  .then(() => { 
-    console.log('✅ Database connection successful'); 
-    return prisma.\$disconnect();
-  })
-  .then(() => process.exit(0))
-  .catch((e) => { 
-    console.log('❌ Database connection failed:', e.message); 
-    process.exit(1); 
-  });
-" 2>/dev/null; then
-    echo "✅ Database connection verified"
-else
-    echo "⚠️ Database connection test failed (server will retry on startup)"
-fi
 
-# Database migrations and setup
-echo ""
-echo "🗄️ Database Setup and Migrations:"
-echo "   Checking database status and running migrations..."
-if node check-and-migrate.js; then
-    echo "✅ Database setup completed successfully"
-else
-    echo "❌ Database setup failed!"
-    echo "⚠️ Server will continue but may have database issues"
-fi
+async function checkTables() {
+  try {
+    await prisma.\$connect();
+    
+    // Try to query User table
+    const userCount = await prisma.user.count();
+    console.log('TABLES_EXIST');
+    return true;
+  } catch (error) {
+    if (error.message.includes('does not exist')) {
+      console.log('TABLES_MISSING');
+      return false;
+    }
+    throw error;
+  } finally {
+    await prisma.\$disconnect();
+  }
+}
 
-# Prisma client generation
-echo ""
-echo "🔧 Generating Prisma Client:"
-if npx prisma generate; then
-    echo "✅ Prisma client generated successfully"
-else
-    echo "❌ Prisma client generation failed!"
-    echo "⚠️ This may cause runtime errors"
-fi
+checkTables().catch(e => {
+  console.log('ERROR:', e.message);
+  process.exit(1);
+});
+" 2>/dev/null || echo "ERROR")
 
-# Admin user setup
-echo ""
-echo "👨‍💼 Setting Up Admin User:"
-if [ "$FALLBACK_MODE" = true ]; then
-    # Use tsx for TypeScript execution
-    if npx tsx src/scripts/setup-admin-production.ts; then
-        echo "✅ Admin user setup completed"
+if [[ $TABLE_CHECK == *"TABLES_EXIST"* ]]; then
+    echo "✅ Database tables already exist"
+elif [[ $TABLE_CHECK == *"TABLES_MISSING"* ]]; then
+    echo "⚠️ Database tables missing - running migrations..."
+    
+    # Try migration deploy first
+    echo "🔄 Running prisma migrate deploy..."
+    if npx prisma migrate deploy --schema="$SCHEMA_PATH" 2>/dev/null; then
+        echo "✅ Migrations deployed successfully"
     else
-        echo "⚠️ Admin setup failed or admin already exists"
-    fi
-else
-    # Try to run compiled version, fallback to TypeScript
-    if [ -f "dist/scripts/setup-admin-production.js" ]; then
-        if node dist/scripts/setup-admin-production.js; then
-            echo "✅ Admin user setup completed"
+        echo "⚠️ Migration deploy failed, trying db push..."
+        if npx prisma db push --schema="$SCHEMA_PATH"; then
+            echo "✅ Schema pushed successfully"
         else
-            echo "⚠️ Admin setup failed or admin already exists"
-        fi
-    else
-        echo "   Fallback to TypeScript execution..."
-        if npx tsx src/scripts/setup-admin-production.ts; then
-            echo "✅ Admin user setup completed"
-        else
-            echo "⚠️ Admin setup failed or admin already exists"
+            echo "❌ Both migration and push failed"
+            exit 1
         fi
     fi
-fi
-
-# Pre-flight checks
-echo ""
-echo "🔍 Pre-flight Checks:"
-echo "   - Node.js: ✅ Ready"
-echo "   - Environment: ✅ $(echo ${NODE_ENV:-development})"
-echo "   - Port: ✅ ${PORT:-4000}"
-echo "   - Entry Point: ✅ $ENTRY_POINT"
-
-if [ "$FALLBACK_MODE" = true ]; then
-    echo "   - Mode: ⚠️ TypeScript Fallback (tsx)"
-    # Ensure tsx is available
-    if ! command -v tsx &> /dev/null; then
-        echo "   Installing tsx for TypeScript execution..."
-        npm install -g tsx
+    
+    # Verify tables were created
+    echo "🔍 Verifying table creation..."
+    if node -e "
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        prisma.user.count()
+          .then(() => { 
+            console.log('✅ Tables verified'); 
+            return prisma.\$disconnect();
+          })
+          .catch(e => {
+            console.log('❌ Table verification failed:', e.message);
+            process.exit(1);
+          });
+    "; then
+        echo "✅ Database setup completed successfully"
+    else
+        echo "❌ Database verification failed"
+        exit 1
     fi
 else
-    echo "   - Mode: ✅ Production (compiled)"
+    echo "❌ Database check failed: $TABLE_CHECK"
+    exit 1
 fi
 
-# Final startup
+# Check for admin user and seed if needed
 echo ""
-echo "🌐 Starting server..."
-echo "============================================="
+echo "👤 Checking admin user..."
+ADMIN_CHECK=$(node -e "
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-# Export PORT to ensure it's available to the application
-export PORT=${PORT:-4000}
+async function checkAdmin() {
+  try {
+    await prisma.\$connect();
+    const adminUser = await prisma.user.findFirst({
+      where: { role: 'owner' }
+    });
+    
+    if (adminUser) {
+      console.log('ADMIN_EXISTS');
+    } else {
+      console.log('ADMIN_MISSING');
+    }
+  } catch (error) {
+    console.log('ERROR:', error.message);
+  } finally {
+    await prisma.\$disconnect();
+  }
+}
 
-# Start server with appropriate method
-if [ "$FALLBACK_MODE" = true ]; then
-    echo "🔄 Starting with tsx (TypeScript mode)..."
-    exec npx tsx $ENTRY_POINT
+checkAdmin();
+" 2>/dev/null || echo "ERROR")
+
+if [[ $ADMIN_CHECK == *"ADMIN_MISSING"* ]]; then
+    echo "⚠️ Admin user missing - creating..."
+    if node setup-admin.js; then
+        echo "✅ Admin user created"
+    else
+        echo "⚠️ Admin setup failed (will continue)"
+    fi
+elif [[ $ADMIN_CHECK == *"ADMIN_EXISTS"* ]]; then
+    echo "✅ Admin user already exists"
+fi
+
+# Start the server
+echo ""
+echo "🚀 Starting the server..."
+
+# Check which entry point to use
+if [ -f "dist/server.js" ]; then
+    echo "✅ Using compiled dist/server.js"
+    exec node dist/server.js
+elif [ -f "dist/app.js" ]; then
+    echo "✅ Using compiled dist/app.js"
+    exec node dist/app.js
+elif [ -f "src/server.ts" ]; then
+    echo "⚠️ Using TypeScript source with tsx"
+    exec npx tsx src/server.ts
 else
-    echo "🚀 Starting with node (production mode)..."
-    exec node $ENTRY_POINT
+    echo "❌ No valid entry point found!"
+    echo "📂 Available files:"
+    ls -la
+    exit 1
 fi 

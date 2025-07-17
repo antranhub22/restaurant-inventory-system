@@ -50,8 +50,11 @@ async function connectDatabase() {
     
     console.error('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
     
-    // Don't exit in production, let Render handle restarts
-    if (process.env.NODE_ENV !== 'production') {
+    // In production, retry connection instead of exiting
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🔄 Production mode: Will retry database connection...');
+      // Don't exit, let the server start and handle requests with health check endpoint
+    } else {
       process.exit(1);
     }
   }

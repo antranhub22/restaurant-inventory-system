@@ -2,25 +2,18 @@
 
 echo "🚀 Starting Restaurant Inventory Backend..."
 
-# Wait for database to be ready
-echo "⏳ Waiting for database to be ready..."
-sleep 5
+# Make database fix script executable
+chmod +x fix-render-database.sh
 
-# Generate Prisma Client (in case of any schema changes)
-echo "🔄 Generating Prisma Client..."
-npx prisma generate
+# Run comprehensive database setup and fix
+echo "🔧 Running database setup and connection fix..."
+./fix-render-database.sh
 
-# Run database migrations
-echo "🗄️ Running database migrations..."
-npx prisma db push --accept-data-loss
-
-# Seed database with initial data
-echo "🌱 Seeding database..."
-npm run seed || echo "⚠️ Seed failed or already exists"
-
-# Check if database is accessible
-echo "🔍 Final database connection check..."
-npm run db:check
+# If database fix failed, exit
+if [ $? -ne 0 ]; then
+    echo "❌ Database setup failed - exiting"
+    exit 1
+fi
 
 # Start the server
 echo "🌐 Starting server..."

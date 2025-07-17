@@ -14,11 +14,13 @@ async function connectDatabase() {
       try {
         const url = new URL(process.env.DATABASE_URL);
         console.log('Database host:', url.hostname);
-        console.log('Database port:', url.port || 'default');
+        console.log('Database port:', url.port || '5432');
         if (url.hostname.includes('neon.tech')) {
-          console.log('Provider: Neon.tech ✅');
+          console.log('Provider: Neon.tech');
         } else if (url.hostname.startsWith('dpg-')) {
-          console.log('Provider: Render PostgreSQL ⚠️ (should use Neon.tech)');
+          console.log('Provider: Render PostgreSQL ✅');
+        } else {
+          console.log('Provider: Custom PostgreSQL');
         }
       } catch (e) {
         console.log('Invalid DATABASE_URL format');
@@ -33,8 +35,19 @@ async function connectDatabase() {
     // Test a simple query
     const userCount = await prisma.user.count();
     console.log(`📊 Database ready - Found ${userCount} users`);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Database connection failed:', error);
+    console.error('Error code:', error?.code);
+    console.error('Error message:', error?.message);
+    
+    // Provide helpful troubleshooting info
+    if (error?.code === 'P1001') {
+      console.error('💡 Database server unreachable. Please check:');
+      console.error('   - Database service is running');
+      console.error('   - Network connectivity');
+      console.error('   - DATABASE_URL is correct');
+    }
+    
     console.error('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
     
     // Don't exit in production, let Render handle restarts

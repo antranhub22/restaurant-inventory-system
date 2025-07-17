@@ -65,13 +65,19 @@ services:
 # HƯỚNG DẪN SETUP DATABASE VỚI RENDER POSTGRESQL:
 # 1. PostgreSQL service sẽ được tự động tạo từ file này
 # 2. DATABASE_URL sẽ được tự động cấu hình từ PostgreSQL service
-# 3. Không cần manual setup - Render tự handle!
+# 3. Render tự động thêm SSL cho PostgreSQL connections
+# 4. Database migration sẽ tự động chạy trong Docker build
+#
+# LỖI THƯỜNG GẶP:
+# - Nếu connection timeout: Database service có thể đang khởi động
+# - Nếu authentication failed: Kiểm tra username/password
+# - Nếu SSL error: Render PostgreSQL requires SSL by default
 #
 # OPTIONAL: REDIS
 # Sử dụng Redis Cloud (redis.com) hoặc Upstash (upstash.com)
 # Copy REDIS_URL và paste vào Render environment variables
 #
 # LƯU Ý:
-# - PostgreSQL service sẽ có format: postgresql://user:pass@host:port/database
-# - Không cần ?sslmode=require cho internal Render connections
-# - Database migration sẽ tự động chạy trong Docker build 
+# - PostgreSQL service format: postgresql://user:pass@host:port/database?sslmode=require
+# - Internal Render connections sử dụng private network
+# - Database cần time để khởi động (~2-3 phút cho lần đầu) 

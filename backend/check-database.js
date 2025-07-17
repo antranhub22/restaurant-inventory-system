@@ -2,88 +2,79 @@ require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 
 async function checkDatabase() {
-  console.log('🔍 Database Connection Checker');
-  console.log('================================');
-  
-  // Check environment variables
-  const DATABASE_URL = process.env.DATABASE_URL;
-  
-  if (!DATABASE_URL) {
-    console.error('❌ DATABASE_URL environment variable is not set');
-    console.log('\n📝 Expected format:');
-    console.log('DATABASE_URL="postgresql://username:password@host:port/database"');
-    process.exit(1);
-  }
-  
-  console.log('✅ DATABASE_URL is set');
-  
-  // Parse URL to check format
-  try {
-    const url = new URL(DATABASE_URL);
-    console.log('📊 Database Connection Details:');
-    console.log(`   Protocol: ${url.protocol}`);
-    console.log(`   Host: ${url.hostname}`);
-    console.log(`   Port: ${url.port || '5432'}`);
-    console.log(`   Database: ${url.pathname.replace('/', '')}`);
-    console.log(`   Username: ${url.username}`);
-    console.log(`   Password: ${url.password ? '[SET]' : '[NOT SET]'}`);
-  } catch (error) {
-    console.error('❌ Invalid DATABASE_URL format:', error.message);
-    console.log('\n📝 Correct format:');
-    console.log('DATABASE_URL="postgresql://username:password@host:port/database"');
-    process.exit(1);
-  }
-  
-  // Test connection
   const prisma = new PrismaClient();
   
   try {
-    console.log('\n🔄 Testing database connection...');
+    console.log('🔍 Checking database connection...');
+    console.log('Environment:', process.env.NODE_ENV || 'development');
+    
+    // Check DATABASE_URL
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ DATABASE_URL not found');
+      console.log('Please set DATABASE_URL environment variable');
+      process.exit(1);
+    }
+    
+    // Parse DATABASE_URL
+    try {
+      const dbUrl = new URL(process.env.DATABASE_URL);
+      console.log('📊 Database Info:');
+      console.log('   Host:', dbUrl.hostname);
+      console.log('   Port:', dbUrl.port || '5432');
+      console.log('   Database:', dbUrl.pathname.slice(1));
+      console.log('   SSL:', dbUrl.searchParams.get('sslmode') || 'default');
+      
+      if (dbUrl.hostname.includes('neon.tech')) {
+        console.log('   Provider: Neon.tech');
+      } else if (dbUrl.hostname.startsWith('dpg-')) {
+        console.log('   Provider: Render PostgreSQL ✅');
+      } else if (dbUrl.hostname === 'localhost') {
+        console.log('   Provider: Local PostgreSQL');
+      } else {
+        console.log('   Provider: Custom PostgreSQL');
+      }
+    } catch (e) {
+      console.error('❌ Invalid DATABASE_URL format');
+      process.exit(1);
+    }
+    
+    // Test connection
+    console.log('\n🔄 Testing connection...');
     await prisma.$connect();
-    console.log('✅ Database connection successful!');
+    console.log('✅ Database connected successfully');
     
     // Test query
-    console.log('🔄 Testing database query...');
-    const result = await prisma.$queryRaw`SELECT 1 as test`;
-    console.log('✅ Database query successful!');
+    console.log('\n🔄 Testing query...');
+    const result = await prisma.$queryRaw`SELECT version()`;
+    console.log('✅ Query successful');
+    console.log('PostgreSQL version:', result[0]?.version?.split(' ')[1] || 'Unknown');
     
-    // Check if tables exist
-    console.log('🔄 Checking database schema...');
-    try {
-      const userCount = await prisma.user.count();
-      console.log(`✅ Database schema ready - Found ${userCount} users`);
-    } catch (error) {
-      console.log('⚠️  Database schema not initialized');
-      console.log('💡 Run: npx prisma db push');
-    }
+    // Check tables
+    console.log('\n🔄 Checking tables...');
+    const userCount = await prisma.user.count();
+    const itemCount = await prisma.item.count();
+    console.log(`📊 Tables status:`);
+    console.log(`   Users: ${userCount}`);
+    console.log(`   Items: ${itemCount}`);
+    
+    console.log('\n✅ Database check completed successfully!');
     
   } catch (error) {
-    console.error('❌ Database connection failed:');
-    console.error('   Error:', error.message);
+    console.error('❌ Database check failed:', error.message);
+    console.error('Error code:', error.code);
     
-    if (error.message.includes("Can't reach database server")) {
-      console.log('\n🔧 Possible solutions:');
-      console.log('1. Check if database service is running on Render');
-      console.log('2. Verify DATABASE_URL format');
-      console.log('3. Check firewall/network connectivity');
-      console.log('4. Ensure database service is in same region');
-    }
-    
-    if (error.message.includes('authentication failed')) {
-      console.log('\n🔧 Authentication issue:');
-      console.log('1. Check username and password in DATABASE_URL');
-      console.log('2. Verify database user permissions');
+    if (error.code === 'P1001') {
+      console.error('\n💡 Troubleshooting tips:');
+      console.error('   - Check if PostgreSQL service is running');
+      console.error('   - Verify DATABASE_URL is correct');
+      console.error('   - Check network connectivity');
+      console.error('   - For Render: Database may be starting up (wait 2-3 minutes)');
     }
     
     process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
-  
-  console.log('\n🎉 Database check completed successfully!');
 }
 
-checkDatabase().catch((error) => {
-  console.error('❌ Database check failed:', error);
-  process.exit(1);
-});
+checkDatabase();

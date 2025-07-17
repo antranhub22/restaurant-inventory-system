@@ -1,161 +1,282 @@
 #!/bin/bash
 
-echo "🔍 Checking Restaurant Inventory System Status..."
-echo "================================================"
+echo "🔍 RESTAURANT INVENTORY SYSTEM STATUS CHECK"
+echo "=============================================="
+echo "Timestamp: $(date)"
+echo
 
-# Colors
-RED='\033[0;31m'
+# Colors for output
 GREEN='\033[0;32m'
+RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Function to check if a service is running
-check_service() {
-    local service_name=$1
-    local port=$2
-    local url=$3
-    
-    if curl -s "$url" > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ $service_name is running on port $port${NC}"
-        return 0
+# Function to print status
+print_status() {
+    if [ $1 -eq 0 ]; then
+        echo -e "${GREEN}✅ $2${NC}"
     else
-        echo -e "${RED}❌ $service_name is not running on port $port${NC}"
-        return 1
+        echo -e "${RED}❌ $2${NC}"
     fi
 }
 
-# Function to check database connection
-check_database() {
-    echo -e "\n${YELLOW}📊 Checking Database Connection...${NC}"
+print_warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
+
+# Check if we're in the right directory
+if [ ! -f "package.json" ]; then
+    echo -e "${RED}❌ Error: Not in project root directory${NC}"
+    echo "Please run this script from the restaurant-inventory-system root directory"
+    exit 1
+fi
+
+# 1. Check Frontend Status
+echo "📱 FRONTEND STATUS"
+echo "=================="
+
+# Check if frontend build exists
+if [ -d "frontend/dist" ]; then
+    print_status 0 "Frontend build exists"
+else
+    print_status 1 "Frontend build missing - need to run build"
+fi
+
+# Check frontend dependencies
+if [ -f "frontend/package.json" ]; then
+    print_status 0 "Frontend package.json exists"
+    cd frontend
+    if [ -d "node_modules" ]; then
+        print_status 0 "Frontend dependencies installed"
+    else
+        print_status 1 "Frontend dependencies missing - run npm install"
+    fi
+    cd ..
+else
+    print_status 1 "Frontend package.json missing"
+fi
+
+echo
+
+# 2. Check Backend Status  
+echo "🖥️  BACKEND STATUS"
+echo "=================="
+
+# Check backend dependencies
+if [ -f "backend/package.json" ]; then
+    print_status 0 "Backend package.json exists"
+    cd backend
+    if [ -d "node_modules" ]; then
+        print_status 0 "Backend dependencies installed"
+    else
+        print_status 1 "Backend dependencies missing - run npm install"
+    fi
     
-    if [ -f "backend/.env" ]; then
-        echo -e "${GREEN}✅ .env file exists${NC}"
+    # Check TypeScript compilation
+    if npm run build > /dev/null 2>&1; then
+        print_status 0 "TypeScript compilation successful"
+    else
+        print_status 1 "TypeScript compilation failed"
+    fi
+    
+    cd ..
+else
+    print_status 1 "Backend package.json missing"
+fi
+
+echo
+
+# 3. Check Database Configuration
+echo "🗄️  DATABASE STATUS"
+echo "==================="
+
+cd backend
+
+# Check if DATABASE_URL is configured
+if [ -f ".env" ]; then
+    if grep -q "DATABASE_URL" .env; then
+        print_status 0 "DATABASE_URL configured in .env"
         
-        # Try to check database connection
-        cd backend
-        if npx prisma db pull > /dev/null 2>&1; then
-            echo -e "${GREEN}✅ Database connection successful${NC}"
+        # Check if it's PostgreSQL
+        if grep "DATABASE_URL" .env | grep -q "postgresql://"; then
+            print_status 0 "Using PostgreSQL (recommended)"
         else
-            echo -e "${RED}❌ Database connection failed${NC}"
+            print_warning "Database URL format may be incorrect"
         fi
-        cd ..
     else
-        echo -e "${RED}❌ .env file not found in backend directory${NC}"
+        print_status 1 "DATABASE_URL not found in .env"
     fi
-}
+else
+    print_warning ".env file not found - using environment variables"
+fi
 
-# Function to check dependencies
-check_dependencies() {
-    echo -e "\n${YELLOW}📦 Checking Dependencies...${NC}"
-    
-    # Check Node.js
-    if command -v node &> /dev/null; then
-        echo -e "${GREEN}✅ Node.js $(node --version)${NC}"
-    else
-        echo -e "${RED}❌ Node.js not installed${NC}"
-    fi
-    
-    # Check npm
-    if command -v npm &> /dev/null; then
-        echo -e "${GREEN}✅ npm $(npm --version)${NC}"
-    else
-        echo -e "${RED}❌ npm not installed${NC}"
-    fi
-    
-    # Check if node_modules exist
-    if [ -d "backend/node_modules" ]; then
-        echo -e "${GREEN}✅ Backend dependencies installed${NC}"
-    else
-        echo -e "${RED}❌ Backend dependencies not installed${NC}"
-    fi
-    
-    if [ -d "frontend/node_modules" ]; then
-        echo -e "${GREEN}✅ Frontend dependencies installed${NC}"
-    else
-        echo -e "${RED}❌ Frontend dependencies not installed${NC}"
-    fi
-}
+# Test database connection
+echo "Testing database connection..."
+if node debug-database.js > /dev/null 2>&1; then
+    print_status 0 "Database connection successful"
+else
+    print_status 1 "Database connection failed"
+    echo "Run 'node backend/debug-database.js' for detailed info"
+fi
 
-# Function to check environment files
-check_env_files() {
-    echo -e "\n${YELLOW}⚙️ Checking Environment Files...${NC}"
+# Check Prisma schema
+if [ -f "prisma/schema.prisma" ]; then
+    print_status 0 "Prisma schema exists"
     
-    if [ -f "backend/.env" ]; then
-        echo -e "${GREEN}✅ Backend .env exists${NC}"
+    # Check if migrations exist
+    if [ -d "prisma/migrations" ]; then
+        migration_count=$(find prisma/migrations -name "*.sql" | wc -l)
+        if [ $migration_count -gt 0 ]; then
+            print_status 0 "Database migrations exist ($migration_count files)"
+        else
+            print_status 1 "No migration files found"
+        fi
     else
-        echo -e "${RED}❌ Backend .env missing${NC}"
+        print_status 1 "Migrations directory missing"
     fi
+else
+    print_status 1 "Prisma schema missing"
+fi
+
+cd ..
+
+echo
+
+# 4. Check Docker Configuration
+echo "🐳 DOCKER STATUS"
+echo "================"
+
+# Check if Docker files exist
+if [ -f "docker-compose.yml" ]; then
+    print_status 0 "docker-compose.yml exists"
+else
+    print_status 1 "docker-compose.yml missing"
+fi
+
+if [ -f "backend/Dockerfile" ]; then
+    print_status 0 "Backend Dockerfile exists"
+else
+    print_status 1 "Backend Dockerfile missing"
+fi
+
+# Check if Docker is running
+if docker --version > /dev/null 2>&1; then
+    print_status 0 "Docker is available"
     
-    if [ -f "frontend/.env" ]; then
-        echo -e "${GREEN}✅ Frontend .env exists${NC}"
+    if docker compose ps > /dev/null 2>&1; then
+        print_status 0 "Docker Compose is available"
     else
-        echo -e "${YELLOW}⚠️ Frontend .env missing (optional)${NC}"
+        print_warning "Docker Compose not available or not running"
     fi
-}
+else
+    print_warning "Docker not available (OK for Render deployment)"
+fi
 
-# Function to check processes
-check_processes() {
-    echo -e "\n${YELLOW}🔄 Checking Running Processes...${NC}"
+echo
+
+# 5. Check Render Configuration
+echo "🌐 RENDER DEPLOYMENT STATUS"
+echo "==========================="
+
+if [ -f "render.yaml" ]; then
+    print_status 0 "render.yaml exists"
     
-    # Check backend process
-    if pgrep -f "ts-node-dev.*server.ts" > /dev/null; then
-        echo -e "${GREEN}✅ Backend development server is running${NC}"
+    # Check if PostgreSQL service is configured
+    if grep -q "type: pserv" render.yaml; then
+        print_status 0 "PostgreSQL service configured in render.yaml"
     else
-        echo -e "${RED}❌ Backend development server is not running${NC}"
+        print_status 1 "PostgreSQL service not found in render.yaml"
     fi
     
-    # Check frontend process
-    if pgrep -f "vite" > /dev/null; then
-        echo -e "${GREEN}✅ Frontend development server is running${NC}"
+    # Check if backend service is configured
+    if grep -q "restaurant-inventory-backend" render.yaml; then
+        print_status 0 "Backend service configured"
     else
-        echo -e "${RED}❌ Frontend development server is not running${NC}"
+        print_status 1 "Backend service not configured"
     fi
-}
+    
+    # Check if frontend service is configured  
+    if grep -q "restaurant-inventory-frontend" render.yaml; then
+        print_status 0 "Frontend service configured"
+    else
+        print_status 1 "Frontend service not configured"
+    fi
+else
+    print_status 1 "render.yaml missing"
+fi
 
-# Function to check services
-check_services() {
-    echo -e "\n${YELLOW}🌐 Checking Services...${NC}"
-    
-    check_service "Backend API" "3000" "http://localhost:3000/api/health"
-    check_service "Frontend App" "5173" "http://localhost:5173"
-}
+echo
 
-# Function to provide recommendations
-provide_recommendations() {
-    echo -e "\n${YELLOW}💡 Recommendations:${NC}"
-    
-    if ! pgrep -f "ts-node-dev.*server.ts" > /dev/null; then
-        echo -e "  • Start backend: ${GREEN}cd backend && npm run dev${NC}"
-    fi
-    
-    if ! pgrep -f "vite" > /dev/null; then
-        echo -e "  • Start frontend: ${GREEN}cd frontend && npm run dev${NC}"
-    fi
-    
-    if [ ! -f "backend/.env" ]; then
-        echo -e "  • Create backend .env: ${GREEN}cd backend && cp .env.example .env${NC}"
-    fi
-    
-    if [ ! -d "backend/node_modules" ]; then
-        echo -e "  • Install backend dependencies: ${GREEN}cd backend && npm install${NC}"
-    fi
-    
-    if [ ! -d "frontend/node_modules" ]; then
-        echo -e "  • Install frontend dependencies: ${GREEN}cd frontend && npm install${NC}"
-    fi
-}
+# 6. Environment Check
+echo "🔧 ENVIRONMENT REQUIREMENTS"
+echo "==========================="
 
-# Main execution
-main() {
-    check_dependencies
-    check_env_files
-    check_database
-    check_processes
-    check_services
-    provide_recommendations
+# Check Node.js version
+if command -v node > /dev/null 2>&1; then
+    node_version=$(node --version)
+    print_status 0 "Node.js installed ($node_version)"
     
-    echo -e "\n${GREEN}🎉 System status check completed!${NC}"
-}
+    # Check if Node version is 18+
+    if [[ $node_version == v18* ]] || [[ $node_version == v20* ]] || [[ $node_version == v21* ]]; then
+        print_status 0 "Node.js version compatible"
+    else
+        print_warning "Node.js version may be too old (need 18+)"
+    fi
+else
+    print_status 1 "Node.js not installed"
+fi
 
-# Run main function
-main 
+# Check npm
+if command -v npm > /dev/null 2>&1; then
+    npm_version=$(npm --version)
+    print_status 0 "npm installed ($npm_version)"
+else
+    print_status 1 "npm not installed"
+fi
+
+echo
+
+# 7. Quick Recommendations
+echo "💡 RECOMMENDATIONS"
+echo "=================="
+
+# Check what needs to be done
+issues_found=0
+
+if [ ! -d "frontend/node_modules" ]; then
+    echo "1. Install frontend dependencies: cd frontend && npm install"
+    issues_found=$((issues_found + 1))
+fi
+
+if [ ! -d "backend/node_modules" ]; then
+    echo "2. Install backend dependencies: cd backend && npm install"
+    issues_found=$((issues_found + 1))
+fi
+
+if [ ! -f "backend/.env" ]; then
+    echo "3. Create backend/.env file (copy from backend/env.example)"
+    issues_found=$((issues_found + 1))
+fi
+
+if [ ! -d "frontend/dist" ]; then
+    echo "4. Build frontend: cd frontend && npm run build"
+    issues_found=$((issues_found + 1))
+fi
+
+# Database specific recommendations
+echo "5. For PostgreSQL setup:"
+echo "   - Local: Use Docker with 'docker compose up -d'"  
+echo "   - Render: PostgreSQL service auto-configured in render.yaml"
+echo "   - Test connection: cd backend && node debug-database.js"
+
+if [ $issues_found -eq 0 ]; then
+    echo -e "${GREEN}✅ No critical issues found!${NC}"
+else
+    echo -e "${YELLOW}⚠️  Found $issues_found issue(s) to fix${NC}"
+fi
+
+echo
+echo "🚀 To deploy to Render:"
+echo "   git add . && git commit -m 'Deploy' && git push"
+echo
+echo "Status check completed at $(date)" 

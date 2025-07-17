@@ -20,31 +20,62 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-# Verify Prisma setup
+# Ensure Prisma schema is available
 echo ""
-echo "🔍 Checking Prisma setup..."
-if [ -f "prisma/schema.prisma" ]; then
-    echo "✅ Prisma schema found at prisma/schema.prisma"
-    SCHEMA_PATH="./prisma/schema.prisma"
-elif [ -f "dist/prisma/schema.prisma" ]; then
-    echo "✅ Prisma schema found at dist/prisma/schema.prisma"
-    SCHEMA_PATH="./dist/prisma/schema.prisma"
-elif [ -f "../prisma/schema.prisma" ]; then
-    echo "✅ Prisma schema found at ../prisma/schema.prisma"
-    SCHEMA_PATH="../prisma/schema.prisma"
+echo "🔍 Setting up Prisma schema..."
+
+# Make the ensure script executable if it exists
+if [ -f "./ensure-prisma-schema.sh" ]; then
+    chmod +x ./ensure-prisma-schema.sh
+    source ./ensure-prisma-schema.sh
+elif [ -f "./backend/ensure-prisma-schema.sh" ]; then
+    chmod +x ./backend/ensure-prisma-schema.sh
+    source ./backend/ensure-prisma-schema.sh
 else
-    echo "❌ Prisma schema not found!"
-    echo "📂 Searching for schema files..."
-    find . -name "schema.prisma" -type f 2>/dev/null || echo "   No schema.prisma files found"
-    exit 1
+    echo "⚠️ ensure-prisma-schema.sh not found, using fallback..."
+    
+    # Fallback: More comprehensive search for schema.prisma
+    SCHEMA_PATH=""
+    POSSIBLE_PATHS=(
+        "./prisma/schema.prisma"
+        "./backend/prisma/schema.prisma"  
+        "../prisma/schema.prisma"
+        "./dist/prisma/schema.prisma"
+        "../backend/prisma/schema.prisma"
+    )
+    
+    for path in "${POSSIBLE_PATHS[@]}"; do
+        if [ -f "$path" ]; then
+            echo "✅ Found schema.prisma at: $path"
+            SCHEMA_PATH="$path"
+            break
+        fi
+    done
+    
+    if [ -z "$SCHEMA_PATH" ]; then
+        echo "❌ Prisma schema not found!"
+        echo "📂 Searching for schema files..."
+        find . -name "schema.prisma" -type f 2>/dev/null || echo "   No schema.prisma files found"
+        echo "📂 Current directory structure:"
+        ls -la
+        if [ -d "prisma" ]; then
+            echo "📂 Prisma directory contents:"
+            ls -la prisma/
+        fi
+        exit 1
+    fi
+    
+    # Ensure we're in the correct directory for Prisma operations
+    WORKING_DIR=$(dirname "$SCHEMA_PATH")
+    WORKING_DIR=$(dirname "$WORKING_DIR")  # Go up one level from prisma dir
+    echo "📂 Setting working directory to: $WORKING_DIR"
+    cd "$WORKING_DIR"
 fi
 
 # Generate Prisma client
 echo ""
 echo "🔧 Generating Prisma client..."
-# Change to backend directory to ensure relative paths work
-cd /app 2>/dev/null || cd $(dirname $0)
-npx prisma generate --schema="$SCHEMA_PATH"
+npx prisma generate --schema="./prisma/schema.prisma"
 
 # Database setup
 echo ""
@@ -139,7 +170,7 @@ elif [[ $TABLE_CHECK == *"TABLES_MISSING"* ]]; then
     
     # Make sure we generate client first with correct schema path
     echo "🔧 Regenerating Prisma client with correct schema path..."
-    if npx prisma generate --schema="$SCHEMA_PATH"; then
+    if npx prisma generate --schema="./prisma/schema.prisma"; then
         echo "✅ Prisma client regenerated"
     else
         echo "❌ Failed to generate Prisma client"
@@ -148,11 +179,11 @@ elif [[ $TABLE_CHECK == *"TABLES_MISSING"* ]]; then
     
     # Try migration deploy first
     echo "🔄 Running prisma migrate deploy..."
-    if npx prisma migrate deploy --schema="$SCHEMA_PATH" 2>/dev/null; then
+    if npx prisma migrate deploy --schema="./prisma/schema.prisma" 2>&1; then
         echo "✅ Migrations deployed successfully"
     else
         echo "⚠️ Migration deploy failed, trying db push..."
-        if npx prisma db push --schema="$SCHEMA_PATH"; then
+        if npx prisma db push --schema="./prisma/schema.prisma" --accept-data-loss; then
             echo "✅ Schema pushed successfully"
         else
             echo "❌ Both migration and push failed"

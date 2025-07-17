@@ -83,15 +83,27 @@ const useOCRForm = (): UseOCRFormReturn => {
     setError(null);
 
     try {
+      console.log('🔄 Confirming OCR form:', { formId, corrections });
+      
       const response = await api.post('/ocr-form/confirm', {
         formId,
         corrections,
       });
+      
+      console.log('✅ OCR form confirmed successfully:', response.data);
       return response.data.data;
     } catch (err: any) {
+      console.error('❌ OCR form confirmation failed:', err);
+      
       let errorMessage = 'Lỗi không xác định';
       
-      if (err.response?.data?.error) {
+      if (err.response?.status === 401) {
+        errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+      } else if (err.response?.status === 403) {
+        errorMessage = 'Bạn không có quyền thực hiện chức năng này.';
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.error) {
         errorMessage = err.response.data.error;
       } else if (err.message) {
         errorMessage = err.message;

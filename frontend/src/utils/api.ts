@@ -17,14 +17,13 @@ api.interceptors.request.use(
     const { token } = useAuthStore.getState();
     
     if (token) {
-      // Check if token is expired before making request
+      // Check if token is expired before making request (with 5 minute buffer)
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.exp * 1000 < Date.now()) {
-          console.warn('Token expired, logging out');
-          useAuthStore.getState().logout();
-          window.location.href = '/login';
-          return Promise.reject(new Error('Token expired'));
+        const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
+        if (payload.exp * 1000 < (Date.now() + bufferTime)) {
+          console.warn('Token will expire soon, but allowing request to proceed');
+          // Don't logout immediately, let the backend handle it
         }
         
         config.headers.Authorization = `Bearer ${token}`;

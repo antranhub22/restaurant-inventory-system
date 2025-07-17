@@ -9,6 +9,31 @@ echo "   Node version: $(node --version)"
 echo "   Environment: ${NODE_ENV:-development}"
 echo "   Port: ${PORT:-4000}"
 echo "   Frontend URL: ${FRONTEND_URL:-not-set}"
+echo "   Working Directory: $(pwd)"
+
+# File system check
+echo ""
+echo "🗂️ File System Check:"
+echo "   Current directory contents:"
+ls -la
+echo ""
+echo "   Dist directory check:"
+if [ -d "dist" ]; then
+    echo "   ✅ dist/ directory exists"
+    echo "   Contents of dist/:"
+    ls -la dist/
+else
+    echo "   ❌ dist/ directory missing!"
+    echo "   Running build now..."
+    npm run build
+    if [ -d "dist" ]; then
+        echo "   ✅ Build successful, dist/ created"
+        ls -la dist/
+    else
+        echo "   ❌ Build failed, cannot create dist/"
+        exit 1
+    fi
+fi
 
 # Database environment check
 echo ""
@@ -149,20 +174,37 @@ echo "🔍 Pre-flight Checks:"
 echo "   - Node.js: ✅ Ready"
 echo "   - Environment: ✅ $(echo ${NODE_ENV:-development})"
 echo "   - Port: ✅ ${PORT:-4000}"
-echo "   - App bundle: $([ -f "dist/server.js" ] && echo "✅ Found" || echo "❌ Missing")"
+
+# Check for entry point files
+if [ -f "dist/server.js" ]; then
+    echo "   - App bundle: ✅ dist/server.js found"
+    ENTRY_POINT="dist/server.js"
+elif [ -f "dist/app.js" ]; then
+    echo "   - App bundle: ✅ dist/app.js found"
+    ENTRY_POINT="dist/app.js"
+elif [ -f "src/server.ts" ]; then
+    echo "   - App bundle: ⚠️ Only TypeScript source found, using tsx"
+    ENTRY_POINT="src/server.ts"
+    # Install tsx if needed
+    if ! command -v tsx &> /dev/null; then
+        echo "   Installing tsx for TypeScript execution..."
+        npm install -g tsx
+    fi
+else
+    echo "   - App bundle: ❌ No entry point found!"
+    echo "   Available files:"
+    find . -name "*.js" -o -name "*.ts" | head -10
+    exit 1
+fi
 
 # Start the server
 echo ""
-echo "🌐 Starting server..."
+echo "🌐 Starting server with entry point: $ENTRY_POINT"
 echo "============================================="
 
-# Use the server entry point
-if [ -f "dist/server.js" ]; then
-    exec node dist/server.js
-elif [ -f "dist/app.js" ]; then
-    exec node dist/app.js
+# Start with appropriate command
+if [[ $ENTRY_POINT == *.ts ]]; then
+    exec npx tsx $ENTRY_POINT
 else
-    echo "❌ Cannot find built application!"
-    echo "Expected: dist/server.js or dist/app.js"
-    exit 1
+    exec node $ENTRY_POINT
 fi 

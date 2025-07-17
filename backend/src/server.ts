@@ -159,6 +159,26 @@ async function startServer() {
     console.log('⚠️ Starting server without database connection (will retry)');
   }
   
+  // Add health endpoint directly
+  app.get('/api/health', async (req, res) => {
+    const healthData = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      message: 'Restaurant Inventory Backend is running'
+    };
+    
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      healthData.status = 'healthy';
+      res.status(200).json(healthData);
+    } catch (error) {
+      healthData.status = 'unhealthy';
+      res.status(503).json(healthData);
+    }
+  });
+
   const server = app.listen(PORT, () => {
     console.log(`\n🌐 Server running on port ${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);

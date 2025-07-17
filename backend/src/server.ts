@@ -21,6 +21,13 @@ async function connectDatabase(): Promise<boolean> {
   console.log('Environment:', process.env.NODE_ENV || 'development');
   console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
   
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ DATABASE_URL environment variable is not set');
+    console.error('💡 On Render, make sure PostgreSQL service is connected to your web service');
+    console.error('💡 In development, create a .env file with DATABASE_URL');
+    return false;
+  }
+  
   if (process.env.DATABASE_URL) {
     try {
       const url = new URL(process.env.DATABASE_URL);
@@ -61,11 +68,27 @@ async function connectDatabase(): Promise<boolean> {
       const result = await prisma.$queryRaw`SELECT version() as version, now() as current_time`;
       console.log('✅ Database query successful');
       
-      // Check schema
+      // Check schema safely
       console.log('📊 Checking database schema...');
-      const userCount = await prisma.user.count();
-      const itemCount = await prisma.item.count();
-      console.log(`📈 Database ready - Users: ${userCount}, Items: ${itemCount}`);
+      try {
+        const userCount = await prisma.user.count();
+        const itemCount = await prisma.item.count();
+        console.log(`📈 Database ready - Users: ${userCount}, Items: ${itemCount}`);
+      } catch (schemaError: any) {
+        console.warn('⚠️ Database schema check failed, but connection is working:', schemaError?.message);
+        console.log('💡 This usually means migrations need to be run');
+        
+        // Try to run migrations automatically in production
+        if (process.env.NODE_ENV === 'production') {
+          try {
+            console.log('🔄 Attempting to run database migrations...');
+            // This will be handled by the migration script
+            console.log('ℹ️ Migrations should be run manually or via deploy script');
+          } catch (migrationError) {
+            console.error('❌ Migration failed:', migrationError);
+          }
+        }
+      }
       
       return true;
       

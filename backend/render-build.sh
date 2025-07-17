@@ -73,6 +73,15 @@ fi
 echo "🏗️ Building TypeScript..."
 npm run build
 
+echo "📁 Copying Prisma files to dist..."
+if [ -d "prisma" ]; then
+    mkdir -p dist/prisma
+    cp -r prisma/* dist/prisma/
+    echo "✅ Prisma files copied to dist/prisma"
+else
+    echo "⚠️ Prisma directory not found to copy"
+fi
+
 echo "🔍 Verifying build output..."
 if [ -f "dist/server.js" ]; then
     echo "✅ dist/server.js created successfully"

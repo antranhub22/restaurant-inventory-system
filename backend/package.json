@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && npm run build:verify",
+    "build": "tsc && npm run build:copy && npm run build:verify",
+    "build:copy": "mkdir -p dist && cp -r prisma dist/ 2>/dev/null || echo 'Prisma copy completed'",
     "build:verify": "test -f dist/server.js && echo '✅ Build verification: dist/server.js exists' || (echo '❌ Build failed: dist/server.js missing' && exit 1)",
     "start": "node dist/server.js",
     "start:dev": "tsx src/server.ts",

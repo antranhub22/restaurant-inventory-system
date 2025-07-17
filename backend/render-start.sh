@@ -26,6 +26,9 @@ echo "🔍 Checking Prisma setup..."
 if [ -f "prisma/schema.prisma" ]; then
     echo "✅ Prisma schema found at prisma/schema.prisma"
     SCHEMA_PATH="./prisma/schema.prisma"
+elif [ -f "dist/prisma/schema.prisma" ]; then
+    echo "✅ Prisma schema found at dist/prisma/schema.prisma"
+    SCHEMA_PATH="./dist/prisma/schema.prisma"
 elif [ -f "../prisma/schema.prisma" ]; then
     echo "✅ Prisma schema found at ../prisma/schema.prisma"
     SCHEMA_PATH="../prisma/schema.prisma"
@@ -131,6 +134,15 @@ if [[ $TABLE_CHECK == *"TABLES_EXIST"* ]]; then
     echo "✅ Database tables already exist"
 elif [[ $TABLE_CHECK == *"TABLES_MISSING"* ]]; then
     echo "⚠️ Database tables missing - running migrations..."
+    
+    # Make sure we generate client first with correct schema path
+    echo "🔧 Regenerating Prisma client with correct schema path..."
+    if npx prisma generate --schema="$SCHEMA_PATH"; then
+        echo "✅ Prisma client regenerated"
+    else
+        echo "❌ Failed to generate Prisma client"
+        exit 1
+    fi
     
     # Try migration deploy first
     echo "🔄 Running prisma migrate deploy..."

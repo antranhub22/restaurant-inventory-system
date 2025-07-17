@@ -166,7 +166,8 @@ async function startServer() {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
-      message: 'Restaurant Inventory Backend is running'
+      message: 'Restaurant Inventory Backend is running',
+      queryParams: req.query
     };
     
     try {

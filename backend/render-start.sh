@@ -112,15 +112,15 @@ else
     echo "⚠️ Database connection test failed (server will retry on startup)"
 fi
 
-# Database migrations
+# Database migrations and setup
 echo ""
-echo "🗄️ Running Database Migrations:"
-echo "   Deploying Prisma migrations..."
-if npx prisma migrate deploy; then
-    echo "✅ Database migrations deployed successfully"
+echo "🗄️ Database Setup and Migrations:"
+echo "   Checking database status and running migrations..."
+if node check-and-migrate.js; then
+    echo "✅ Database setup completed successfully"
 else
-    echo "❌ Migration deployment failed!"
-    echo "⚠️ Server will continue but may have database schema issues"
+    echo "❌ Database setup failed!"
+    echo "⚠️ Server will continue but may have database issues"
 fi
 
 # Prisma client generation

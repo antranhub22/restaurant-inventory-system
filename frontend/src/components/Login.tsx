@@ -68,6 +68,7 @@ const Login: React.FC = () => {
               onChange={handleChange}
               required
               placeholder="••••••••"
+              showPasswordToggle={true}
             />
 
             <Button

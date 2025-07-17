@@ -55,7 +55,7 @@ app.use('/api', apiRateLimit);
 
 // Enhanced health check endpoint for Render monitoring
 app.get('/api/health', async (req: Request, res: Response) => {
-  const healthCheck = {
+  const healthCheck: any = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),

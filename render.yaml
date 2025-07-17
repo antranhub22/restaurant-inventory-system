@@ -17,6 +17,7 @@ services:
     plan: starter # hoặc free
     region: singapore # gần Việt Nam
     dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     envVars:
       - key: NODE_ENV
         value: production
@@ -68,10 +69,17 @@ services:
 # 3. Render tự động thêm SSL cho PostgreSQL connections
 # 4. Database migration sẽ tự động chạy trong Docker build
 #
+# ENTRY POINT CONFIGURATION:
+# - Backend sử dụng Docker với ./backend/Dockerfile
+# - Entry point: dist/server.js (compiled từ src/server.ts)
+# - Fallback: src/server.ts với tsx (nếu build fail)
+# - Health check: /api/health endpoint
+#
 # LỖI THƯỜNG GẶP:
-# - Nếu connection timeout: Database service có thể đang khởi động
-# - Nếu authentication failed: Kiểm tra username/password
-# - Nếu SSL error: Render PostgreSQL requires SSL by default
+# - MODULE_NOT_FOUND: Fixed với đúng entry point trong package.json
+# - Build fails: Enhanced build verification trong Dockerfile
+# - Database connection: Retry logic trong server startup
+# - TypeScript issues: Fallback sang tsx execution
 #
 # OPTIONAL: REDIS
 # Sử dụng Redis Cloud (redis.com) hoặc Upstash (upstash.com)
@@ -80,4 +88,5 @@ services:
 # LƯU Ý:
 # - PostgreSQL service format: postgresql://user:pass@host:port/database?sslmode=require
 # - Internal Render connections sử dụng private network
-# - Database cần time để khởi động (~2-3 phút cho lần đầu) 
+# - Database cần time để khởi động (~2-3 phút cho lần đầu)
+# - Backend có comprehensive error handling và fallback mechanisms 

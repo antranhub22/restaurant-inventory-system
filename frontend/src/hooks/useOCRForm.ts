@@ -59,7 +59,7 @@ const useOCRForm = (): UseOCRFormReturn => {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 60000, // 60 seconds for OCR processing
+        timeout: 180000, // 3 minutes for OCR processing
       });
       return response.data.data;
     } catch (err: any) {

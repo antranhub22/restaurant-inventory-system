@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Simplified and reliable Render startup script
+# Ultra-simplified Render startup script using dedicated Prisma setup
 set -e
 
 echo "🚀 Starting Restaurant Inventory System on Render..."
@@ -29,158 +29,33 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 echo "✅ DATABASE_URL is configured"
 
-# Quick database connection test
+# Run comprehensive Prisma setup
 echo ""
-echo "🔍 Testing database connection..."
-node -e "
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-
-async function testConnection() {
-  try {
-    await prisma.\$connect();
-    console.log('✅ Database connection successful');
-    await prisma.\$disconnect();
-  } catch (error) {
-    console.log('❌ Database connection failed:', error.message);
-    process.exit(1);
-  }
-}
-
-testConnection();
-" || exit 1
-
-# Ensure Prisma client is generated
-echo ""
-echo "🔧 Ensuring Prisma client is ready..."
-if [ ! -d "node_modules/.prisma/client" ]; then
-    echo "⚠️ Prisma client not found, generating..."
-    npx prisma generate
+echo "🔧 Running comprehensive Prisma setup..."
+if node setup-prisma-for-render.js; then
+    echo "✅ Prisma setup completed successfully"
 else
-    echo "✅ Prisma client exists"
+    echo "❌ Prisma setup failed!"
+    exit 1
 fi
 
-# Check if tables exist and run migrations if needed
+# Verify compiled server exists
 echo ""
-echo "📋 Setting up database schema..."
-node -e "
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-
-async function setupDatabase() {
-  try {
-    await prisma.\$connect();
-    
-    // Try to count users (test if tables exist)
-    try {
-      const userCount = await prisma.user.count();
-      console.log('✅ Database tables exist (found ' + userCount + ' users)');
-    } catch (error) {
-      if (error.message.includes('does not exist')) {
-        console.log('⚠️ Tables do not exist, running migrations...');
-        await prisma.\$disconnect();
-        process.exit(2); // Signal to run migrations
-      } else {
-        throw error;
-      }
-    }
-    
-    await prisma.\$disconnect();
-  } catch (error) {
-    console.log('❌ Database setup check failed:', error.message);
-    process.exit(1);
-  }
-}
-
-setupDatabase();
-"
-
-# If the check returned exit code 2, run migrations
-if [ $? -eq 2 ]; then
-    echo "🔄 Running database migrations..."
-    
-    # Try migrate deploy first, then fallback to db push
-    if npx prisma migrate deploy; then
-        echo "✅ Migrations deployed successfully"
-    else
-        echo "⚠️ Migrate deploy failed, trying db push..."
-        if npx prisma db push --accept-data-loss; then
-            echo "✅ Schema pushed successfully"
-        else
-            echo "❌ Both migration methods failed!"
-            exit 1
-        fi
-    fi
-    
-    # Verify tables were created
-    echo "🔍 Verifying table creation..."
-    node -e "
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-    prisma.user.count()
-      .then((count) => { 
-        console.log('✅ Tables verified (found ' + count + ' users)'); 
-        return prisma.\$disconnect();
-      })
-      .catch(e => {
-        console.log('❌ Table verification failed:', e.message);
-        process.exit(1);
-      });
-    " || exit 1
+echo "🔍 Checking application files..."
+if [ ! -f "dist/server.js" ]; then
+    echo "❌ Compiled server not found at dist/server.js!"
+    echo "📂 Available files in dist:"
+    ls -la dist/ 2>/dev/null || echo "No dist directory"
+    exit 1
 fi
 
-# Create admin user if none exists
-echo ""
-echo "👤 Checking for admin user..."
-node -e "
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-
-async function checkAdmin() {
-  try {
-    await prisma.\$connect();
-    const adminUser = await prisma.user.findFirst({
-      where: { role: 'owner' }
-    });
-    
-    if (!adminUser) {
-      console.log('⚠️ No admin user found, will create one...');
-      process.exit(3); // Signal to create admin
-    } else {
-      console.log('✅ Admin user exists: ' + adminUser.username);
-    }
-    
-    await prisma.\$disconnect();
-  } catch (error) {
-    console.log('❌ Admin check failed:', error.message);
-    process.exit(1);
-  }
-}
-
-checkAdmin();
-"
-
-# If no admin exists, create one
-if [ $? -eq 3 ]; then
-    if [ -f "setup-admin.js" ]; then
-        echo "🔧 Creating admin user..."
-        node setup-admin.js || echo "⚠️ Admin creation failed (continuing anyway)"
-    else
-        echo "⚠️ setup-admin.js not found, skipping admin creation"
-    fi
-fi
+echo "✅ dist/server.js found"
 
 # Start the application
 echo ""
 echo "🚀 Starting the application..."
+echo "   Entry point: dist/server.js"
+echo "   PORT: ${PORT:-4000}"
+echo ""
 
-# Check for compiled server file
-if [ -f "dist/server.js" ]; then
-    echo "✅ Starting from compiled dist/server.js"
-    exec node dist/server.js
-else
-    echo "❌ Compiled server not found!"
-    echo "📂 Available files:"
-    ls -la dist/ 2>/dev/null || echo "No dist directory"
-    exit 1
-fi 
+exec node dist/server.js 

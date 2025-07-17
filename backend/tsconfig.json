@@ -20,24 +20,19 @@
       "./node_modules/@types",
       "./src/types"
     ],
-    "types": [
-      "node",
-      "express",
-      "jest"
-    ],
-    "noImplicitAny": false,
-    "strictPropertyInitialization": false,
     "allowJs": true,
     "checkJs": false,
     "noEmit": false,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "composite": true,
-    "incremental": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "composite": false,
+    "incremental": false,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": false,
+    "strictPropertyInitialization": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "src/tests", "jest.config.ts"]

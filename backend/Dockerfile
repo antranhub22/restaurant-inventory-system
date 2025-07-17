@@ -14,8 +14,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install app dependencies
-RUN npm install
+# Install app dependencies (including dev deps for build)
+RUN npm ci
 
 # Copy app source
 COPY . .
@@ -23,8 +23,11 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Build TypeScript
-RUN npm run build
+# Build TypeScript with dev environment to ensure types are available
+RUN NODE_ENV=development npm run build
+
+# Remove dev dependencies after build to reduce image size
+RUN npm ci --only=production && npm cache clean --force
 
 # Expose port
 EXPOSE 4000

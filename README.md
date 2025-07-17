@@ -220,3 +220,4 @@ MIT License - xem file LICENSE để biết thêm chi tiết.
 ---
 
 **Made with ❤️ for Vietnamese Restaurants**
+# Force rebuild Thu Jul 17 21:18:15 +07 2025

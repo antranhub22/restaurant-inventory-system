@@ -214,7 +214,13 @@ async function main() {
   console.log('✅ Prisma setup completed successfully!');
 }
 
-main().catch(error => {
-  console.error('❌ Setup failed:', error);
-  process.exit(1);
-}); 
+// Only run main if this is the main module
+if (require.main === module) {
+  main().catch(error => {
+    console.error('❌ Setup failed:', error);
+    process.exit(1);
+  });
+} else {
+  // Export for use in other scripts
+  module.exports = { main, setupPrisma, runMigrations, createAdminUser };
+} 

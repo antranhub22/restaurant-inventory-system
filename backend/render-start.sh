@@ -29,10 +29,10 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 echo "✅ DATABASE_URL is configured"
 
-# Run comprehensive Prisma setup
+# Run comprehensive Prisma setup with debug
 echo ""
-echo "🔧 Running comprehensive Prisma setup..."
-if node setup-prisma-for-render.js; then
+echo "🔧 Running comprehensive Prisma setup with debug..."
+if node debug-startup.js; then
     echo "✅ Prisma setup completed successfully"
 else
     echo "❌ Prisma setup failed!"

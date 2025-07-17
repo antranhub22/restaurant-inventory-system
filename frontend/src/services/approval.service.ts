@@ -15,17 +15,17 @@ class ApprovalService {
    * Import approval operations
    */
   async approveImport(id: number): Promise<ApprovalResponse> {
-    const response = await api.post(`/imports/${id}/approve`);
+    const response = await api.post(`/import/${id}/approve`);
     return response.data;
   }
 
   async rejectImport(id: number, reason: string): Promise<ApprovalResponse> {
-    const response = await api.post(`/imports/${id}/reject`, { reason });
+    const response = await api.post(`/import/${id}/reject`, { reason });
     return response.data;
   }
 
   async getPendingImports(): Promise<any[]> {
-    const response = await api.get('/imports/pending');
+    const response = await api.get('/import/pending');
     return response.data.data || [];
   }
 
@@ -33,17 +33,17 @@ class ApprovalService {
    * Export approval operations
    */
   async approveExport(id: number): Promise<ApprovalResponse> {
-    const response = await api.post(`/exports/${id}/approve`);
+    const response = await api.post(`/export/${id}/approve`);
     return response.data;
   }
 
   async rejectExport(id: number, reason: string): Promise<ApprovalResponse> {
-    const response = await api.post(`/exports/${id}/reject`, { reason });
+    const response = await api.post(`/export/${id}/reject`, { reason });
     return response.data;
   }
 
   async getPendingExports(): Promise<any[]> {
-    const response = await api.get('/exports/pending');
+    const response = await api.get('/export/pending');
     return response.data.data || [];
   }
 
@@ -51,17 +51,17 @@ class ApprovalService {
    * Return approval operations
    */
   async approveReturn(id: number): Promise<ApprovalResponse> {
-    const response = await api.post(`/returns/${id}/approve`);
+    const response = await api.post(`/return/${id}/approve`);
     return response.data;
   }
 
   async rejectReturn(id: number, reason: string): Promise<ApprovalResponse> {
-    const response = await api.post(`/returns/${id}/reject`, { reason });
+    const response = await api.post(`/return/${id}/reject`, { reason });
     return response.data;
   }
 
   async getPendingReturns(): Promise<any[]> {
-    const response = await api.get('/returns/pending');
+    const response = await api.get('/return/pending');
     return response.data.data || [];
   }
 
@@ -69,17 +69,17 @@ class ApprovalService {
    * Waste approval operations
    */
   async approveWaste(id: number): Promise<ApprovalResponse> {
-    const response = await api.post(`/wastes/${id}/approve`);
+    const response = await api.post(`/waste/${id}/approve`);
     return response.data;
   }
 
   async rejectWaste(id: number, reason: string): Promise<ApprovalResponse> {
-    const response = await api.post(`/wastes/${id}/reject`, { reason });
+    const response = await api.post(`/waste/${id}/reject`, { reason });
     return response.data;
   }
 
   async getPendingWastes(): Promise<any[]> {
-    const response = await api.get('/wastes/pending');
+    const response = await api.get('/waste/pending');
     return response.data.data || [];
   }
 

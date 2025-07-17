@@ -42,7 +42,8 @@ export const authMiddleware = async (
 
       // @ts-ignore
       req.user = {
-        userId: decoded.userId,
+        id: decoded.userId,  // Use 'id' to match controller expectations
+        userId: decoded.userId,  // Keep for backward compatibility
         email: decoded.email,
         role: decoded.role
       };

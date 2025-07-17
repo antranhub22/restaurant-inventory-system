@@ -1,4 +1,15 @@
 services:
+  # PostgreSQL Database Service
+  - type: pserv
+    name: restaurant-inventory-database
+    plan: starter # hoặc free
+    region: singapore
+    env: 
+      - key: POSTGRES_DB
+        value: restaurant_inventory
+      - key: POSTGRES_USER
+        value: restaurant_user
+
   # Backend API Service
   - type: web
     name: restaurant-inventory-backend
@@ -12,7 +23,9 @@ services:
       - key: PORT
         value: 4000
       - key: DATABASE_URL
-        sync: false # Nhập từ Neon.tech dashboard
+        fromDatabase:
+          name: restaurant-inventory-database
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true # Render tự generate
       - key: REDIS_URL
@@ -49,16 +62,16 @@ services:
         value: production
     autoDeploy: true
 
-# HƯỚNG DẪN SETUP DATABASE VỚI NEON.TECH:
-# 1. Tạo tài khoản tại https://neon.tech
-# 2. Tạo database mới (free tier)
-# 3. Copy DATABASE_URL từ Neon dashboard
-# 4. Paste vào Render environment variables
+# HƯỚNG DẪN SETUP DATABASE VỚI RENDER POSTGRESQL:
+# 1. PostgreSQL service sẽ được tự động tạo từ file này
+# 2. DATABASE_URL sẽ được tự động cấu hình từ PostgreSQL service
+# 3. Không cần manual setup - Render tự handle!
 #
 # OPTIONAL: REDIS
 # Sử dụng Redis Cloud (redis.com) hoặc Upstash (upstash.com)
 # Copy REDIS_URL và paste vào Render environment variables
 #
 # LƯU Ý:
-# - Cập nhật VITE_API_URL trong frontend sau khi có URL của backend
-# - Đảm bảo DATABASE_URL format: postgresql://user:pass@host/database?sslmode=require 
+# - PostgreSQL service sẽ có format: postgresql://user:pass@host:port/database
+# - Không cần ?sslmode=require cho internal Render connections
+# - Database migration sẽ tự động chạy trong Docker build 

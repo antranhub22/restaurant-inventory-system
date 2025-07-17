@@ -5,8 +5,8 @@ services:
     runtime: node
     plan: starter # hoặc free
     region: oregon # Match với database region (US West)
-    buildCommand: cd backend && npm ci && npx prisma generate && npx tsc && cp -r prisma dist/
-    startCommand: cd backend && echo "🚀 STARTING INLINE..." && ls -la && echo "Schema check:" && ls -la prisma/ && echo "Dist check:" && ls -la dist/ && if [ -f "dist/prisma/schema.prisma" ]; then echo "Found schema in dist, copying..." && mkdir -p prisma && cp -r dist/prisma/* prisma/ 2>/dev/null || true; fi && echo "Generating client..." && npx prisma generate && echo "Running migrations..." && (npx prisma migrate deploy || npx prisma db push --accept-data-loss || echo "Migration failed but continuing") && echo "Starting server..." && node dist/server.js
+    buildCommand: cd backend && ./render-build.sh
+    startCommand: cd backend && npx prisma generate && npx prisma migrate deploy && node dist/server.js
     envVars:
       - key: NODE_ENV
         value: production

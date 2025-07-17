@@ -25,6 +25,7 @@ import ocrRoutes from './routes/ocr';
 import ocrFormRoutes from './routes/ocr-form.routes';
 import formTemplateRoutes from './routes/form-template.routes';
 import migrationRoutes from './routes/migration.routes';
+import healthRoutes from './routes/health';
 
 const app: Application = express();
 const prisma = new PrismaClient();
@@ -139,6 +140,7 @@ app.use('/api/ocr', ocrRoutes);
 app.use('/api/ocr-form', ocrFormRoutes);
 app.use('/api/form-template', formTemplateRoutes);
 app.use('/api/migration', migrationRoutes);
+app.use('/api/health', healthRoutes);
 
 // Error handling
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
